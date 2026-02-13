@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>You're in — Next steps</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a href="index.html" class="logo logo-pop">My Innercircle</a>
+    <nav class="header-nav">
+      <a href="https://instagram.com/stormij_xo" class="header-link" target="_blank" rel="noopener" aria-label="Instagram">Instagram</a>
+      <a href="admin/login.html" class="header-login">Log in</a>
+    </nav>
+  </header>
+
+  <main class="success-page">
+    <section class="success-content">
+      <h1>You’re in.</h1>
+      <p class="success-lead">Do these two steps so I can add you to Close Friends:</p>
+
+      <ol class="steps">
+        <li>
+          <strong>Follow me on Instagram</strong><br />
+          <a href="https://instagram.com/stormij_xo" class="link-ig" target="_blank" rel="noopener">@stormij_xo</a>
+        </li>
+        <li>
+          <strong>Request access</strong><br />
+          DM me your <strong>email</strong> (the one you used to pay) or a screenshot of your receipt. Or tap the button below to open Instagram and send a quick “I just subscribed” message.
+        </li>
+      </ol>
+
+      <a href="https://instagram.com/stormij_xo" class="btn btn-primary" target="_blank" rel="noopener">Open Instagram & DM me</a>
+
+      <p class="success-note">I add new members in batches — you’ll be in Close Friends within 24 hours. Check your email for the receipt and customer portal link (cancel anytime there).</p>
+
+      <div class="success-confirm">
+        <p class="success-confirm-title">Confirm your email (optional)</p>
+        <p class="success-confirm-sub">Enter the email you used to pay so we can add you faster.</p>
+        <form id="success-email-form">
+          <input type="email" id="success-email" placeholder="your@email.com" required />
+          <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+        <p id="success-email-done" class="success-email-done" style="display:none;">Thanks — we’ll add you soon.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script>
+    (function() {
+      if (typeof FIREBASE_CONFIG === "undefined" || !FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey === "YOUR_API_KEY") return;
+      firebase.initializeApp(FIREBASE_CONFIG);
+      var db = firebase.firestore();
+      var form = document.getElementById("success-email-form");
+      var done = document.getElementById("success-email-done");
+      if (form) {
+        form.addEventListener("submit", function(e) {
+          e.preventDefault();
+          var email = document.getElementById("success-email").value.trim();
+          if (!email) return;
+          db.collection("members").add({
+            email: email,
+            status: "active",
+            joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }).then(function() {
+            form.style.display = "none";
+            done.style.display = "block";
+          }).catch(function() {});
+        });
+      }
+    })();
+  </script>
+  <footer class="site-footer">
+    <p><a href="index.html">Home</a> · <a href="terms.html">Terms</a> · <a href="privacy.html">Privacy</a></p>
+    <p class="footer-legal">My Innercircle · Thanks for joining.</p>
+  </footer>
+</body>
+</html>

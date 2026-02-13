@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — My Innercircle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    .admin-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 0.5rem; }
+    .admin-main { max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem; }
+    .admin-main h1 { font-size: 1.5rem; margin-bottom: 1.5rem; }
+    .add-member { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 2rem; }
+    .add-member h2 { font-size: 1.1rem; margin: 0 0 1rem; }
+    .add-member label { display: block; margin-bottom: 0.35rem; font-weight: 500; font-size: 0.9rem; }
+    .add-member input { width: 100%; max-width: 280px; padding: 0.6rem; margin-bottom: 0.75rem; border: 1px solid var(--border); border-radius: 8px; }
+    .add-member .btn { margin-right: 0.5rem; margin-top: 0.25rem; }
+    .members-list { list-style: none; padding: 0; margin: 0; }
+    .member-row { display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 0.5rem; }
+    .member-row.cancelled { opacity: 0.65; }
+    .member-row .email { font-weight: 500; }
+    .member-row .meta { font-size: 0.85rem; color: var(--text-muted); }
+    .member-row .status { font-size: 0.8rem; padding: 0.2rem 0.5rem; border-radius: 6px; }
+    .member-row .status.active { background: rgba(34, 197, 94, 0.15); color: #15803d; }
+    .member-row .status.cancelled { background: var(--accent-soft); color: var(--accent-hover); }
+    .member-actions { display: flex; gap: 0.35rem; }
+    .member-actions .btn { padding: 0.4rem 0.75rem; font-size: 0.85rem; }
+    .loading, .empty { color: var(--text-muted); padding: 2rem 0; }
+    .btn-logout { font-size: 0.9rem; color: var(--text-muted); }
+    .btn-logout:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header class="admin-header">
+    <span class="logo">My Innercircle — Admin</span>
+    <button type="button" id="btn-logout" class="btn btn-logout">Log out</button>
+  </header>
+
+  <main class="admin-main">
+    <h1>Members</h1>
+    <p class="meta">Add members when they subscribe and DM you. Mark as cancelled when they unsubscribe so you can remove them from Close Friends.</p>
+
+    <section class="add-member">
+      <h2>Add member</h2>
+      <form id="add-form">
+        <label for="new-email">Email</label>
+        <input type="email" id="new-email" placeholder="member@example.com" required />
+        <label for="new-note">Note (optional)</label>
+        <input type="text" id="new-note" placeholder="e.g. IG handle" />
+        <button type="submit" class="btn btn-primary">Add</button>
+      </form>
+    </section>
+
+    <ul id="members-list" class="members-list"></ul>
+    <p id="loading" class="loading">Loading members…</p>
+    <p id="empty" class="empty" style="display:none;">No members yet. Add one above or they’ll appear when someone submits their email on the success page.</p>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="../firebase-config.js"></script>
+  <script>
+    if (typeof FIREBASE_CONFIG === "undefined" || !FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey === "YOUR_API_KEY") {
+      document.body.innerHTML = "<main class='admin-main'><h1>Firebase not configured</h1><p>Edit <code>firebase-config.js</code> and add your config.</p></main>";
+    } else {
+      firebase.initializeApp(FIREBASE_CONFIG);
+      var auth = firebase.auth();
+      var db = firebase.firestore();
+
+      auth.onAuthStateChanged(function(user) {
+        if (!user) {
+          window.location.href = "login.html";
+          return;
+        }
+        loadMembers();
+      });
+
+      document.getElementById("btn-logout").addEventListener("click", function() {
+        auth.signOut();
+      });
+
+      function loadMembers() {
+        var listEl = document.getElementById("members-list");
+        var loadingEl = document.getElementById("loading");
+        var emptyEl = document.getElementById("empty");
+        listEl.innerHTML = "";
+
+        db.collection("members")
+          .orderBy("joinedAt", "desc")
+          .onSnapshot(function(snap) {
+            loadingEl.style.display = "none";
+            if (snap.empty) {
+              emptyEl.style.display = "block";
+              return;
+            }
+            emptyEl.style.display = "none";
+            snap.forEach(function(doc) {
+              var d = doc.data();
+              var row = document.createElement("li");
+              row.className = "member-row" + (d.status === "cancelled" ? " cancelled" : "");
+              var joined = d.joinedAt && d.joinedAt.toDate ? d.joinedAt.toDate().toLocaleDateString() : "—";
+              row.innerHTML =
+                "<div><span class='email'>" + (d.email || "—") + "</span>" +
+                (d.note ? " <span class='meta'>" + d.note + "</span>" : "") +
+                "<div class='meta'>Joined " + joined + "</div></div>" +
+                "<div><span class='status " + (d.status || "active") + "'>" + (d.status || "active") + "</span>" +
+                "<div class='member-actions'>" +
+                (d.status !== "cancelled" ? "<button type='button' class='btn btn-secondary btn-mark-cancel' data-id='" + doc.id + "'>Mark cancelled</button>" : "") +
+                "<button type='button' class='btn btn-secondary btn-remove' data-id='" + doc.id + "'>Remove</button>" +
+                "</div></div>";
+              listEl.appendChild(row);
+            });
+
+            listEl.querySelectorAll(".btn-mark-cancel").forEach(function(btn) {
+              btn.addEventListener("click", function() {
+                db.collection("members").doc(btn.dataset.id).update({
+                  status: "cancelled",
+                  cancelledAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+              });
+            });
+            listEl.querySelectorAll(".btn-remove").forEach(function(btn) {
+              btn.addEventListener("click", function() {
+                if (confirm("Remove this member from the list?")) {
+                  db.collection("members").doc(btn.dataset.id).delete();
+                }
+              });
+            });
+          }, function(err) {
+            loadingEl.style.display = "none";
+            emptyEl.textContent = "Error loading members: " + (err.message || "check Firestore rules");
+            emptyEl.style.display = "block";
+          });
+      }
+
+      document.getElementById("add-form").addEventListener("submit", function(e) {
+        e.preventDefault();
+        var email = document.getElementById("new-email").value.trim();
+        var note = document.getElementById("new-note").value.trim();
+        document.getElementById("new-email").value = "";
+        document.getElementById("new-note").value = "";
+        db.collection("members").add({
+          email: email,
+          note: note || null,
+          status: "active",
+          joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(function() {
+          // list updates via onSnapshot
+        }).catch(function(err) {
+          alert("Could not add: " + (err.message || "check Firestore rules"));
+        });
+      });
+    }
+  </script>
+</body>
+</html>

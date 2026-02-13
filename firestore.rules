@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // members: list of subscribers (admin reads/writes; success page can create)
+    match /members/{memberId} {
+      allow read, update, delete: if request.auth != null;
+      allow create: if true;
+    }
+  }
+}

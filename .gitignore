@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Local env / secrets (optional: use Vercel env vars for Firebase in production)
+.env
+.env.local
+.env.*.local
+
+# Firebase
+.firebase/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
