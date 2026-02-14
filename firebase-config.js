@@ -1,15 +1,13 @@
 /**
- * My Innercircle — Firebase config
- * 1. Go to https://console.firebase.google.com
- * 2. Create a project (or use existing)
- * 3. Enable: Authentication (Email/Password), Firestore, Storage
- * 4. Project settings → Your apps → Add web app → Copy the config below
+ * My Innercircle — Firebase config (browser global for compat SDK)
+ * Used by: admin login, dashboard, success page, auth-header.js
  */
-const FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+var FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAomKKaiZA3GZSKLemfcM4BL5seSK7UFGU",
+  authDomain: "stormij.firebaseapp.com",
+  projectId: "stormij",
+  storageBucket: "stormij.firebasestorage.app",
+  messagingSenderId: "984910777648",
+  appId: "1:984910777648:web:4afa6af840073f7dae4cf5",
+  measurementId: "G-BT586B0HWT"
 };

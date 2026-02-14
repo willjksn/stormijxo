@@ -23,7 +23,7 @@
     <a href="index.html" class="logo logo-pop">My Innercircle</a>
     <nav class="header-nav">
       <a href="https://instagram.com/stormij_xo" class="header-link" target="_blank" rel="noopener" aria-label="Instagram">Instagram</a>
-      <a href="admin/login.html" class="header-login">Log in</a>
+      <a href="admin/login.html" id="header-auth-link" class="header-login">Log in</a>
     </nav>
   </header>
 
@@ -69,7 +69,6 @@
 
     <!-- Pricing -->
     <section class="pricing reveal" id="pricing">
-      <h2 class="section-title flirty">Pick your vibe</h2>
       <div class="tiers">
         <article class="tier-card tier-featured">
           <h3>Close Friends</h3>
@@ -81,16 +80,6 @@
             <li>Cancel anytime</li>
           </ul>
           <a href="YOUR_STRIPE_PAYMENT_LINK_HERE" class="btn btn-primary">Yes, add me — $12/mo</a>
-        </article>
-        <article class="tier-card">
-          <h3>VIP</h3>
-          <p class="price"><span class="amount">$29</span>/month</p>
-          <ul>
-            <li>Everything in Close Friends</li>
-            <li>1 monthly private livestream or Q&A</li>
-            <li>Cancel anytime</li>
-          </ul>
-          <a href="YOUR_STRIPE_VIP_PAYMENT_LINK_HERE" class="btn btn-secondary">I want it all — $29/mo</a>
         </article>
       </div>
       <p class="trust-line">Secure payment via Stripe · Cancel anytime</p>
@@ -127,5 +116,9 @@
   </footer>
 
   <script src="script.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="auth-header.js"></script>
 </body>
 </html>

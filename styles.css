@@ -345,15 +345,12 @@ main {
 .tiers {
   display: grid;
   gap: 1.25rem;
-}
-
-@media (min-width: 560px) {
-  .tiers {
-    grid-template-columns: 1fr 1fr;
-  }
+  justify-content: center;
 }
 
 .tier-card {
+  max-width: 360px;
+  width: 100%;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 12px;

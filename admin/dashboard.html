@@ -102,10 +102,12 @@
               var row = document.createElement("li");
               row.className = "member-row" + (d.status === "cancelled" ? " cancelled" : "");
               var joined = d.joinedAt && d.joinedAt.toDate ? d.joinedAt.toDate().toLocaleDateString() : "—";
+              var sourceLabel = d.source === "stripe" ? " · Stripe" : (d.note ? " · " + d.note : "");
+              if (d.tier && !d.note) sourceLabel = " · " + d.tier + sourceLabel;
               row.innerHTML =
                 "<div><span class='email'>" + (d.email || "—") + "</span>" +
                 (d.note ? " <span class='meta'>" + d.note + "</span>" : "") +
-                "<div class='meta'>Joined " + joined + "</div></div>" +
+                "<div class='meta'>Joined " + joined + sourceLabel + "</div></div>" +
                 "<div><span class='status " + (d.status || "active") + "'>" + (d.status || "active") + "</span>" +
                 "<div class='member-actions'>" +
                 (d.status !== "cancelled" ? "<button type='button' class='btn btn-secondary btn-mark-cancel' data-id='" + doc.id + "'>Mark cancelled</button>" : "") +
