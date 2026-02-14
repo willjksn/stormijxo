@@ -58,7 +58,7 @@ firebase deploy --only functions
 2. Click **Add endpoint**.
 3. **Endpoint URL:** paste the URL from Step 1, e.g.  
    `https://us-central1-stormij.cloudfunctions.net/stripeWebhook`
-4. **Description (optional):** e.g. `My Innercircle – add member to Firestore`.
+4. **Description (optional):** e.g. `My Inner circle – add member to Firestore`.
 5. **Events to send:** click **Select events** and choose **`checkout.session.completed`** only.
 6. Click **Add endpoint**.
 7. On the new endpoint’s page, under **Signing secret**, click **Reveal** and copy the value (starts with `whsec_`).

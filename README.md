@@ -1,4 +1,4 @@
-# My Innercircle — Private IG Close Friends
+# My Inner circle — Private IG Close Friends
 
 A landing page that sells monthly membership to your Instagram Close Friends via Stripe, with an **admin area** (Firebase Auth) to see who joined and who cancelled so you can manage your Close Friends list.
 

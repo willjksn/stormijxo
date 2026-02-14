@@ -27,3 +27,17 @@ function initReveal() {
 }
 
 initReveal();
+
+// FAQ accordion: one open at a time
+var faqList = document.querySelector(".faq-accordion");
+if (faqList) {
+  faqList.querySelectorAll(".faq-question").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var isOpen = btn.getAttribute("aria-expanded") === "true";
+      faqList.querySelectorAll(".faq-question").forEach(function (b) {
+        b.setAttribute("aria-expanded", "false");
+      });
+      btn.setAttribute("aria-expanded", isOpen ? "false" : "true");
+    });
+  });
+}

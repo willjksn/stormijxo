@@ -1,5 +1,5 @@
 /**
- * My Innercircle — Firebase config (browser global for compat SDK)
+ * My Inner circle — Firebase config (browser global for compat SDK)
  * Used by: admin login, dashboard, success page, auth-header.js
  */
 var FIREBASE_CONFIG = {

@@ -1,4 +1,4 @@
-# How My Innercircle Works
+# How My Inner circle Works
 
 ## The big picture
 

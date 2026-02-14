@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Content — Admin — My Inner circle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle fill='%23c97082' cx='16' cy='16' r='14'/></svg>" type="image/svg+xml" />
+  <style>
+    .admin-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 0.5rem; }
+    .admin-header .logo { font-size: 1.25rem; font-weight: 600; }
+    .admin-nav { display: flex; align-items: center; gap: 0.5rem; }
+    .admin-nav a, .admin-nav span { padding: 0.4rem 0.75rem; font-size: 0.9rem; color: var(--text-muted); text-decoration: none; border-radius: 8px; }
+    .admin-nav a:hover, .admin-nav span.active { color: var(--accent); background: var(--accent-soft); }
+    .admin-main { max-width: 640px; margin: 0 auto; padding: 2rem 1.5rem; }
+    .admin-main h1 { font-size: 1.35rem; margin-bottom: 0.5rem; }
+    .content-block { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .content-block h2 { font-size: 1.1rem; margin: 0 0 1rem; }
+    .content-block label { display: block; margin-bottom: 0.35rem; font-weight: 500; font-size: 0.9rem; }
+    .content-block textarea { width: 100%; min-height: 80px; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; resize: vertical; }
+    .content-block input[type="text"] { width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; }
+    .toggle-row { display: flex; align-items: center; gap: 0.75rem; margin-top: 1rem; }
+    .toggle-row label { margin: 0; font-weight: 500; }
+    .toggle-switch { position: relative; width: 44px; height: 24px; background: var(--border); border-radius: 999px; cursor: pointer; transition: background 0.2s; }
+    .toggle-switch.on { background: var(--accent); }
+    .toggle-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: #fff; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: transform 0.2s; }
+    .toggle-switch.on::after { transform: translateX(20px); }
+    .content-block .status { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; }
+    .btn-logout { font-size: 0.9rem; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 0.4rem 0.75rem; border-radius: 8px; }
+    .btn-logout:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header class="admin-header">
+    <span class="logo">Admin Dashboard</span>
+    <nav class="admin-nav">
+      <a href="../index.html">Home</a>
+      <a href="dashboard.html">Users</a>
+      <a href="media.html">Media</a>
+      <span class="active">Content</span>
+      <button type="button" id="btn-logout" class="btn-logout">Log out</button>
+    </nav>
+  </header>
+
+  <main class="admin-main">
+    <h1>Landing content</h1>
+    <p class="intro" style="color: var(--text-muted); margin-bottom: 1.5rem;">Edit the testimonial and control whether the member count is shown on the landing page.</p>
+
+    <section class="content-block">
+      <h2>Testimonial</h2>
+      <label for="testimonial-text">Quote (shown in a blockquote on the landing page)</label>
+      <textarea id="testimonial-text" placeholder="e.g. Worth every penny. Feels like I'm actually in the inner circle."></textarea>
+      <label for="testimonial-attribution" style="margin-top: 0.75rem;">Attribution (e.g. — Inner circle member)</label>
+      <input type="text" id="testimonial-attribution" placeholder="— Inner circle member" />
+      <div class="toggle-row">
+        <div id="toggle-testimonial" class="toggle-switch" role="switch" aria-checked="true" tabindex="0" title="Show testimonial on landing page"></div>
+        <label for="toggle-testimonial">Show testimonial on landing page</label>
+      </div>
+      <p class="status" id="status-testimonial"></p>
+    </section>
+
+    <section class="content-block">
+      <h2>Member count</h2>
+      <p style="margin: 0 0 0.75rem; font-size: 0.95rem; color: var(--text-muted);">Display &quot;Join <strong id="current-count">0</strong>+ in the circle&quot; on the landing page (in the preview section). Count includes everyone in the members list (added manually or via Stripe).</p>
+      <div class="toggle-row">
+        <div id="toggle-member-count" class="toggle-switch" role="switch" aria-checked="false" tabindex="0" title="Show member count on landing page"></div>
+        <label for="toggle-member-count">Show member count on landing page</label>
+      </div>
+      <button type="button" class="btn btn-secondary" id="btn-refresh-count" style="margin-top: 0.75rem;">Refresh count from members</button>
+      <p class="status" id="status-member-count"></p>
+    </section>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="../firebase-config.js"></script>
+  <script>
+    if (typeof FIREBASE_CONFIG === "undefined" || !FIREBASE_CONFIG.apiKey) {
+      document.body.innerHTML = "<main class='admin-main'><h1>Firebase not configured</h1></main>";
+    } else {
+      firebase.initializeApp(FIREBASE_CONFIG);
+      var auth = firebase.auth();
+      var db = firebase.firestore();
+      var landingRef = db.collection("site_config").doc("landing");
+
+      var contentLoaded = false;
+      auth.onAuthStateChanged(function(user) {
+        if (!user) {
+          window.location.href = "login.html";
+          return;
+        }
+        if (!contentLoaded) {
+          contentLoaded = true;
+          loadContent();
+        }
+      });
+
+      document.getElementById("btn-logout").addEventListener("click", function() { auth.signOut(); });
+
+      function loadContent() {
+        landingRef.get().then(function(doc) {
+          var data = doc.exists ? doc.data() : {};
+          var textEl = document.getElementById("testimonial-text");
+          var attrEl = document.getElementById("testimonial-attribution");
+          if (textEl) textEl.value = data.testimonialText || "";
+          if (attrEl) attrEl.value = data.testimonialAttribution != null ? data.testimonialAttribution : "— Inner circle member";
+          setToggle("toggle-testimonial", data.showTestimonial !== false);
+          setToggle("toggle-member-count", data.showMemberCount === true);
+          if (typeof data.memberCount === "number") {
+            document.getElementById("current-count").textContent = data.memberCount;
+          }
+          refreshMemberCount();
+        });
+      }
+
+      function setToggle(id, on) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.classList.toggle("on", on);
+        el.setAttribute("aria-checked", on ? "true" : "false");
+      }
+
+      function getToggle(id) {
+        return document.getElementById(id).classList.contains("on");
+      }
+
+      function toggleClick(id, callback) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        function flip() {
+          var on = !el.classList.contains("on");
+          setToggle(id, on);
+          if (callback) callback(on);
+        }
+        el.addEventListener("click", flip);
+        el.addEventListener("keydown", function(e) {
+          if (e.key === " " || e.key === "Enter") { e.preventDefault(); flip(); }
+        });
+      }
+
+      toggleClick("toggle-testimonial", function(on) {
+        var text = document.getElementById("testimonial-text").value;
+        var attr = document.getElementById("testimonial-attribution").value;
+        var update = { showTestimonial: !!on };
+        if (text) update.testimonialText = text;
+        if (attr) update.testimonialAttribution = attr;
+        landingRef.set(update, { merge: true }).then(function() {
+          document.getElementById("status-testimonial").textContent = on ? "Testimonial shown on site." : "Testimonial hidden on site.";
+        }).catch(function(err) {
+          document.getElementById("status-testimonial").textContent = "Error: " + (err.message || "save failed");
+        });
+      });
+
+      document.getElementById("testimonial-text").addEventListener("blur", saveTestimonial);
+      document.getElementById("testimonial-attribution").addEventListener("blur", saveTestimonial);
+      function saveTestimonial() {
+        var text = document.getElementById("testimonial-text").value;
+        var attr = document.getElementById("testimonial-attribution").value;
+        var show = getToggle("toggle-testimonial");
+        landingRef.set({
+          showTestimonial: !!show,
+          testimonialText: text || null,
+          testimonialAttribution: attr || null
+        }, { merge: true }).then(function() {
+          document.getElementById("status-testimonial").textContent = "Saved.";
+        });
+      }
+
+      function refreshMemberCount() {
+        db.collection("members").get().then(function(snap) {
+          var count = snap.size;
+          document.getElementById("current-count").textContent = count;
+          if (getToggle("toggle-member-count")) {
+            landingRef.set({ showMemberCount: true, memberCount: count }, { merge: true });
+          }
+        }).catch(function() {});
+      }
+
+      toggleClick("toggle-member-count", function(on) {
+        var update = { showMemberCount: !!on };
+        if (on) {
+          db.collection("members").get().then(function(snap) {
+            update.memberCount = snap.size;
+            landingRef.set(update, { merge: true }).then(function() {
+              document.getElementById("current-count").textContent = update.memberCount;
+              document.getElementById("status-member-count").textContent = "Member count is now shown on the landing page (includes manual + Stripe members).";
+            });
+          });
+        } else {
+          landingRef.set(update, { merge: true }).then(function() {
+            document.getElementById("status-member-count").textContent = "Member count is now hidden.";
+          });
+        }
+      });
+
+      document.getElementById("btn-refresh-count").addEventListener("click", function() {
+        var btn = this;
+        btn.disabled = true;
+        document.getElementById("status-member-count").textContent = "Updating…";
+        db.collection("members").get().then(function(snap) {
+          var count = snap.size;
+          document.getElementById("current-count").textContent = count;
+          var update = { memberCount: count };
+          if (getToggle("toggle-member-count")) update.showMemberCount = true;
+          return landingRef.set(update, { merge: true });
+        }).then(function() {
+          document.getElementById("status-member-count").textContent = "Count updated to " + document.getElementById("current-count").textContent + ".";
+          btn.disabled = false;
+        }).catch(function(err) {
+          document.getElementById("status-member-count").textContent = "Error: " + (err.message || "refresh failed");
+          btn.disabled = false;
+        });
+      });
+    }
+  </script>
+</body>
+</html>

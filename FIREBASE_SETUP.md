@@ -1,4 +1,4 @@
-# Firebase setup — My Innercircle
+# Firebase setup — My Inner circle
 
 Follow these steps so **Authentication**, **Firestore** (database), and **Storage** work with your app.
 
@@ -7,7 +7,7 @@ Follow these steps so **Authentication**, **Firestore** (database), and **Storag
 ## Step 1: Open your Firebase project
 
 1. Go to **[Firebase Console](https://console.firebase.google.com)** and sign in.
-2. Open the project you created for My Innercircle.
+2. Open the project you created for My Inner circle.
 
 ---
 
@@ -62,7 +62,7 @@ The app’s rules expect files under a **`content/`** path. You can upload files
 2. Scroll to **Your apps**.
 3. If you don’t have a web app yet:
    - Click the **</>** (Web) icon.
-   - Register the app with a nickname (e.g. “My Innercircle”) and optionally Firebase Hosting.
+   - Register the app with a nickname (e.g. “My Inner circle”) and optionally Firebase Hosting.
    - Click **Register app**.
 4. You’ll see a config object like:
 
@@ -122,7 +122,7 @@ Your project already has **`firestore.rules`** and **`storage.rules`**. Deploy t
    ```
 
    - When asked “Which features do you want to set up?”, choose **Firestore** and **Storage** (spacebar to select, Enter to confirm).
-   - “Use an existing project” → select your My Innercircle project.
+   - “Use an existing project” → select your My Inner circle project.
    - When it asks for file names, keep the defaults: **firestore.rules**, **storage.rules** (and the existing **firebase.json** already points to them).
 
 4. **Deploy the rules:**

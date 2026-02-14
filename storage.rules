@@ -1,7 +1,12 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Only authenticated admin can upload/read/delete content
+    // Landing media: public read (for site display), only admin write
+    match /landing/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    // Other content: only authenticated admin
     match /content/{allPaths=**} {
       allow read, write: if request.auth != null;
     }

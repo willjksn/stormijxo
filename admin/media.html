@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Media — Admin — My Inner circle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle fill='%23c97082' cx='16' cy='16' r='14'/></svg>" type="image/svg+xml" />
+  <style>
+    .admin-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 0.5rem; }
+    .admin-header .logo { font-size: 1.25rem; font-weight: 600; }
+    .admin-nav { display: flex; align-items: center; gap: 0.5rem; }
+    .admin-nav a, .admin-nav span { padding: 0.4rem 0.75rem; font-size: 0.9rem; color: var(--text-muted); text-decoration: none; border-radius: 8px; }
+    .admin-nav a:hover, .admin-nav span.active { color: var(--accent); background: var(--accent-soft); }
+    .admin-main { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+    .admin-main h1 { font-size: 1.35rem; margin-bottom: 0.5rem; }
+    .admin-main .intro { color: var(--text-muted); margin-bottom: 2rem; }
+    .media-grid { display: grid; gap: 1.5rem; }
+    .media-slot { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start; }
+    @media (max-width: 640px) { .media-slot { grid-template-columns: 1fr; } }
+    .media-slot h3 { margin: 0 0 0.5rem; font-size: 1rem; grid-column: 1 / -1; }
+    .media-preview { aspect-ratio: 16/10; max-height: 200px; background: var(--bg); border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 0.9rem; }
+    .media-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .media-preview video { width: 100%; height: 100%; object-fit: cover; }
+    .media-upload label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500; }
+    .media-upload input[type="file"] { font-size: 0.85rem; }
+    .media-upload .btn { margin-top: 0.5rem; margin-right: 0.5rem; }
+    .media-upload .btn-revert { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+    .media-upload .btn-revert:hover { color: #dc2626; border-color: #dc2626; }
+    .media-upload .btn-revert[disabled] { opacity: 0.5; cursor: not-allowed; }
+    .media-upload .status { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; }
+    .btn-logout { font-size: 0.9rem; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 0.4rem 0.75rem; border-radius: 8px; }
+    .btn-logout:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header class="admin-header">
+    <span class="logo">Admin Dashboard</span>
+    <nav class="admin-nav">
+      <a href="../index.html">Home</a>
+      <a href="dashboard.html">Users</a>
+      <span class="active">Media</span>
+      <a href="content.html">Content</a>
+      <button type="button" id="btn-logout" class="btn-logout">Log out</button>
+    </nav>
+  </header>
+
+  <main class="admin-main">
+    <h1>Landing media</h1>
+    <p class="intro">Upload an image or video for each slot. The landing page will use these instead of the default assets. Each slot can be either image or video.</p>
+
+    <div class="media-grid" id="media-grid">
+      <div class="media-slot" data-slot="hero">
+        <h3>Hero (main banner)</h3>
+        <div class="media-preview" id="preview-hero">No media</div>
+        <div class="media-upload">
+          <label>Replace with image or video</label>
+          <input type="file" id="file-hero" accept="image/*,video/*" />
+          <button type="button" class="btn btn-primary btn-upload" data-slot="hero">Upload</button>
+          <button type="button" class="btn btn-revert" data-slot="hero" id="revert-hero" disabled>Revert to default</button>
+          <p class="status" id="status-hero"></p>
+        </div>
+      </div>
+      <div class="media-slot" data-slot="preview1">
+        <h3>Preview 1 (“What you’ll see”)</h3>
+        <div class="media-preview" id="preview-preview1">No media</div>
+        <div class="media-upload">
+          <label>Replace with image or video</label>
+          <input type="file" id="file-preview1" accept="image/*,video/*" />
+          <button type="button" class="btn btn-primary btn-upload" data-slot="preview1">Upload</button>
+          <button type="button" class="btn btn-revert" data-slot="preview1" id="revert-preview1" disabled>Revert to default</button>
+          <p class="status" id="status-preview1"></p>
+        </div>
+      </div>
+      <div class="media-slot" data-slot="preview2">
+        <h3>Preview 2</h3>
+        <div class="media-preview" id="preview-preview2">No media</div>
+        <div class="media-upload">
+          <label>Replace with image or video</label>
+          <input type="file" id="file-preview2" accept="image/*,video/*" />
+          <button type="button" class="btn btn-primary btn-upload" data-slot="preview2">Upload</button>
+          <button type="button" class="btn btn-revert" data-slot="preview2" id="revert-preview2" disabled>Revert to default</button>
+          <p class="status" id="status-preview2"></p>
+        </div>
+      </div>
+      <div class="media-slot" data-slot="preview3">
+        <h3>Preview 3</h3>
+        <div class="media-preview" id="preview-preview3">No media</div>
+        <div class="media-upload">
+          <label>Replace with image or video</label>
+          <input type="file" id="file-preview3" accept="image/*,video/*" />
+          <button type="button" class="btn btn-primary btn-upload" data-slot="preview3">Upload</button>
+          <button type="button" class="btn btn-revert" data-slot="preview3" id="revert-preview3" disabled>Revert to default</button>
+          <p class="status" id="status-preview3"></p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-storage-compat.js"></script>
+  <script src="../firebase-config.js"></script>
+  <script>
+    if (typeof FIREBASE_CONFIG === "undefined" || !FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey === "YOUR_API_KEY") {
+      document.body.innerHTML = "<main class='admin-main'><h1>Firebase not configured</h1></main>";
+    } else {
+      firebase.initializeApp(FIREBASE_CONFIG);
+      var auth = firebase.auth();
+      var db = firebase.firestore();
+      var storage = firebase.storage();
+      var landingRef = db.collection("site_config").doc("landing");
+      var storageBase = storage.ref("landing");
+
+      auth.onAuthStateChanged(function(user) {
+        if (!user) {
+          window.location.href = "login.html";
+          return;
+        }
+        loadLandingMedia();
+      });
+
+      document.getElementById("btn-logout").addEventListener("click", function() { auth.signOut(); });
+
+      function loadLandingMedia() {
+        landingRef.get().then(function(doc) {
+          var data = doc.exists ? doc.data() : {};
+          ["hero", "preview1", "preview2", "preview3"].forEach(function(slot) {
+            setPreview(slot, data[slot]);
+          });
+        });
+      }
+
+      function setPreview(slot, item) {
+        var el = document.getElementById("preview-" + slot);
+        var revertBtn = document.getElementById("revert-" + slot);
+        if (!el) return;
+        if (!item || !item.url) {
+          el.innerHTML = "No media";
+          el.classList.remove("has-media");
+          if (revertBtn) revertBtn.disabled = true;
+          return;
+        }
+        el.classList.add("has-media");
+        if (item.type === "video") {
+          el.innerHTML = "<video src=\"" + item.url + "\" muted loop playsinline></video>";
+        } else {
+          el.innerHTML = "<img src=\"" + item.url + "\" alt=\"\" />";
+        }
+        if (revertBtn) revertBtn.disabled = false;
+      }
+
+      document.querySelectorAll(".btn-revert").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          var slot = btn.dataset.slot;
+          if (btn.disabled) return;
+          if (!confirm("Revert this slot to the default asset? The landing page will show the original image again.")) return;
+          var statusEl = document.getElementById("status-" + slot);
+          btn.disabled = true;
+          statusEl.textContent = "Reverting…";
+          var update = {};
+          update[slot] = firebase.firestore.FieldValue.delete();
+          landingRef.update(update).then(function() {
+            setPreview(slot, null);
+            statusEl.textContent = "Reverted. Landing page will show the default asset.";
+          }).catch(function(err) {
+            statusEl.textContent = "Error: " + (err.message || "revert failed");
+            btn.disabled = false;
+          });
+        });
+      });
+
+      document.querySelectorAll(".btn-upload").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          var slot = btn.dataset.slot;
+          var input = document.getElementById("file-" + slot);
+          var file = input && input.files[0];
+          if (!file) {
+            document.getElementById("status-" + slot).textContent = "Choose a file first.";
+            return;
+          }
+          var type = (file.type || "").indexOf("video/") === 0 ? "video" : "image";
+          var ext = (file.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "bin");
+          var path = slot + "_" + Date.now() + "." + ext;
+          var statusEl = document.getElementById("status-" + slot);
+          statusEl.textContent = "Uploading…";
+          btn.disabled = true;
+
+          storageBase.child(path).put(file).then(function(snap) {
+            return snap.ref.getDownloadURL();
+          }).then(function(downloadUrl) {
+            var update = {};
+            update[slot] = { type: type, url: downloadUrl };
+            return landingRef.set(update, { merge: true }).then(function() {
+              setPreview(slot, { type: type, url: downloadUrl });
+              statusEl.textContent = "Saved. Landing page will show this.";
+              input.value = "";
+              btn.disabled = false;
+            });
+          }).catch(function(err) {
+            statusEl.textContent = "Error: " + (err.message || "upload failed");
+            btn.disabled = false;
+          });
+        });
+      });
+    }
+  </script>
+</body>
+</html>
