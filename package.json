@@ -1,0 +1,10 @@
+{
+  "name": "stormij-xo",
+  "private": true,
+  "scripts": {
+    "logo-transparent": "node scripts/make-logo-transparent.js"
+  },
+  "devDependencies": {
+    "sharp": "^0.33.5"
+  }
+}

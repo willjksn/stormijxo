@@ -87,6 +87,22 @@
       <div id="social-fields"></div>
       <p class="status" id="status-social"></p>
     </section>
+
+    <section class="content-block">
+      <h2>Privacy policy</h2>
+      <p style="margin: 0 0 1rem; font-size: 0.95rem; color: var(--text-muted);">This date is shown as &quot;Last updated&quot; on the privacy policy page. Update it whenever you change the policy.</p>
+      <label for="privacy-last-updated">Last updated date</label>
+      <input type="date" id="privacy-last-updated" />
+      <p class="status" id="status-privacy"></p>
+    </section>
+
+    <section class="content-block">
+      <h2>Terms of Service</h2>
+      <p style="margin: 0 0 1rem; font-size: 0.95rem; color: var(--text-muted);">This date is shown as &quot;Last updated&quot; on the terms of service page. Update it whenever you change the terms.</p>
+      <label for="terms-last-updated">Last updated date</label>
+      <input type="date" id="terms-last-updated" />
+      <p class="status" id="status-terms"></p>
+    </section>
   </main>
 
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
@@ -116,6 +132,31 @@
 
       document.getElementById("btn-logout").addEventListener("click", function() { auth.signOut(); });
 
+      (function() {
+        var privacyInput = document.getElementById("privacy-last-updated");
+        if (privacyInput) {
+          privacyInput.addEventListener("blur", function() {
+            var val = privacyInput.value.trim();
+            landingRef.set({ privacyPolicyLastUpdated: val || null }, { merge: true }).then(function() {
+              document.getElementById("status-privacy").textContent = "Privacy policy date saved.";
+            }).catch(function(err) {
+              document.getElementById("status-privacy").textContent = "Error: " + (err.message || "save failed");
+            });
+          });
+        }
+        var termsInput = document.getElementById("terms-last-updated");
+        if (termsInput) {
+          termsInput.addEventListener("blur", function() {
+            var val = termsInput.value.trim();
+            landingRef.set({ termsLastUpdated: val || null }, { merge: true }).then(function() {
+              document.getElementById("status-terms").textContent = "Terms of Service date saved.";
+            }).catch(function(err) {
+              document.getElementById("status-terms").textContent = "Error: " + (err.message || "save failed");
+            });
+          });
+        }
+      })();
+
       function loadContent() {
         buildSocialFields({});
         landingRef.get().then(function(doc) {
@@ -131,6 +172,10 @@
           }
           refreshMemberCount();
           buildSocialFields(data.socialLinks || {});
+          var privacyEl = document.getElementById("privacy-last-updated");
+          if (privacyEl) privacyEl.value = data.privacyPolicyLastUpdated || "";
+          var termsEl = document.getElementById("terms-last-updated");
+          if (termsEl) termsEl.value = data.termsLastUpdated || "";
         }).catch(function() {
           buildSocialFields({});
         });

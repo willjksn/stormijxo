@@ -12,7 +12,7 @@
 </head>
 <body>
   <header class="site-header">
-    <a href="index.html" class="logo logo-pop">My Inner circle</a>
+    <a href="index.html" class="logo logo-pop"><img src="assets/logo.svg" alt="My Inner circle" class="logo-img" /></a>
     <nav class="header-nav">
       <a href="admin/login.html" id="header-auth-link" class="header-login">Log in</a>
     </nav>
@@ -20,15 +20,21 @@
 
   <main class="legal-page">
     <h1>Terms of Service</h1>
-    <p class="legal-updated">Last updated: [Date]</p>
+    <p class="legal-updated">Last updated: <span id="terms-last-updated">—</span></p>
 
-    <p>By subscribing to My Inner circle / Private IG Close Friends, you agree to the following:</p>
+    <p>By subscribing to My Inner Circle / Private IG Close Friends, you agree to the following:</p>
 
     <h2>Subscription</h2>
     <p>Membership is a recurring monthly subscription. You will be charged each month until you cancel. You can cancel anytime via the link in your receipt email (Stripe customer portal).</p>
 
     <h2>Access</h2>
     <p>After payment, you must follow the creator on Instagram and request access as described on the success page. Access to Close Friends is granted at the creator’s discretion and typically within 24 hours.</p>
+
+    <h2>Removal and cancellation</h2>
+    <p>The creator may remove you from Close Friends or cancel your access at any time, for any reason. If you are removed, you will keep access until the end of the period you have already paid for (your access end date). You will not be charged again after that.</p>
+
+    <h2>Behavior</h2>
+    <p>You are expected to be respectful in your interactions with the creator and the community. Rude, abusive, harassing, or otherwise inappropriate behavior may result in immediate removal from Close Friends and cancellation of your membership. No refund will be given for the current period in such cases.</p>
 
     <h2>Use</h2>
     <p>Content shared in Close Friends is for your personal use only. You may not screenshot, share, or redistribute it without permission.</p>
@@ -44,11 +50,33 @@
 
   <footer class="site-footer">
     <p><a href="https://instagram.com/stormij_xo" target="_blank" rel="noopener" class="footer-ig">Follow on Instagram</a></p>
-    <p class="footer-legal"><a href="terms.html">Terms</a> · <a href="privacy.html">Privacy</a> · My Inner circle</p>
+    <p class="footer-legal"><a href="terms.html">Terms</a> · <a href="privacy.html">Privacy</a></p>
   </footer>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
   <script src="firebase-config.js"></script>
   <script src="auth-header.js"></script>
+  <script>
+    (function() {
+      function formatDate(str) {
+        if (!str) return "—";
+        var m = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m) return str;
+        var months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+        var d = parseInt(m[3], 10);
+        return months[parseInt(m[2], 10) - 1] + " " + d + ", " + m[1];
+      }
+      if (typeof firebase === "undefined" || typeof firebase.firestore !== "function") return;
+      try {
+        firebase.firestore().collection("site_config").doc("landing").get()
+          .then(function(doc) {
+            var date = doc.exists && doc.get("termsLastUpdated");
+            var el = document.getElementById("terms-last-updated");
+            if (el) el.textContent = formatDate(date);
+          })
+          .catch(function() {});
+      } catch (e) {}
+    })();
+  </script>
 </body>
 </html>
