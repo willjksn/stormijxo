@@ -29,6 +29,9 @@
     .toggle-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: #fff; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: transform 0.2s; }
     .toggle-switch.on::after { transform: translateX(20px); }
     .content-block .status { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; }
+    .social-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .social-row label { margin: 0; min-width: 80px; font-weight: 500; }
+    .social-row input[type="url"] { flex: 1; min-width: 180px; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px; }
     .btn-logout { font-size: 0.9rem; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 0.4rem 0.75rem; border-radius: 8px; }
     .btn-logout:hover { color: var(--accent); }
   </style>
@@ -64,13 +67,25 @@
 
     <section class="content-block">
       <h2>Member count</h2>
-      <p style="margin: 0 0 0.75rem; font-size: 0.95rem; color: var(--text-muted);">Display &quot;Join <strong id="current-count">0</strong>+ in the circle&quot; on the landing page (in the preview section). Count includes everyone in the members list (added manually or via Stripe).</p>
+      <p style="margin: 0 0 0.75rem; font-size: 0.95rem; color: var(--text-muted);">Display &quot;Join <strong id="current-count">0</strong> in the circle&quot; in the final CTA section on the landing page. Count includes everyone in the members list (added manually or via Stripe).</p>
       <div class="toggle-row">
         <div id="toggle-member-count" class="toggle-switch" role="switch" aria-checked="false" tabindex="0" title="Show member count on landing page"></div>
         <label for="toggle-member-count">Show member count on landing page</label>
       </div>
       <button type="button" class="btn btn-secondary" id="btn-refresh-count" style="margin-top: 0.75rem;">Refresh count from members</button>
       <p class="status" id="status-member-count"></p>
+    </section>
+
+    <section class="content-block">
+      <h2>Member count placement</h2>
+      <p style="margin: 0 0 0.75rem; font-size: 0.95rem; color: var(--text-muted);">When enabled, &quot;Join X in the circle&quot; appears in the final CTA section (above &quot;Ready to see the real me?&quot;).</p>
+    </section>
+
+    <section class="content-block">
+      <h2>Social links</h2>
+      <p style="margin: 0 0 1rem; font-size: 0.95rem; color: var(--text-muted);">Add your profile URLs and toggle which ones to show as buttons in the footer. Use full URLs (e.g. https://instagram.com/username).</p>
+      <div id="social-fields"></div>
+      <p class="status" id="status-social"></p>
     </section>
   </main>
 
@@ -102,6 +117,7 @@
       document.getElementById("btn-logout").addEventListener("click", function() { auth.signOut(); });
 
       function loadContent() {
+        buildSocialFields({});
         landingRef.get().then(function(doc) {
           var data = doc.exists ? doc.data() : {};
           var textEl = document.getElementById("testimonial-text");
@@ -114,6 +130,48 @@
             document.getElementById("current-count").textContent = data.memberCount;
           }
           refreshMemberCount();
+          buildSocialFields(data.socialLinks || {});
+        }).catch(function() {
+          buildSocialFields({});
+        });
+      }
+
+      var SOCIAL_KEYS = ["instagram", "facebook", "x", "tiktok", "youtube"];
+      var SOCIAL_LABELS = { instagram: "Instagram", facebook: "Facebook", x: "X (Twitter)", tiktok: "TikTok", youtube: "YouTube" };
+
+      function buildSocialFields(socialLinks) {
+        var container = document.getElementById("social-fields");
+        if (!container) return;
+        container.innerHTML = "";
+        SOCIAL_KEYS.forEach(function(key) {
+          var item = socialLinks[key] || {};
+          var row = document.createElement("div");
+          row.className = "social-row";
+          row.innerHTML =
+            "<label for=\"social-url-" + key + "\">" + SOCIAL_LABELS[key] + "</label>" +
+            "<input type=\"url\" id=\"social-url-" + key + "\" data-social-key=\"" + key + "\" placeholder=\"https://\" value=\"" + (item.url || "").replace(/"/g, "&quot;") + "\" />" +
+            "<div id=\"toggle-social-" + key + "\" class=\"toggle-switch\" role=\"switch\" aria-checked=\"" + (item.show ? "true" : "false") + "\" tabindex=\"0\" data-social-key=\"" + key + "\" title=\"Show on site\"></div>" +
+            "<span style=\"font-size:0.9rem;color:var(--text-muted)\">Show on site</span>";
+          container.appendChild(row);
+          setToggle("toggle-social-" + key, !!item.show);
+          document.getElementById("social-url-" + key).addEventListener("blur", saveSocialLinks);
+          toggleClick("toggle-social-" + key, function() { saveSocialLinks(); });
+        });
+      }
+
+      function saveSocialLinks() {
+        var socialLinks = {};
+        SOCIAL_KEYS.forEach(function(key) {
+          var input = document.getElementById("social-url-" + key);
+          var toggleEl = document.getElementById("toggle-social-" + key);
+          var show = toggleEl && toggleEl.classList.contains("on");
+          var url = input ? input.value.trim() : "";
+          socialLinks[key] = { url: url || "", show: !!show };
+        });
+        landingRef.set({ socialLinks: socialLinks }, { merge: true }).then(function() {
+          document.getElementById("status-social").textContent = "Social links saved.";
+        }).catch(function(err) {
+          document.getElementById("status-social").textContent = "Error: " + (err.message || "save failed");
         });
       }
 

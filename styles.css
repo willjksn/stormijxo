@@ -242,6 +242,41 @@ main {
   margin: -0.2em 0 0.5rem;
 }
 
+.hero-social-links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.hero-social-links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.hero-social-links a:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(201, 112, 130, 0.25);
+}
+
+.hero-social-links a svg {
+  width: 22px;
+  height: 22px;
+}
+
+.hero-social-links:empty {
+  display: none;
+}
+
+.hero-handle-line:has(.hero-social-links:empty) {
+  display: none;
+}
+
 .hero-handle {
   color: #c97082;
   text-decoration: none;
@@ -379,6 +414,11 @@ main {
   font-weight: 500;
   color: var(--accent);
   margin: 0.5rem 0 0;
+}
+
+.cta-member-count {
+  margin: 0 0 0.5rem !important;
+  font-size: 1.05rem;
 }
 
 /* Testimonial */
@@ -636,13 +676,18 @@ main {
   color: var(--text-muted);
   font-size: 0.95rem;
   line-height: 1.55;
-  max-height: 0;
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease;
+}
+
+.faq-answer > .faq-answer-inner {
+  min-height: 0;
   overflow: hidden;
-  transition: max-height 0.3s ease;
 }
 
 .faq-item:has(.faq-question[aria-expanded="true"]) .faq-answer {
-  max-height: 800px;
+  grid-template-rows: 1fr;
 }
 
 /* CTA block */
@@ -653,6 +698,39 @@ main {
 
 .cta .section-title {
   margin-bottom: 1rem;
+}
+
+/* Social links (footer) */
+.social-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.social-links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.social-links a:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+.social-links a svg {
+  width: 24px;
+  height: 24px;
+}
+
+.social-links:empty {
+  display: none;
 }
 
 /* Footer */
