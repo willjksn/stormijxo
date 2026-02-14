@@ -19,7 +19,7 @@
   </header>
 
   <main class="success-page">
-    <section class="success-content">
+    <section class="success-content" id="success-subscription">
       <h1>You’re in.</h1>
       <p class="success-lead">Do these two steps so I can add you to Close Friends:</p>
 
@@ -48,8 +48,24 @@
         <p id="success-email-done" class="success-email-done" style="display:none;">Thanks — we’ll add you soon.</p>
       </div>
     </section>
+    <section class="success-content" id="success-tip" style="display: none;">
+      <h1>Thank you for your tip!</h1>
+      <p class="success-lead">Your support means a lot.</p>
+      <a href="index.html" class="btn btn-primary">Back to home</a>
+    </section>
   </main>
 
+  <script>
+    (function() {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get("tip") === "1") {
+        var sub = document.getElementById("success-subscription");
+        var tip = document.getElementById("success-tip");
+        if (sub) sub.style.display = "none";
+        if (tip) tip.style.display = "block";
+      }
+    })();
+  </script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>

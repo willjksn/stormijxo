@@ -1,8 +1,74 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const Stripe = require("stripe");
+const express = require("express");
 
 admin.initializeApp();
+
+/** One-time tip: create Stripe Checkout Session (mode: payment), return URL for redirect. */
+const tipApp = express();
+tipApp.use(express.json());
+tipApp.post("/", async function(req, res) {
+  const body = req.body || {};
+  const amountCents = typeof body.amount === "number" ? body.amount : parseInt(body.amount, 10);
+  if (!Number.isInteger(amountCents) || amountCents < 100 || amountCents > 100000) {
+    return res.status(400).json({ error: "Amount must be between 100 and 100000 cents ($1–$1000)" });
+  }
+  const baseUrl = body.base_url || "https://stormij.vercel.app";
+  const successUrl = body.success_url || baseUrl + (baseUrl.endsWith("/") ? "" : "/") + "success.html?tip=1";
+  const cancelUrl = body.cancel_url || baseUrl + (baseUrl.endsWith("/") ? "" : "/") + "index.html";
+  const config = functions.config();
+  const stripeSecret = config.stripe && config.stripe.secret;
+  if (!stripeSecret) {
+    return res.status(500).json({ error: "Stripe not configured" });
+  }
+  const stripe = Stripe(stripeSecret);
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "usd",
+            unit_amount: amountCents,
+            product_data: {
+              name: "Tip",
+              description: "One-time tip to show appreciation",
+              images: [],
+            },
+          },
+        },
+      ],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: { type: "tip" },
+    });
+    res.status(200).json({ url: session.url });
+  } catch (err) {
+    console.error("Tip checkout error:", err);
+    res.status(500).json({ error: err.message || "Checkout failed" });
+  }
+});
+tipApp.all("*", function(req, res) {
+  res.status(405).json({ error: "Method not allowed" });
+});
+
+// Shared HTTP wrapper for tip checkout endpoints.
+function tipCheckoutHttpHandler(req, res) {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+  tipApp(req, res);
+}
+
+// Keep existing name and also expose a new endpoint name to bypass stale IAM/policy issues.
+exports.createTipCheckout = functions.runWith({ node: "20" }).https.onRequest(tipCheckoutHttpHandler);
+exports.createTipCheckoutPublic = functions.runWith({ node: "20" }).https.onRequest(tipCheckoutHttpHandler);
 
 /**
  * Stripe webhook: creates/updates fan records in Firestore.
@@ -63,6 +129,11 @@ exports.stripeWebhook = functions
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
+      // One-time payments (e.g. tips) have no subscription — do not add to members
+      if (!session.subscription) {
+        res.json({ received: true });
+        return;
+      }
       const email = session.customer_email || (session.customer_details && session.customer_details.email);
       if (!email) {
         res.json({ received: true });

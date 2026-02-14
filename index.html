@@ -97,6 +97,26 @@
         </article>
       </div>
       <p class="trust-line"><span class="trust-icon" aria-hidden="true">🔒</span> Secure payment via Stripe <span class="trust-sep">·</span> <span class="trust-icon" aria-hidden="true">✓</span> Cancel anytime</p>
+
+      <div class="tip-section reveal">
+        <p class="tip-heading">Want to show love?</p>
+        <p class="tip-sub">One-time tip — no subscription.</p>
+        <div class="tip-buttons">
+          <button type="button" class="btn btn-tip" data-amount="300">$3</button>
+          <button type="button" class="btn btn-tip" data-amount="500">$5</button>
+          <button type="button" class="btn btn-tip" data-amount="1000">$10</button>
+          <button type="button" class="btn btn-tip" data-amount="2000">$20</button>
+        </div>
+        <div class="tip-custom">
+          <label for="tip-custom-amount" class="tip-custom-label">Or enter an amount</label>
+          <div class="tip-custom-row">
+            <span class="tip-custom-prefix">$</span>
+            <input type="number" id="tip-custom-amount" class="tip-custom-input" min="1" max="1000" step="1" placeholder="e.g. 25" inputmode="decimal" aria-label="Tip amount in dollars" />
+            <button type="button" class="btn btn-tip btn-tip-custom" id="tip-custom-btn">Tip</button>
+          </div>
+        </div>
+        <p id="tip-error" class="tip-error" style="display: none;" role="alert"></p>
+      </div>
     </section>
 
     <!-- FAQ -->
@@ -142,5 +162,77 @@
   <script src="firebase-config.js"></script>
   <script src="auth-header.js"></script>
   <script src="landing-media.js"></script>
+  <script>
+    (function() {
+      var tipUrl = typeof FIREBASE_CONFIG !== "undefined" && FIREBASE_CONFIG.projectId
+        ? "https://us-central1-" + FIREBASE_CONFIG.projectId + ".cloudfunctions.net/createTipCheckoutPublic"
+        : "";
+      if (!tipUrl) return;
+      var base = window.location.origin + window.location.pathname.replace(/[^/]+$/, "");
+      var successUrl = base + (base.endsWith("/") ? "" : "/") + "success.html?tip=1";
+      var cancelUrl = window.location.href;
+      var errEl = document.getElementById("tip-error");
+      function startTipCheckout(amountCents, resetButtons) {
+        if (!amountCents || amountCents < 100 || amountCents > 100000) return;
+        if (errEl) { errEl.style.display = "none"; errEl.textContent = ""; }
+        if (resetButtons) {
+          document.querySelectorAll(".btn-tip").forEach(function(b) {
+            b.disabled = true;
+            if (b.getAttribute("data-amount")) b.textContent = "…";
+          });
+        }
+        fetch(tipUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: amountCents, success_url: successUrl, cancel_url: cancelUrl })
+        }).then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+          .then(function(result) {
+            if (result.ok && result.data && result.data.url) {
+              window.location.href = result.data.url;
+            } else {
+              document.querySelectorAll(".btn-tip").forEach(function(b) {
+                b.disabled = false;
+                if (b.getAttribute("data-amount")) b.textContent = "$" + (b.getAttribute("data-amount") / 100);
+                else if (b.id === "tip-custom-btn") b.textContent = "Tip";
+              });
+              if (errEl) { errEl.textContent = result.data && result.data.error ? result.data.error : "Something went wrong."; errEl.style.display = "block"; }
+            }
+          })
+          .catch(function() {
+            document.querySelectorAll(".btn-tip").forEach(function(b) {
+              b.disabled = false;
+              if (b.getAttribute("data-amount")) b.textContent = "$" + (b.getAttribute("data-amount") / 100);
+              else if (b.id === "tip-custom-btn") b.textContent = "Tip";
+            });
+            if (errEl) { errEl.textContent = "Could not start checkout. Try again."; errEl.style.display = "block"; }
+          });
+      }
+      document.querySelectorAll(".btn-tip[data-amount]").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          var amount = parseInt(this.getAttribute("data-amount"), 10);
+          if (!amount) return;
+          startTipCheckout(amount, true);
+        });
+      });
+      var customBtn = document.getElementById("tip-custom-btn");
+      var customInput = document.getElementById("tip-custom-amount");
+      if (customBtn && customInput) {
+        function doCustomTip() {
+          var val = parseFloat(customInput.value, 10);
+          if (isNaN(val) || val < 1 || val > 1000) {
+            if (errEl) { errEl.textContent = "Enter an amount between $1 and $1000."; errEl.style.display = "block"; }
+            return;
+          }
+          var amountCents = Math.round(val * 100);
+          if (amountCents < 100) amountCents = 100;
+          customBtn.disabled = true;
+          customBtn.textContent = "…";
+          startTipCheckout(amountCents, false);
+        }
+        customBtn.addEventListener("click", doCustomTip);
+        customInput.addEventListener("keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); doCustomTip(); } });
+      }
+    })();
+  </script>
 </body>
 </html>

@@ -481,6 +481,105 @@ main {
   color: var(--text-muted);
 }
 
+.tip-section {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.tip-heading {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.35rem;
+  color: var(--text);
+}
+
+.tip-sub {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 0 0 1rem;
+}
+
+.tip-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+}
+
+.btn-tip {
+  padding: 0.5rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform 0.2s;
+}
+
+.btn-tip:hover:not(:disabled) {
+  background: var(--accent);
+  color: #fff;
+  transform: scale(1.03);
+}
+
+.btn-tip:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.tip-custom {
+  margin-top: 1.25rem;
+}
+
+.tip-custom-label {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.tip-custom-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tip-custom-prefix {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.tip-custom-input {
+  width: 6rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tip-custom-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.btn-tip-custom {
+  flex-shrink: 0;
+}
+
+.tip-error {
+  font-size: 0.9rem;
+  color: #c53030;
+  margin: 0.75rem 0 0;
+}
+
 .trust-icon {
   opacity: 0.85;
 }
