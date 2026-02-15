@@ -25,8 +25,8 @@
     .add-member label { display: block; margin-bottom: 0.35rem; font-weight: 500; font-size: 0.9rem; }
     .add-member input { width: 100%; max-width: 280px; padding: 0.6rem; margin-bottom: 0.75rem; border: 1px solid var(--border); border-radius: 8px; }
     .add-member .btn { margin-right: 0.5rem; margin-top: 0.25rem; }
-    .members-table-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-    .members-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .members-table-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+    .members-table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 0.9rem; }
     .members-table th { text-align: left; padding: 0.85rem 1rem; font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.03); }
     .members-table td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
     .members-table tbody tr:last-child td { border-bottom: none; }
