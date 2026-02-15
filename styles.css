@@ -822,11 +822,20 @@ main {
 /* CTA block */
 .cta {
   text-align: center;
-  padding: 2rem 0;
+  padding: 0.75rem 0 0.5rem;
 }
 
 .cta .section-title {
   margin-bottom: 1rem;
+}
+
+.cta-logo {
+  display: block;
+  width: min(250px, 58vw);
+  height: 68px;
+  object-fit: cover;
+  object-position: center 52%;
+  margin: 0 auto 0.25rem;
 }
 
 /* Social links (footer) */

@@ -23,6 +23,14 @@
     if (!doc.exists) return;
     var data = doc.data();
 
+    ["preview1", "preview2", "preview3"].forEach(function(slot) {
+      var wrap = document.querySelector("[data-landing-slot=\"" + slot + "\"]");
+      if (!wrap) return;
+      var key = "show" + slot.charAt(0).toUpperCase() + slot.slice(1);
+      var show = data[key] !== false && data[key] !== "false";
+      wrap.style.display = show ? "" : "none";
+    });
+
     slots.forEach(function(slot) {
       var item = data[slot];
       if (!item || !item.url) return;
