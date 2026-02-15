@@ -6,12 +6,23 @@
   if (typeof firebase === "undefined" || typeof FIREBASE_CONFIG === "undefined" || !FIREBASE_CONFIG.apiKey) return;
   if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
   var db = firebase.firestore();
+  var slots = ["hero", "preview1", "preview2", "preview3"];
+
+  function setSlotsVisible(visible) {
+    slots.forEach(function(slot) {
+      var wrap = document.querySelector("[data-landing-slot=\"" + slot + "\"]");
+      if (!wrap) return;
+      wrap.style.visibility = visible ? "" : "hidden";
+    });
+  }
+
+  // Prevent brief old/default media flash on refresh.
+  setSlotsVisible(false);
 
   db.collection("site_config").doc("landing").get().then(function(doc) {
     if (!doc.exists) return;
     var data = doc.data();
 
-    var slots = ["hero", "preview1", "preview2", "preview3"];
     slots.forEach(function(slot) {
       var item = data[slot];
       if (!item || !item.url) return;
@@ -32,6 +43,7 @@
         var img = document.createElement("img");
         img.src = item.url;
         img.className = slot === "hero" ? "hero-image" : "preview-img";
+        img.style.objectPosition = "top center";
         img.alt = slot === "hero" ? "Creator" : "Preview";
         wrap.innerHTML = "";
         wrap.appendChild(img);
@@ -84,5 +96,8 @@
 
     renderSocialInto(document.getElementById("hero-social-links"), "hero");
     renderSocialInto(document.getElementById("social-links"), "footer");
-  }).catch(function() {});
+  }).catch(function() {})
+    .finally(function() {
+      setSlotsVisible(true);
+    });
 })();
