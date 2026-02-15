@@ -82,19 +82,11 @@
     </section>
 
     <section class="content-block">
-      <h2>Preview cards</h2>
-      <p style="margin: 0 0 0.75rem; font-size: 0.95rem; color: var(--text-muted);">Control which cards appear in the &quot;What you'll see&quot; section on the landing page.</p>
+      <h2>Previews</h2>
+      <p style="margin: 0 0 0.75rem; font-size: 0.95rem; color: var(--text-muted);">Show or hide the entire &quot;What you'll see&quot; section. When hidden, the &quot;Get in&quot; button under &quot;What you get&quot; is also hidden.</p>
       <div class="toggle-row">
-        <div id="toggle-preview1" class="toggle-switch" role="switch" aria-checked="true" tabindex="0" title="Show Preview 1"></div>
-        <label for="toggle-preview1">Show Preview 1</label>
-      </div>
-      <div class="toggle-row">
-        <div id="toggle-preview2" class="toggle-switch" role="switch" aria-checked="true" tabindex="0" title="Show Preview 2"></div>
-        <label for="toggle-preview2">Show Preview 2</label>
-      </div>
-      <div class="toggle-row">
-        <div id="toggle-preview3" class="toggle-switch" role="switch" aria-checked="true" tabindex="0" title="Show Preview 3"></div>
-        <label for="toggle-preview3">Show Preview 3</label>
+        <div id="toggle-previews" class="toggle-switch" role="switch" aria-checked="true" tabindex="0" title="Show previews section"></div>
+        <label for="toggle-previews">Show previews section and perks Get in button</label>
       </div>
       <p class="status" id="status-preview-visibility"></p>
     </section>
@@ -185,9 +177,7 @@
           if (attrEl) attrEl.value = data.testimonialAttribution != null ? data.testimonialAttribution : "— Inner circle member";
           setToggle("toggle-testimonial", data.showTestimonial !== false);
           setToggle("toggle-member-count", data.showMemberCount === true);
-          setToggle("toggle-preview1", data.showPreview1 !== false);
-          setToggle("toggle-preview2", data.showPreview2 !== false);
-          setToggle("toggle-preview3", data.showPreview3 !== false);
+          setToggle("toggle-previews", data.showPreviews !== false);
           if (typeof data.memberCount === "number") {
             document.getElementById("current-count").textContent = data.memberCount;
           }
@@ -342,9 +332,7 @@
 
       function savePreviewVisibility() {
         landingRef.set({
-          showPreview1: getToggle("toggle-preview1"),
-          showPreview2: getToggle("toggle-preview2"),
-          showPreview3: getToggle("toggle-preview3")
+          showPreviews: getToggle("toggle-previews")
         }, { merge: true }).then(function() {
           document.getElementById("status-preview-visibility").textContent = "Preview visibility saved.";
         }).catch(function(err) {
@@ -352,9 +340,7 @@
         });
       }
 
-      toggleClick("toggle-preview1", savePreviewVisibility);
-      toggleClick("toggle-preview2", savePreviewVisibility);
-      toggleClick("toggle-preview3", savePreviewVisibility);
+      toggleClick("toggle-previews", savePreviewVisibility);
     }
   </script>
 </body>

@@ -23,13 +23,11 @@
     if (!doc.exists) return;
     var data = doc.data();
 
-    ["preview1", "preview2", "preview3"].forEach(function(slot) {
-      var wrap = document.querySelector("[data-landing-slot=\"" + slot + "\"]");
-      if (!wrap) return;
-      var key = "show" + slot.charAt(0).toUpperCase() + slot.slice(1);
-      var show = data[key] !== false && data[key] !== "false";
-      wrap.style.display = show ? "" : "none";
-    });
+    var previewsEnabled = data.showPreviews !== false && data.showPreviews !== "false";
+    var previewSection = document.getElementById("preview-section");
+    if (previewSection) previewSection.style.display = previewsEnabled ? "" : "none";
+    var perksGetInBtn = document.getElementById("perks-get-in");
+    if (perksGetInBtn) perksGetInBtn.style.display = previewsEnabled ? "" : "none";
 
     slots.forEach(function(slot) {
       var item = data[slot];
