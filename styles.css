@@ -99,11 +99,11 @@ body {
 
 .logo-img {
   display: block;
-  height: 6rem;
-  width: auto;
+  height: auto;
+  width: min(240px, 48vw);
+  max-height: 56px;
   object-fit: contain;
-  transform: scale(2.8);
-  transform-origin: left center;
+  transform: none;
 }
 
 .site-header .logo-pop {
@@ -117,6 +117,13 @@ body {
 
 .site-header .logo-pop:hover .logo-img {
   filter: drop-shadow(0 2px 6px rgba(201, 112, 130, 0.35)) brightness(1.08);
+}
+
+@media (max-width: 640px) {
+  .logo-img {
+    width: min(190px, 62vw);
+    max-height: 46px;
+  }
 }
 
 .header-nav {

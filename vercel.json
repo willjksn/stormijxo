@@ -1,0 +1,4 @@
+{
+  "buildCommand": "npm run generate-firebase-config",
+  "outputDirectory": "."
+}

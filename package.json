@@ -2,7 +2,8 @@
   "name": "stormij-xo",
   "private": true,
   "scripts": {
-    "logo-transparent": "node scripts/make-logo-transparent.js"
+    "logo-transparent": "node scripts/make-logo-transparent.js",
+    "generate-firebase-config": "node scripts/generate-firebase-config.js"
   },
   "devDependencies": {
     "sharp": "^0.33.5"
