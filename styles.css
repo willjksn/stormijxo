@@ -543,6 +543,16 @@ main {
   margin-top: 1.25rem;
 }
 
+.tip-meta {
+  margin: 0 auto 1rem;
+  max-width: 320px;
+  text-align: left;
+}
+
+.tip-handle-input {
+  width: 100%;
+}
+
 .tip-custom-label {
   display: block;
   font-size: 0.9rem;
@@ -690,7 +700,7 @@ main {
 .tier-ribbon {
   position: absolute;
   top: 12px;
-  right: -4px;
+  right: 12px;
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
   color: #fff;
   font-size: 0.75rem;

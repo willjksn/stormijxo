@@ -47,6 +47,13 @@
     .btn-icon:hover { color: #dc2626; background: rgba(220, 38, 38, 0.08); }
     .btn-icon svg { width: 18px; height: 18px; }
     .loading, .empty { color: var(--text-muted); padding: 2rem; text-align: center; }
+    .tips-section { margin-top: 1.5rem; }
+    .tips-table-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+    .tips-table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 0.9rem; }
+    .tips-table th { text-align: left; padding: 0.85rem 1rem; font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.03); }
+    .tips-table td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .tips-table tbody tr:last-child td { border-bottom: none; }
+    .tips-empty { color: var(--text-muted); padding: 1rem; text-align: center; }
     .btn-logout { font-size: 0.9rem; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 0.4rem 0.75rem; border-radius: 8px; }
     .btn-logout:hover { color: var(--accent); }
   </style>
@@ -97,6 +104,27 @@
     </div>
     <p id="loading" class="loading">Loading members…</p>
     <p id="empty" class="empty" style="display:none;">No members yet. Add one above or they’ll appear when someone pays via Stripe.</p>
+
+    <section class="tips-section">
+      <div class="section-top" style="margin-bottom: 0.75rem;">
+        <h2 style="font-size: 1.15rem; margin: 0;">Recent Tips</h2>
+      </div>
+      <div class="tips-table-wrap" id="tips-table-wrap" style="display:none;">
+        <table class="tips-table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Amount</th>
+              <th>Email</th>
+              <th>Instagram</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tips-tbody"></tbody>
+        </table>
+      </div>
+      <p id="tips-empty" class="tips-empty">No tips logged yet.</p>
+    </section>
   </main>
 
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
@@ -117,6 +145,7 @@
           return;
         }
         loadMembers();
+        loadTips();
       });
 
       document.getElementById("btn-logout").addEventListener("click", function() {
@@ -226,6 +255,46 @@
             loadingEl.style.display = "none";
             emptyEl.textContent = "Error loading members: " + (err.message || "check Firestore rules");
             emptyEl.style.display = "block";
+          });
+      }
+
+      function loadTips() {
+        var tipsWrap = document.getElementById("tips-table-wrap");
+        var tipsBody = document.getElementById("tips-tbody");
+        var tipsEmpty = document.getElementById("tips-empty");
+        db.collection("tips")
+          .orderBy("tippedAt", "desc")
+          .limit(100)
+          .onSnapshot(function(snap) {
+            tipsBody.innerHTML = "";
+            if (snap.empty) {
+              tipsWrap.style.display = "none";
+              tipsEmpty.style.display = "block";
+              tipsEmpty.textContent = "No tips logged yet.";
+              return;
+            }
+            tipsWrap.style.display = "block";
+            tipsEmpty.style.display = "none";
+            snap.forEach(function(doc) {
+              var d = doc.data() || {};
+              var when = d.tippedAt && d.tippedAt.toDate ? d.tippedAt.toDate().toLocaleString() : "—";
+              var amount = typeof d.amountCents === "number" ? "$" + (d.amountCents / 100).toFixed(2) : "—";
+              var email = d.email || "—";
+              var ig = d.instagram_handle || "—";
+              var status = d.paymentStatus || "—";
+              var tr = document.createElement("tr");
+              tr.innerHTML =
+                "<td>" + escapeHtml(when) + "</td>" +
+                "<td>" + escapeHtml(amount) + "</td>" +
+                "<td>" + escapeHtml(email) + "</td>" +
+                "<td>" + escapeHtml(ig) + "</td>" +
+                "<td>" + escapeHtml(status) + "</td>";
+              tipsBody.appendChild(tr);
+            });
+          }, function(err) {
+            tipsWrap.style.display = "none";
+            tipsEmpty.style.display = "block";
+            tipsEmpty.textContent = "Error loading tips: " + (err.message || "check Firestore rules");
           });
       }
 

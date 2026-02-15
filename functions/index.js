@@ -17,6 +17,7 @@ tipApp.post("/", async function(req, res) {
   const baseUrl = body.base_url || "https://stormij.vercel.app";
   const successUrl = body.success_url || baseUrl + (baseUrl.endsWith("/") ? "" : "/") + "success.html?tip=1";
   const cancelUrl = body.cancel_url || baseUrl + (baseUrl.endsWith("/") ? "" : "/") + "index.html";
+  const instagramHandle = typeof body.instagram_handle === "string" ? body.instagram_handle.trim().slice(0, 64) : "";
   const config = functions.config();
   const stripeSecret = config.stripe && config.stripe.secret;
   if (!stripeSecret) {
@@ -42,7 +43,18 @@ tipApp.post("/", async function(req, res) {
       ],
       success_url: successUrl,
       cancel_url: cancelUrl,
-      metadata: { type: "tip" },
+      metadata: {
+        type: "tip",
+        tip_instagram_handle: instagramHandle || "",
+      },
+      custom_fields: [
+        {
+          key: "instagram_handle",
+          label: { type: "custom", custom: "Instagram handle (optional)" },
+          type: "text",
+          optional: true,
+        },
+      ],
     });
     res.status(200).json({ url: session.url });
   } catch (err) {
@@ -126,11 +138,41 @@ exports.stripeWebhook = functions
 
     const db = admin.firestore();
     const membersRef = db.collection("members");
+    const tipsRef = db.collection("tips");
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
       // One-time payments (e.g. tips) have no subscription — do not add to members
       if (!session.subscription) {
+        let tipInstagram = (session.metadata && session.metadata.tip_instagram_handle) || null;
+        const customFields = session.custom_fields || [];
+        for (const f of customFields) {
+          const key = (f.key || "").toLowerCase();
+          const label = (f.label && f.label.custom) ? f.label.custom.toLowerCase() : "";
+          if (key.includes("instagram") || label.includes("instagram")) {
+            if (f.text && f.text.value) tipInstagram = f.text.value;
+            else if (f.dropdown && f.dropdown.value) tipInstagram = f.dropdown.value;
+            break;
+          }
+        }
+        const tipEmail = session.customer_email || (session.customer_details && session.customer_details.email) || null;
+        try {
+          await tipsRef.add({
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            tippedAt: session.created ? admin.firestore.Timestamp.fromMillis(session.created * 1000) : admin.firestore.FieldValue.serverTimestamp(),
+            amountCents: typeof session.amount_total === "number" ? session.amount_total : null,
+            currency: session.currency || "usd",
+            email: tipEmail,
+            instagram_handle: tipInstagram || null,
+            stripeCustomerId: session.customer || null,
+            stripeSessionId: session.id,
+            paymentStatus: session.payment_status || null,
+            source: "stripe_tip",
+          });
+          console.log("Logged tip:", session.id, tipEmail || "", tipInstagram || "");
+        } catch (err) {
+          console.error("Tip log write failed:", err);
+        }
         res.json({ received: true });
         return;
       }
