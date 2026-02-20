@@ -252,3 +252,51 @@ exports.stripeWebhook = functions
 
     res.json({ received: true });
   });
+
+/**
+ * Create Stripe Customer Portal session for the logged-in user.
+ * Looks up member by auth email, returns portal URL for subscription management (cancel, etc.).
+ */
+exports.createCustomerPortalSession = functions
+  .runWith({ node: "20" })
+  .https.onCall(async (data, context) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError("unauthenticated", "You must be logged in.");
+    }
+    const email = context.auth.token.email;
+    if (!email) {
+      throw new functions.https.HttpsError("failed-precondition", "No email on account.");
+    }
+    const returnUrl = typeof data === "object" && data && typeof data.returnUrl === "string"
+      ? data.returnUrl
+      : "https://stormij.vercel.app/member/profile.html";
+
+    const config = functions.config();
+    const stripeSecret = config.stripe && config.stripe.secret;
+    if (!stripeSecret) {
+      throw new functions.https.HttpsError("internal", "Stripe not configured");
+    }
+
+    const db = admin.firestore();
+    const membersSnap = await db.collection("members").where("email", "==", email).limit(1).get();
+    if (membersSnap.empty) {
+      throw new functions.https.HttpsError("failed-precondition", "No subscription found for this email.");
+    }
+    const member = membersSnap.docs[0].data();
+    const customerId = member.stripeCustomerId;
+    if (!customerId) {
+      throw new functions.https.HttpsError("failed-precondition", "No Stripe customer linked.");
+    }
+
+    const stripe = Stripe(stripeSecret);
+    try {
+      const session = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: returnUrl,
+      });
+      return { url: session.url };
+    } catch (err) {
+      console.error("Customer portal error:", err);
+      throw new functions.https.HttpsError("internal", err.message || "Could not create portal session");
+    }
+  });

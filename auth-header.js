@@ -15,8 +15,8 @@
   var auth = firebase.auth();
   auth.onAuthStateChanged(function(user) {
     if (user) {
-      link.href = "admin/dashboard.html";
-      link.textContent = "Dashboard";
+      link.href = "member/profile.html";
+      link.textContent = "Profile";
     } else {
       link.href = "login.html";
       link.textContent = "Log in";

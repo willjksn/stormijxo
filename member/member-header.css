@@ -1,0 +1,107 @@
+/* Member header - logo same size as home page */
+.member-header .logo-img {
+  width: min(340px, 56vw) !important;
+  height: 64px !important;
+  object-fit: cover;
+  object-position: center 52%;
+}
+@media (max-width: 768px) {
+  .member-header .logo-img {
+    width: min(280px, 65vw) !important;
+    height: 56px !important;
+  }
+}
+.member-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1.5rem 0.6rem;
+  background: linear-gradient(135deg, rgba(253, 244, 246, 0.98) 0%, rgba(255, 250, 252, 0.98) 50%, rgba(245, 238, 248, 0.98) 100%);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.member-header .header-left { display: flex; align-items: center; gap: 1.5rem; flex-shrink: 0; }
+.member-header .header-left .logo { flex-shrink: 0; }
+.member-header .header-left .logo .logo-img { flex-shrink: 0; }
+.member-header .header-profile-link {
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  transition: color 0.2s, background 0.2s;
+}
+.member-header .header-profile-link:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.member-header .header-right { position: relative; }
+.member-header .profile-avatar-wrap {
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.member-header .profile-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  display: block;
+}
+.member-header .profile-avatar-initials {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1rem;
+  border: 2px solid var(--border);
+}
+.member-header .profile-avatar-wrap:hover .profile-avatar,
+.member-header .profile-avatar-wrap:hover .profile-avatar-initials {
+  border-color: var(--accent);
+}
+.member-header .profile-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 0.5rem;
+  min-width: 192px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  padding: 0.5rem 0;
+  z-index: 100;
+  display: none;
+}
+.member-header .profile-dropdown.open { display: block; }
+.member-header .profile-dropdown a,
+.member-header .profile-dropdown button {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  text-align: left;
+  font-size: 0.9rem;
+  color: var(--text);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.member-header .profile-dropdown a:hover,
+.member-header .profile-dropdown button:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.member-header .profile-dropdown button.sign-out { color: #c53030; }
+.member-header .profile-dropdown button.sign-out:hover { background: rgba(197, 48, 48, 0.08); }

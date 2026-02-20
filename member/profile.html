@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profile — Inner Circle</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <link rel="stylesheet" href="./member-header.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle fill='%23c97082' cx='16' cy='16' r='14'/></svg>" type="image/svg+xml" />
+  <style>
+    .profile-page { max-width: 560px; margin: 2rem auto; padding: 2rem 1.5rem; }
+    .profile-page h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
+    .profile-page .profile-subtitle { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.5rem; }
+    .profile-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .profile-card h2 { font-size: 1rem; font-weight: 600; margin: 0 0 1rem; color: var(--text); }
+    .profile-form label { display: block; margin-bottom: 0.35rem; font-weight: 500; font-size: 0.9rem; }
+    .profile-form input[type="text"], .profile-form input[type="email"], .profile-form textarea { width: 100%; padding: 0.65rem 0.85rem; margin-bottom: 1rem; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box; }
+    .profile-form input:disabled, .profile-form textarea:disabled { background: var(--bg); cursor: not-allowed; opacity: 0.9; }
+    .profile-form input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+    .profile-form .btn { margin-right: 0.5rem; margin-top: 0.25rem; }
+    .profile-error { color: #c53030; font-size: 0.9rem; margin-bottom: 0.75rem; display: none; }
+    .profile-error.visible { display: block; }
+    .profile-success { color: #15803d; font-size: 0.9rem; margin-bottom: 0.75rem; display: none; }
+    .profile-success.visible { display: block; }
+    .cancel-section { border-top: 1px solid var(--border); padding-top: 1.5rem; margin-top: 1.5rem; }
+    .cancel-section p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem; }
+    .btn-cancel-sub { background: transparent; color: #c53030; border: 1px solid #c53030; }
+    .btn-cancel-sub:hover { background: rgba(197, 48, 48, 0.08); }
+    .member-nav { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+    .member-nav a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; }
+    .member-nav a:hover { color: var(--accent); }
+    .profile-card-header { margin-bottom: 1rem; }
+    .profile-card-header h2 { margin: 0; }
+    .profile-form-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; gap: 1rem; }
+    .profile-form-actions .btn { margin: 0; }
+    .profile-edit-actions { display: none; flex: 1; flex-direction: row; justify-content: space-between; align-items: center; gap: 0.5rem; }
+    .profile-card.editing .profile-form-actions .btn-edit-profile { display: none; }
+    .profile-card.editing .profile-edit-actions { display: flex; }
+    .profile-avatar-wrap-large { position: relative; display: inline-block; margin-bottom: 1rem; }
+    .profile-avatar-circle { position: relative; width: 120px; height: 120px; }
+    .profile-avatar-large, .profile-avatar-large-initials {
+      width: 120px; height: 120px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--border);
+      display: block;
+    }
+    .profile-avatar-large-initials {
+      background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 2.5rem;
+    }
+    .profile-avatar-edit { display: none; }
+    .profile-card.editing .profile-avatar-edit { display: block; }
+    .profile-avatar-overlay {
+      position: absolute; bottom: 0; right: 0;
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: 2px solid var(--bg-card);
+    }
+    .profile-avatar-overlay:hover { background: var(--accent-hover); }
+    .profile-avatar-overlay svg { width: 20px; height: 20px; fill: #fff; }
+    .bio-wrap { position: relative; margin-bottom: 1rem; }
+    .profile-form .bio-wrap textarea { padding-left: 2.5rem; min-height: 80px; resize: vertical; font-family: inherit; font-size: 1rem; }
+    .profile-form textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+    .bio-emoji-btn {
+      position: absolute;
+      left: 0.65rem;
+      top: 0.65rem;
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .bio-emoji-btn:hover { background: var(--accent); color: #fff; }
+    .bio-emoji-btn:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+    .emoji-picker-popover {
+      position: absolute;
+      right: 0;
+      left: auto;
+      top: 100%;
+      margin-top: 0.5rem;
+      width: 320px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.5rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      z-index: 100;
+      display: none;
+      flex-direction: column;
+      gap: 0.5rem;
+      overflow-y: auto;
+    }
+    .emoji-picker-popover.open { display: flex; }
+    .emoji-search-wrap { flex-shrink: 0; position: sticky; top: 0; background: var(--bg-card); z-index: 1; padding-bottom: 0.25rem; }
+    .emoji-search-input {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      box-sizing: border-box;
+    }
+    .emoji-search-input:focus { outline: none; border-color: var(--accent); }
+    .emoji-search-input::placeholder { color: var(--text-muted); }
+    .emoji-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.2rem;
+      flex: 1;
+      min-height: 0;
+      max-height: 200px;
+      overflow-y: auto;
+      align-content: flex-start;
+    }
+    .emoji-picker-popover .emoji-span { cursor: pointer; font-size: 1.2rem; padding: 0.2rem; line-height: 1; }
+    .emoji-picker-popover .emoji-span:hover { background: var(--accent-soft); border-radius: 4px; }
+    .emoji-category-bar {
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 0.25rem;
+    }
+    .emoji-category-bar span {
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 0.25rem;
+      text-align: center;
+      border-radius: 6px;
+    }
+    .emoji-category-bar span:hover { background: var(--accent-soft); }
+    .emoji-category-bar span.active { background: var(--accent-soft); }
+  </style>
+</head>
+<body>
+  <header class="member-header">
+    <div class="header-left">
+      <a href="../index.html" class="logo logo-pop"><img src="../assets/logo.svg" alt="Inner Circle" class="logo-img" /></a>
+      <a href="profile.html" class="header-profile-link">Profile</a>
+    </div>
+    <div class="header-right">
+      <div class="profile-avatar-wrap" id="profile-avatar-wrap" aria-haspopup="true" aria-expanded="false" title="Click for menu">
+        <img id="header-avatar-img" class="profile-avatar" src="" alt="Profile" style="display: none;" />
+        <div id="header-avatar-initials" class="profile-avatar-initials">?</div>
+      </div>
+      <div class="profile-dropdown" id="profile-dropdown">
+        <a href="profile.html">Your Profile</a>
+        <a href="#" id="link-report">Report a Problem</a>
+        <button type="button" id="btn-logout" class="sign-out">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="profile-page">
+    <nav class="member-nav">
+      <a href="../index.html">&larr; Home</a>
+    </nav>
+    <h1>Profile</h1>
+    <p class="profile-subtitle">View and manage profile information.</p>
+    <p id="profile-error" class="profile-error" role="alert"></p>
+    <p id="profile-success" class="profile-success" role="status"></p>
+
+    <section class="profile-card" id="profile-info-card">
+      <div class="profile-card-header">
+        <h2>Profile Information</h2>
+      </div>
+      <div id="profile-avatar-container" class="profile-avatar-wrap-large">
+        <div class="profile-avatar-circle">
+          <img id="profile-avatar-img" class="profile-avatar-large" src="" alt="Profile" style="display: none;" />
+          <div id="profile-avatar-initials" class="profile-avatar-large-initials">?</div>
+          <div id="profile-avatar-edit" class="profile-avatar-edit">
+            <div class="profile-avatar-overlay" id="profile-avatar-overlay" title="Change photo">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 15.2c1.6 0 2.8-1.3 2.8-2.8s-1.3-2.8-2.8-2.8-2.8 1.3-2.8 2.8 1.3 2.8 2.8 2.8zM21 17V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h16c.55 0 1-.45 1-1zm-2-8.5V17H5V8.5l4.17-5h5.66L19 8.5z"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      <input type="file" id="profile-photo-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" />
+      <form id="profile-form" class="profile-form">
+        <label for="profile-name">Full Name</label>
+        <input type="text" id="profile-name" required autocomplete="name" placeholder="Your name" disabled />
+        <label for="profile-username">Username</label>
+        <input type="text" id="profile-username" required autocomplete="username" placeholder="username" disabled />
+        <label>Email</label>
+        <p id="profile-email" class="meta" style="margin: 0 0 1rem; color: var(--text-muted);"></p>
+        <label for="profile-bio">Bio</label>
+        <div class="bio-wrap">
+          <button type="button" class="bio-emoji-btn" id="bio-emoji-btn" title="Add emoji" disabled>😀</button>
+          <textarea id="profile-bio" placeholder="Write a short bio…" maxlength="500" disabled></textarea>
+          <div id="emoji-picker" class="emoji-picker-popover">
+            <div class="emoji-search-wrap"><input type="text" id="emoji-search" class="emoji-search-input" placeholder="Search emoji..." autocomplete="off" /></div>
+            <div id="emoji-grid" class="emoji-grid"></div>
+            <div id="emoji-category-bar" class="emoji-category-bar"></div>
+          </div>
+        </div>
+        <div class="profile-form-actions" id="profile-form-actions">
+          <button type="button" id="btn-edit-profile" class="btn btn-secondary btn-edit-profile">Edit</button>
+          <div id="profile-edit-actions" class="profile-edit-actions">
+            <button type="button" id="btn-cancel-edit" class="btn btn-secondary">Cancel</button>
+            <button type="submit" id="btn-save-profile" class="btn btn-primary">Save changes</button>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <section class="profile-card cancel-section">
+      <h2>Subscription</h2>
+      <p>Manage your subscription, update payment method, or cancel anytime. You&rsquo;ll be taken to Stripe&rsquo;s secure portal.</p>
+      <button type="button" id="btn-manage-sub" class="btn btn-primary">Manage subscription</button>
+    </section>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-functions-compat.js"></script>
+  <script src="../firebase-config.js"></script>
+  <script src="member-header.js"></script>
+  <script>
+    (function() {
+      if (typeof FIREBASE_CONFIG === "undefined" || !FIREBASE_CONFIG.apiKey) {
+        document.body.innerHTML = "<main class='profile-page'><h1>Firebase not configured</h1><a href='../index.html'>Back to home</a></main>";
+        return;
+      }
+      firebase.initializeApp(FIREBASE_CONFIG);
+      var auth = firebase.auth();
+      var db = firebase.firestore();
+      var functions = firebase.functions();
+
+      function showError(msg) {
+        var el = document.getElementById("profile-error");
+        el.textContent = msg || "";
+        el.className = "profile-error" + (msg ? " visible" : "");
+        if (msg) document.getElementById("profile-success").classList.remove("visible");
+      }
+      function showSuccess(msg) {
+        var el = document.getElementById("profile-success");
+        el.textContent = msg || "";
+        el.className = "profile-success" + (msg ? " visible" : "");
+        if (msg) document.getElementById("profile-error").classList.remove("visible");
+      }
+
+      var savedProfile = { displayName: "", username: "", bio: "" };
+      function saveProfileSnapshot() {
+        savedProfile.displayName = document.getElementById("profile-name").value || "";
+        savedProfile.username = document.getElementById("profile-username").value || "";
+        savedProfile.bio = document.getElementById("profile-bio").value || "";
+      }
+      function restoreProfileSnapshot() {
+        document.getElementById("profile-name").value = savedProfile.displayName;
+        document.getElementById("profile-username").value = savedProfile.username;
+        document.getElementById("profile-bio").value = savedProfile.bio;
+      }
+
+      function updateAvatarDisplay(photoURL, displayName, email) {
+        var imgEl = document.getElementById("profile-avatar-img");
+        var initEl = document.getElementById("profile-avatar-initials");
+        if (photoURL && imgEl) {
+          imgEl.src = photoURL;
+          imgEl.alt = (displayName || "User") + " photo";
+          imgEl.style.display = "block";
+          if (initEl) initEl.style.display = "none";
+        } else {
+          var initials = "?";
+          if (displayName) {
+            var parts = displayName.trim().split(/\s+/);
+            initials = parts.length >= 2 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : (parts[0][0] || "?").toUpperCase();
+          } else if (email) initials = email[0].toUpperCase();
+          if (initEl) { initEl.textContent = initials.slice(0, 2); initEl.style.display = "flex"; }
+          if (imgEl) imgEl.style.display = "none";
+        }
+      }
+
+      auth.onAuthStateChanged(function(user) {
+        if (!user) {
+          window.location.href = "../login.html";
+          return;
+        }
+        var userRef = db.collection("users").doc(user.uid);
+        userRef.get().then(function(doc) {
+          var d = doc.exists ? doc.data() : {};
+          var avatarUrl = d.avatarUrl || user.photoURL;
+          initMemberHeader({ uid: user.uid, displayName: user.displayName, email: user.email, photoURL: avatarUrl });
+          if (doc.exists) {
+            document.getElementById("profile-name").value = d.displayName || "";
+            document.getElementById("profile-username").value = d.username || "";
+            document.getElementById("profile-bio").value = d.bio || "";
+          }
+          saveProfileSnapshot();
+          document.getElementById("profile-email").textContent = user.email || "";
+          updateAvatarDisplay(avatarUrl, d.displayName || user.displayName, user.email || "");
+        }).catch(function() {
+          initMemberHeader(user);
+          document.getElementById("profile-email").textContent = user.email || "";
+          document.getElementById("profile-name").value = "";
+          document.getElementById("profile-username").value = "";
+          document.getElementById("profile-bio").value = "";
+          saveProfileSnapshot();
+          updateAvatarDisplay(user.photoURL, user.displayName, user.email || "");
+        });
+      });
+
+      function exitEditMode(restore) {
+        var card = document.getElementById("profile-info-card");
+        card.classList.remove("editing");
+        if (restore) restoreProfileSnapshot();
+        document.getElementById("profile-name").disabled = true;
+        document.getElementById("profile-username").disabled = true;
+        document.getElementById("profile-bio").disabled = true;
+        document.getElementById("bio-emoji-btn").disabled = true;
+        emojiPicker.classList.remove("open");
+      }
+
+      document.getElementById("btn-edit-profile").addEventListener("click", function() {
+        saveProfileSnapshot();
+        var card = document.getElementById("profile-info-card");
+        var isEditing = card.classList.toggle("editing");
+        document.getElementById("profile-name").disabled = !isEditing;
+        document.getElementById("profile-username").disabled = !isEditing;
+        document.getElementById("profile-bio").disabled = !isEditing;
+        document.getElementById("bio-emoji-btn").disabled = !isEditing;
+        if (!isEditing) emojiPicker.classList.remove("open");
+      });
+
+      document.getElementById("btn-cancel-edit").addEventListener("click", function(e) {
+        e.preventDefault();
+        exitEditMode(true);
+      });
+
+      function triggerPhotoInput() {
+        document.getElementById("profile-photo-input").click();
+      }
+      document.getElementById("profile-avatar-overlay").addEventListener("click", triggerPhotoInput);
+
+      var emojiCategories = {
+        faces: ["😀","😃","😄","😁","😆","😅","🤣","😂","🙂","🙃","😉","😊","😇","🥰","😍","🤩","😘","😗","😚","😙","😋","😛","😜","🤪","🤨","🧐","🤓","😎","🥳","😏","😒","😞","😔","😟","😕","🙁","😣","😖","😫","😩","🥺","😭","😤","😠","😡","🤬","🤯","😳","🥵","🥶","😱","😨","😰","😥","😓","🤗","🤔","🤭","🤫","🤥","😶","😐","😑","😬","🙄","😯","😦","😧","😮","😲","😴","🤤","😪","😵","🤐","🥴","🤢","🤮","🤧","😷","🤒","🤕","🤑","🤠","😈","👿","🤡","💩","👻","💀","👽","👾","🤖","🎃"],
+        animals: ["🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐵","🦄","🦋","🐛","🐝","🐞","🐢","🐍","🦎","🐙","🦑","🦐","🦀","🐡","🐠","🐟","🐬","🐳","🐋","🦈","🐊","🐅","🐆","🦓","🦍","🦧","🐘","🦛","🦏","🐪","🦒","🦘","🐃","🐄","🐎","🐖","🐏","🐐","🐕","🐩","🐓","🦃","🦅","🦆","🦢","🦉","🦩","🦚","🦜","🐸"],
+        plants: ["🌹","🥀","🌺","🌻","🌼","🌷","🌱","🌲","🌳","🌴","🌵","🌾","🌿","🍀","🍁","🍄","🔥","✨","⭐","☀️","🌙","☁️","🌬️","🌊","🌎"],
+        food: ["🍇","🍈","🍉","🍊","🍋","🍌","🍍","🍎","🍏","🍐","🍑","🍒","🍓","🥝","🍅","🥥","🥑","🍆","🥔","🥕","🌽","🌶️","🥒","🥬","🥦","🧄","🧅","🍄","🥜","🌰","🍞","🥐","🥖","🥨","🥯","🥞","🧇","🧀","🍖","🍗","🥩","🥓","🍔","🍟","🍕","🌭","🥪","🌮","🌯","🥙","🧆","🥚","🍳","🥘","🍲","🥣","🥗","🍿","🧈","🧂","🥫","🍱","🍘","🍙","🍚","🍛","🍜","🍝","🍠","🍢","🍣","🍤","🍥","🥮","🍡","🥟","🥠","🥡","🦀","🦞","🦐","🦑","🦪","🍦","🍧","🍨","🍩","🍪","🎂","🍰","🧁","🥧","🍫","🍬","🍭","🍮","🍯","🍼","🥛","☕","🍵","🍶","🍾","🍷","🍸","🍹","🍺","🍻","🥂","🥃","🥤","🧋","🧉","🧊"],
+        sports: ["⚽","🏀","🏈","⚾","🥎","🎾","🏐","🏉","🎱","🏓","🏸","🏒","🏑","🏏","🥅","⛳","🏹","🎣","🥊","🥋","⛸️","🎿","⛷️","🏂","🏋️","🤸","🤺","🏇","🏊","🏄","🎯","🎳","🎮","🎲","🧩","♟️"],
+        travel: ["🎨","🎬","🎤","🎧","🎷","🎺","🎹","🥁","🎉","🎊","🎄","🎆","🚀","✈️","🚁","🛰️","🛸","⛵","🚢","🚗","🚕","🚌","🚓","🚑","🚒","🚚","🚜","🚂","🚲","🛴","🚦","🚧","🗽","🗼","🏰","🏯","🏟️","🎡","🎢","🎪","⛺","🏠","🏡","🏢","🏨","🏦","🏥","🏪","🏫","🏭","🏛️","🏜️","🏝️","🏞️","⛰️"],
+        objects: ["💡","💻","🖥️","🖱️","📱","☎️","📺","📷","📹","🎥","📽️","📼","💿","💾","💰","💵","💴","💶","💷","💎","🔧","🔨","🛠️","🔑","🚪","🪑","🛏️","🛁","🚽","🎁","🎈","📚","📖","📜","📄","📰","🔗","📎","✂️","🗑️","🔒","🔓","🔔","🚬","💣","🔫"],
+        symbols: ["❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❣️","💕","💞","💓","💗","💖","💘","💝","💟","☮️","✝️","☪️","🕉️","☸️","✡️","🔯","🕎","☯️","☦️","🛐","⛎","♈","♉","♊","♋","♌","♍","♎","♏","♐","♑","♒","♓","🆔","⚛️","🉑","☢️","☣️","📴","📳","🈶","🈚","🈺","🈷️","🆚","💯","✅","❌","❓","❔","❕","❗","©️","®️","™️"]
+      };
+      var categoryIcons = { all: "😀", faces: "😀", animals: "🐶", plants: "🌹", food: "🍎", sports: "⚽", travel: "✈️", objects: "💡", symbols: "❤️" };
+      emojiCategories.all = emojiCategories.faces.concat(emojiCategories.animals).concat(emojiCategories.plants).concat(emojiCategories.food).concat(emojiCategories.sports).concat(emojiCategories.travel).concat(emojiCategories.objects).concat(emojiCategories.symbols);
+      var emojiPicker = document.getElementById("emoji-picker");
+      var emojiGrid = document.getElementById("emoji-grid");
+      var emojiBar = document.getElementById("emoji-category-bar");
+      var currentCategory = "all";
+
+      function pickEmoji(em) {
+        var ta = document.getElementById("profile-bio");
+        var start = ta.selectionStart || 0;
+        var end = ta.selectionEnd || 0;
+        ta.value = ta.value.slice(0, start) + em + ta.value.slice(end);
+        ta.focus();
+        ta.setSelectionRange(start + em.length, start + em.length);
+        emojiPicker.classList.remove("open");
+      }
+
+      function renderEmojis(filter, cat) {
+        emojiGrid.innerHTML = "";
+        var list = (cat && emojiCategories[cat]) ? emojiCategories[cat] : emojiCategories.all;
+        list.forEach(function(e) {
+          var span = document.createElement("span");
+          span.className = "emoji-span";
+          span.textContent = e;
+          span.addEventListener("click", function() { pickEmoji(e); });
+          emojiGrid.appendChild(span);
+        });
+      }
+
+      ["all","faces","animals","plants","food","sports","travel","objects","symbols"].forEach(function(cat) {
+        var s = document.createElement("span");
+        s.textContent = categoryIcons[cat] || "•";
+        s.title = cat;
+        s.setAttribute("data-cat", cat);
+        if (cat === "all") s.classList.add("active");
+        s.addEventListener("click", function(e) {
+          e.stopPropagation();
+          emojiBar.querySelectorAll("span").forEach(function(x) { x.classList.remove("active"); });
+          this.classList.add("active");
+          currentCategory = this.getAttribute("data-cat");
+          renderEmojis(document.getElementById("emoji-search").value, currentCategory);
+        });
+        emojiBar.appendChild(s);
+      });
+
+      renderEmojis();
+      document.getElementById("emoji-search").addEventListener("input", function() {
+        renderEmojis(this.value, currentCategory);
+      });
+      document.getElementById("emoji-search").addEventListener("keydown", function(e) { e.stopPropagation(); });
+      document.getElementById("bio-emoji-btn").addEventListener("click", function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        emojiPicker.classList.toggle("open");
+      });
+      document.addEventListener("click", function(e) {
+        var btn = document.getElementById("bio-emoji-btn");
+        var search = document.getElementById("emoji-search");
+        if (!emojiPicker.contains(e.target) && !btn.contains(e.target)) {
+          emojiPicker.classList.remove("open");
+          if (search) search.value = "";
+          renderEmojis("", currentCategory);
+        }
+      });
+
+      document.getElementById("profile-photo-input").addEventListener("change", function() {
+        var file = this.files && this.files[0];
+        if (!file || !file.type.match(/^image\/(jpeg|png|webp|gif)$/)) return;
+        var user = auth.currentUser;
+        if (!user) return;
+        showError("");
+        showSuccess("Uploading…");
+        var ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+        if (ext === "jpeg") ext = "jpg";
+        var path = "avatars/" + user.uid + "/avatar." + ext;
+        var storage = firebase.storage();
+        var ref = storage.ref(path);
+        ref.put(file).then(function() {
+          return ref.getDownloadURL();
+        }).then(function(url) {
+          return db.collection("users").doc(user.uid).set({ avatarUrl: url }, { merge: true })
+            .then(function() { return user.updateProfile({ photoURL: url }); })
+            .then(function() { return url; });
+        }).then(function(url) {
+          showSuccess("Profile photo updated.");
+          updateAvatarDisplay(url, user.displayName, user.email || "");
+          initMemberHeader({ uid: user.uid, displayName: user.displayName, email: user.email, photoURL: url });
+          setTimeout(function() { showSuccess(""); }, 3000);
+        }).catch(function(err) {
+          showError(err.message || "Upload failed.");
+        });
+        this.value = "";
+      });
+
+      document.getElementById("profile-form").addEventListener("submit", function(e) {
+        e.preventDefault();
+        var user = auth.currentUser;
+        if (!user) return;
+        var name = document.getElementById("profile-name").value.trim();
+        var newUsername = document.getElementById("profile-username").value.trim().toLowerCase();
+        var bio = document.getElementById("profile-bio").value.trim();
+        showError("");
+        showSuccess("");
+
+        var userRef = db.collection("users").doc(user.uid);
+        userRef.get().then(function(doc) {
+          var oldUsername = (doc.exists && doc.data().username) ? doc.data().username.toLowerCase() : "";
+          var updateData = { displayName: name, bio: bio };
+          if (newUsername === oldUsername) {
+            return userRef.update(updateData).then(function() {
+              if (user.displayName !== name) {
+                return user.updateProfile({ displayName: name });
+              }
+            });
+          }
+          return db.collection("usernames").doc(newUsername).get().then(function(snap) {
+            if (snap.exists) {
+              showError("Username already in use.");
+              return;
+            }
+            var batch = db.batch();
+            batch.set(db.collection("usernames").doc(newUsername), { uid: user.uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+            batch.update(userRef, { displayName: name, username: newUsername, bio: bio });
+            if (oldUsername) {
+              batch.delete(db.collection("usernames").doc(oldUsername));
+            }
+            return batch.commit();
+          }).then(function() {
+            if (user.displayName !== name) {
+              return user.updateProfile({ displayName: name });
+            }
+          });
+        }).then(function() {
+          saveProfileSnapshot();
+          document.getElementById("profile-info-card").classList.remove("editing");
+          exitEditMode(false);
+          showSuccess("Profile updated.");
+          setTimeout(function() { showSuccess(""); }, 3000);
+        }).catch(function(err) {
+          if (err.message && err.message.indexOf("already in use") >= 0) return;
+          showError(err.message || "Could not update profile.");
+        });
+      });
+
+      document.getElementById("btn-manage-sub").addEventListener("click", function() {
+        if (!confirm("You will be taken to Stripe to manage your subscription (update payment, view billing, cancel). Continue?")) return;
+        var btn = this;
+        btn.disabled = true;
+        btn.textContent = "…";
+        var returnUrl = window.location.origin + (window.location.pathname || "").replace(/[^/]+$/, "") + "profile.html";
+        functions.httpsCallable("createCustomerPortalSession")({ returnUrl: returnUrl })
+          .then(function(result) {
+            if (result.data && result.data.url) {
+              window.location.href = result.data.url;
+            } else {
+              btn.disabled = false;
+              btn.textContent = "Manage subscription";
+              showError("Could not open subscription portal.");
+            }
+          })
+          .catch(function(err) {
+            btn.disabled = false;
+            btn.textContent = "Manage subscription";
+            showError(err.message || "Could not open subscription portal.");
+          });
+      });
+
+      document.getElementById("btn-logout").addEventListener("click", function() {
+        auth.signOut().then(function() { window.location.href = "../index.html"; });
+      });
+      var linkReport = document.getElementById("link-report");
+      if (linkReport) linkReport.addEventListener("click", function(e) { e.preventDefault(); });
+    })();
+  </script>
+</body>
+</html>

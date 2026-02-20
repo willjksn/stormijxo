@@ -126,7 +126,7 @@
   auth.onAuthStateChanged(function(user) {
     if (user) {
       closeModal();
-      window.location.href = "member/index.html";
+      window.location.href = "member/profile.html";
     }
   });
 
@@ -211,7 +211,7 @@
           return createUserProfile(user.uid, user.email, name, username).then(function() { return user; });
         })
         .then(function() {
-          window.location.href = "member/index.html";
+          window.location.href = "member/profile.html";
         })
         .catch(function(err) {
           showError(err.message || "Sign up failed.");
@@ -226,7 +226,7 @@
     showError("");
     auth.signInWithEmailAndPassword(email, password)
       .then(function() {
-        window.location.href = "member/index.html";
+        window.location.href = "member/profile.html";
       })
       .catch(function(err) {
         showError(err.message || "Log in failed.");
@@ -253,7 +253,7 @@
         });
       })
       .then(function() {
-        window.location.href = "member/index.html";
+        window.location.href = "member/profile.html";
       })
       .catch(function(err) {
         showError(err.message || "Sign in with Google failed.");
@@ -279,7 +279,7 @@
         });
       })
       .then(function() {
-        window.location.href = "member/index.html";
+        window.location.href = "member/profile.html";
       })
       .catch(function(err) {
         showError(err.message || "Sign in with Google failed.");
