@@ -63,14 +63,17 @@
     <span class="logo">Admin Dashboard</span>
     <nav class="admin-nav">
       <a href="../index.html">Home</a>
-      <span class="active">Users</span>
+      <span class="active">Dashboard</span>
+      <a href="users.html">User Management</a>
       <a href="media.html">Media</a>
       <a href="content.html">Content</a>
+      <a href="posts.html">Posts</a>
       <button type="button" id="btn-logout" class="btn-logout">Log out</button>
     </nav>
   </header>
 
   <main class="admin-main">
+    <p style="background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 12px; padding: 0.75rem 1rem; margin-bottom: 1.5rem; font-size: 0.9rem;">Admin panel: <strong>Dashboard</strong> (here), <strong><a href="users.html">User Management</a></strong> (who can access admin), <strong><a href="media.html">Media</a></strong>, <strong><a href="content.html">Content</a></strong>, <strong><a href="posts.html">Posts</a></strong>.</p>
     <section class="add-member">
       <h2>Add member manually</h2>
       <p class="meta" style="margin-bottom: 1rem;">Signup date is set automatically when you add a fan.</p>
@@ -81,6 +84,7 @@
         <input type="text" id="new-note" placeholder="@username" />
         <button type="submit" class="btn btn-primary">Add</button>
       </form>
+      <p id="add-member-status" style="font-size:0.9rem;margin-top:0.5rem;min-height:1.5rem;"></p>
     </section>
 
     <div class="section-top">
@@ -131,6 +135,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
   <script src="../firebase-config.js"></script>
+  <script src="admin-auth.js"></script>
   <script>
     if (typeof FIREBASE_CONFIG === "undefined" || !FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey === "YOUR_API_KEY") {
       document.body.innerHTML = "<main class='admin-main'><h1>Firebase not configured</h1><p>Edit <code>firebase-config.js</code> and add your config.</p></main>";
@@ -139,11 +144,8 @@
       var auth = firebase.auth();
       var db = firebase.firestore();
 
-      auth.onAuthStateChanged(function(user) {
-        if (!user) {
-          window.location.href = "login.html";
-          return;
-        }
+      ensureAdminAccess(function(user) {
+        if (!user) return;
         loadMembers();
         loadTips();
       });
@@ -309,21 +311,29 @@
         var btn = e.target.querySelector('button[type="submit"]');
         var email = document.getElementById("new-email").value.trim();
         var note = document.getElementById("new-note").value.trim();
-        if (!email) return;
+        var statusEl = document.getElementById("add-member-status");
+        if (!email) {
+          if (statusEl) { statusEl.textContent = "Email is required."; statusEl.style.color = "#dc2626"; }
+          return;
+        }
         btn.disabled = true;
-        document.getElementById("new-email").value = "";
-        document.getElementById("new-note").value = "";
+        if (statusEl) statusEl.textContent = "Adding…";
         db.collection("members").add({
           email: email,
           note: note || null,
           instagram_handle: note || null,
           status: "active",
           joinedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }).then(function() {
+        }).then(function(ref) {
+          document.getElementById("new-email").value = "";
+          document.getElementById("new-note").value = "";
           btn.disabled = false;
+          if (statusEl) { statusEl.textContent = "Member added. ID: " + ref.id; statusEl.style.color = "#15803d"; }
+          setTimeout(function() { if (statusEl) statusEl.textContent = ""; }, 4000);
         }).catch(function(err) {
           btn.disabled = false;
-          alert("Could not add: " + (err.message || "check Firestore rules"));
+          if (statusEl) { statusEl.textContent = "Error: " + (err.message || "check Firestore"); statusEl.style.color = "#dc2626"; }
+          console.error("Members add error:", err);
         });
       });
     }

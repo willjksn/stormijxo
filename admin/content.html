@@ -41,9 +41,11 @@
     <span class="logo">Admin Dashboard</span>
     <nav class="admin-nav">
       <a href="../index.html">Home</a>
-      <a href="dashboard.html">Users</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="users.html">User Management</a>
       <a href="media.html">Media</a>
       <span class="active">Content</span>
+      <a href="posts.html">Posts</a>
       <button type="button" id="btn-logout" class="btn-logout">Log out</button>
     </nav>
   </header>
@@ -119,6 +121,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
   <script src="../firebase-config.js"></script>
+  <script src="admin-auth.js"></script>
   <script>
     if (typeof FIREBASE_CONFIG === "undefined" || !FIREBASE_CONFIG.apiKey) {
       document.body.innerHTML = "<main class='admin-main'><h1>Firebase not configured</h1></main>";
@@ -129,11 +132,8 @@
       var landingRef = db.collection("site_config").doc("landing");
 
       var contentLoaded = false;
-      auth.onAuthStateChanged(function(user) {
-        if (!user) {
-          window.location.href = "login.html";
-          return;
-        }
+      ensureAdminAccess(function(user) {
+        if (!user) return;
         if (!contentLoaded) {
           contentLoaded = true;
           loadContent();

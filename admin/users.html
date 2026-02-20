@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Management — Admin — My Inner circle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle fill='%23c97082' cx='16' cy='16' r='14'/></svg>" type="image/svg+xml" />
+  <style>
+    .admin-layout { display: flex; flex-direction: column; min-height: 100vh; }
+    .admin-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 0.5rem; }
+    .admin-header .logo { font-size: 1.25rem; font-weight: 600; }
+    .admin-nav { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .admin-nav a, .admin-nav span { padding: 0.4rem 0.75rem; font-size: 0.9rem; color: var(--text-muted); text-decoration: none; border-radius: 8px; }
+    .admin-nav a:hover, .admin-nav span.active { color: var(--accent); background: var(--accent-soft); }
+    .admin-main { flex: 1; overflow-x: hidden; overflow-y: auto; padding: 1.5rem; background: var(--bg); }
+    .admin-content { max-width: 1100px; margin: 0 auto; }
+    .um-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+    .um-header h1 { font-size: 1.35rem; margin: 0; }
+    .um-toolbar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .um-search { padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; width: 100%; min-width: 200px; max-width: 280px; background: var(--bg-card); }
+    .um-search::placeholder { color: var(--text-muted); }
+    .um-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 1.5rem; }
+    .um-section-header { padding: 1rem 1.25rem; font-weight: 600; font-size: 1rem; color: var(--text-muted); background: rgba(0,0,0,0.02); border-bottom: 1px solid var(--border); }
+    .um-section-empty { padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
+    .um-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .um-table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 0.9rem; }
+    .um-table th { text-align: left; padding: 0.85rem 1.25rem; font-weight: 600; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.02); }
+    .um-table td { padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .um-table tbody tr:last-child td { border-bottom: none; }
+    .um-table tbody tr:hover { background: rgba(0,0,0,0.02); }
+    .um-table tbody tr.cancelled { opacity: 0.7; }
+    .um-user-cell { display: flex; align-items: center; gap: 0.75rem; }
+    .um-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #a855f7); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.95rem; flex-shrink: 0; }
+    .um-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+    .um-user-info { min-width: 0; }
+    .um-user-name { font-weight: 500; display: block; color: var(--text); }
+    .um-user-username { font-size: 0.85rem; color: var(--text-muted); }
+    .um-user-email { font-size: 0.85rem; color: var(--text-muted); }
+    .um-plan { display: inline-block; padding: 0.25rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500; }
+    .um-plan.active { background: rgba(34, 197, 94, 0.15); color: #15803d; }
+    .um-plan.cancelled { background: var(--accent-soft); color: var(--accent-hover); }
+    .um-plan.admin { background: rgba(139, 157, 195, 0.2); color: var(--blue-hint); }
+    .um-actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+    .um-actions .link { color: var(--accent); background: none; border: none; cursor: pointer; font-size: 0.85rem; padding: 0; text-decoration: none; }
+    .um-actions .link:hover { text-decoration: underline; }
+    .um-actions .link.danger { color: #dc2626; }
+    .um-add-form { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.01); }
+    .um-add-form h3 { font-size: 0.95rem; margin: 0 0 0.75rem; font-weight: 600; }
+    .um-add-form .form-row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; }
+    .um-add-form label { display: block; margin-bottom: 0.35rem; font-size: 0.85rem; font-weight: 500; color: var(--text-muted); }
+    .um-add-form input { padding: 0.5rem 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; min-width: 180px; }
+    .um-add-form .btn { margin-top: 0; }
+    .um-add-form .checkbox-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
+    .um-add-form .checkbox-row input[type="checkbox"] { width: auto; min-width: auto; margin: 0; }
+    .um-add-status { color: var(--text-muted); }
+    .um-add-status.success { color: #15803d; }
+    .um-add-status.error { color: #dc2626; }
+    .btn-logout { font-size: 0.9rem; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 0.4rem 0.75rem; border-radius: 8px; }
+    .btn-logout:hover { color: var(--accent); }
+    .loading { color: var(--text-muted); padding: 2rem; text-align: center; }
+    .um-setup-callout { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; font-size: 0.95rem; }
+  </style>
+</head>
+<body class="admin-layout">
+  <header class="admin-header">
+    <span class="logo">Admin Dashboard</span>
+    <nav class="admin-nav">
+      <a href="../index.html">Home</a>
+      <a href="dashboard.html">Dashboard</a>
+      <span class="active">User Management</span>
+      <a href="media.html">Media</a>
+      <a href="content.html">Content</a>
+      <a href="posts.html">Posts</a>
+      <button type="button" id="btn-logout" class="btn-logout">Log out</button>
+    </nav>
+  </header>
+
+  <main class="admin-main">
+    <div class="admin-content">
+      <div class="um-setup-callout" id="setup-callout" style="display: none;">
+        <strong>Who can access the admin panel?</strong> People listed under <strong>Admins</strong> below (and anyone you add with &quot;Add admin user&quot;). Add each admin&#8217;s email and choose Role: Admin. They must have a Firebase Auth account with that email to sign in at <strong>admin/login.html</strong>.
+        <button type="button" class="btn btn-primary um-setup-btn" id="btn-setup-both-admins" style="margin-top: 0.75rem;">Add will_jackson@icloud.com and stormij.xo@gmail.com as admins</button>
+      </div>
+      <div class="um-header">
+        <h1>User Management</h1>
+        <div class="um-toolbar">
+          <input type="search" id="search-users" class="um-search" placeholder="Search by name, username, or email…" />
+          <button type="button" class="btn btn-primary" id="btn-add-admin-user">Add admin user</button>
+          <button type="button" class="btn btn-secondary" id="btn-add-member">Add member</button>
+        </div>
+      </div>
+
+      <div id="add-admin-user-form" class="um-section" style="display: none;">
+        <div class="um-add-form">
+          <h3>Add admin user</h3>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 0.75rem;">Users with role Admin can access the admin panel. They must sign in with this email (create the account in Firebase Authentication if needed).</p>
+          <form id="add-admin-form">
+            <div class="form-row">
+              <div>
+                <label for="admin-user-email">Email</label>
+                <input type="email" id="admin-user-email" placeholder="admin@example.com" required />
+              </div>
+              <div>
+                <label for="admin-user-role">Role</label>
+                <select id="admin-user-role" style="padding:0.5rem 0.65rem;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;min-width:120px;">
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary">Add</button>
+              <button type="button" class="btn btn-secondary" id="btn-cancel-add-admin">Cancel</button>
+            </div>
+          </form>
+          <p id="add-admin-status" class="um-add-status" style="margin-top:0.75rem;font-size:0.9rem;min-height:1.5rem;"></p>
+        </div>
+      </div>
+
+      <div id="add-member-form" class="um-section" style="display: none;">
+        <div class="um-add-form">
+          <h3>Add member manually</h3>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 0.75rem;">Members are paying fans. Add one here or they appear when someone pays via Stripe.</p>
+          <form id="add-member-form-el">
+            <div class="form-row">
+              <div>
+                <label for="new-email">Email</label>
+                <input type="email" id="new-email" placeholder="member@example.com" required />
+              </div>
+              <div>
+                <label for="new-note">Instagram / Username</label>
+                <input type="text" id="new-note" placeholder="@username" />
+              </div>
+              <button type="submit" class="btn btn-primary">Add</button>
+              <button type="button" class="btn btn-secondary" id="btn-cancel-add-member">Cancel</button>
+            </div>
+          </form>
+          <p id="add-status" class="um-add-status" style="margin-top:0.75rem;font-size:0.9rem;min-height:1.5rem;"></p>
+        </div>
+      </div>
+
+      <section class="um-section">
+        <div class="um-section-header">Admins</div>
+        <div id="admins-loading" class="loading">Loading…</div>
+        <div id="admins-empty" class="um-section-empty" style="display: none;">No admin users yet. Add an admin user above (they need a Firebase Auth account with that email to sign in).</div>
+        <div id="admins-table-wrap" class="um-table-wrap" style="display: none;">
+          <table class="um-table">
+            <thead>
+              <tr>
+                <th>Profile</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Added</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admins-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="um-section">
+        <div class="um-section-header">Members</div>
+        <div id="members-loading" class="loading">Loading…</div>
+        <div id="members-empty" class="um-section-empty" style="display: none;">No members yet. Add one above or they'll appear when someone pays via Stripe.</div>
+        <div id="members-table-wrap" class="um-table-wrap" style="display: none;">
+          <table class="um-table">
+            <thead>
+              <tr>
+                <th>Profile</th>
+                <th>Name</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Plan</th>
+                <th>Signup Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="members-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="../firebase-config.js"></script>
+  <script src="admin-auth.js"></script>
+  <script>
+    if (typeof FIREBASE_CONFIG === "undefined" || !FIREBASE_CONFIG.apiKey) {
+      document.body.innerHTML = "<main class='admin-main'><div class='admin-content'><h1>Firebase not configured</h1></div></main>";
+    } else {
+      firebase.initializeApp(FIREBASE_CONFIG);
+      var auth = firebase.auth();
+      var db = firebase.firestore();
+
+      var membersCache = [];
+      var adminUsersCache = [];
+
+      var SETUP_ADMIN_EMAILS = ["will_jackson@icloud.com", "stormij.xo@gmail.com"];
+
+      ensureAdminAccess(function(user) {
+        if (!user) return;
+        document.getElementById("setup-callout").style.display = "block";
+        loadAdminUsers();
+        loadMembers();
+      });
+
+      document.getElementById("btn-setup-both-admins").addEventListener("click", function() {
+        var btn = this;
+        btn.disabled = true;
+        btn.textContent = "Adding…";
+        db.collection("admin_users").get().then(function(snap) {
+          var existing = {};
+          snap.forEach(function(d) { existing[(d.data().email || "").toLowerCase()] = true; });
+          var toAdd = SETUP_ADMIN_EMAILS.filter(function(e) { return !existing[e.toLowerCase()]; });
+          if (toAdd.length === 0) {
+            btn.textContent = "Both already added";
+            setTimeout(function() { btn.disabled = false; btn.textContent = "Add will_jackson@icloud.com and stormij.xo@gmail.com as admins"; }, 2000);
+            return;
+          }
+          var batch = db.batch();
+          toAdd.forEach(function(email) {
+            var ref = db.collection("admin_users").doc();
+            batch.set(ref, { email: email, role: "admin", createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+          });
+          return batch.commit();
+        }).then(function() {
+          if (arguments.length) loadAdminUsers();
+          btn.textContent = "Done. Both are now admins.";
+          btn.disabled = false;
+          setTimeout(function() { btn.textContent = "Add will_jackson@icloud.com and stormij.xo@gmail.com as admins"; }, 3000);
+        }).catch(function(err) {
+          btn.disabled = false;
+          btn.textContent = "Add will_jackson@icloud.com and stormij.xo@gmail.com as admins";
+          alert("Error: " + (err.message || "failed"));
+        });
+      });
+
+      document.getElementById("btn-logout").addEventListener("click", function() { auth.signOut(); });
+
+      function escapeHtml(s) {
+        if (s == null || s === undefined) return "";
+        var div = document.createElement("div");
+        div.textContent = String(s);
+        return div.innerHTML;
+      }
+
+      function getInitial(str) {
+        if (!str || str === "—") return "?";
+        var s = String(str).replace(/^@/, "").trim();
+        return (s.charAt(0) || "?").toUpperCase();
+      }
+
+      document.getElementById("btn-add-admin-user").addEventListener("click", function() {
+        document.getElementById("add-member-form").style.display = "none";
+        document.getElementById("add-admin-user-form").style.display = "block";
+      });
+      document.getElementById("btn-add-member").addEventListener("click", function() {
+        document.getElementById("add-admin-user-form").style.display = "none";
+        document.getElementById("add-member-form").style.display = "block";
+      });
+      document.getElementById("btn-cancel-add-admin").addEventListener("click", function() {
+        document.getElementById("add-admin-user-form").style.display = "none";
+      });
+      document.getElementById("btn-cancel-add-member").addEventListener("click", function() {
+        document.getElementById("add-member-form").style.display = "none";
+      });
+
+      function setAddStatus(elId, msg, type) {
+        var el = document.getElementById(elId);
+        if (!el) return;
+        el.textContent = msg || "";
+        el.className = "um-add-status" + (type === "success" ? " success" : type === "error" ? " error" : "");
+      }
+
+      document.getElementById("add-admin-form").addEventListener("submit", function(e) {
+        e.preventDefault();
+        var email = document.getElementById("admin-user-email").value.trim();
+        var role = document.getElementById("admin-user-role").value || "admin";
+        if (!email) {
+          setAddStatus("add-admin-status", "Email is required.", "error");
+          return;
+        }
+        var btn = e.target.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        setAddStatus("add-admin-status", "Adding…", "");
+        db.collection("admin_users").add({
+          email: email,
+          role: role,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(function(ref) {
+          document.getElementById("admin-user-email").value = "";
+          setAddStatus("add-admin-status", "Admin user added. They can sign in at admin/login.html with this email.", "success");
+          btn.disabled = false;
+          loadAdminUsers();
+          setTimeout(function() { setAddStatus("add-admin-status", ""); }, 5000);
+        }).catch(function(err) {
+          btn.disabled = false;
+          setAddStatus("add-admin-status", "Could not add: " + (err.message || "check Firestore"), "error");
+          console.error("Admin user add error:", err);
+        });
+      });
+
+      document.getElementById("add-member-form-el").addEventListener("submit", function(e) {
+        e.preventDefault();
+        var email = document.getElementById("new-email").value.trim();
+        var note = document.getElementById("new-note").value.trim();
+        if (!email) {
+          setAddStatus("add-status", "Email is required.", "error");
+          return;
+        }
+        var btn = e.target.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        setAddStatus("add-status", "Adding…", "");
+        db.collection("members").add({
+          email: email,
+          note: note || null,
+          instagram_handle: note || null,
+          status: "active",
+          joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(function(ref) {
+          document.getElementById("new-email").value = "";
+          document.getElementById("new-note").value = "";
+          setAddStatus("add-status", "Member added. Document ID: " + ref.id, "success");
+          btn.disabled = false;
+          setTimeout(function() { setAddStatus("add-status", ""); }, 4000);
+        }).catch(function(err) {
+          btn.disabled = false;
+          setAddStatus("add-status", "Could not add: " + (err.message || "check Firestore"), "error");
+          console.error("Members add error:", err);
+        });
+      });
+
+      document.getElementById("search-users").addEventListener("input", function() {
+        renderAdmins();
+        renderMembers();
+      });
+
+      function loadAdminUsers() {
+        var loadingEl = document.getElementById("admins-loading");
+        db.collection("admin_users").orderBy("createdAt", "desc").onSnapshot(
+          function(snap) {
+            loadingEl.style.display = "none";
+            adminUsersCache = [];
+            snap.forEach(function(doc) {
+              adminUsersCache.push({ id: doc.id, data: doc.data() });
+            });
+            renderAdmins();
+          },
+          function(err) {
+            loadingEl.style.display = "none";
+            document.getElementById("admins-empty").textContent = "Error loading admin users: " + (err.message || "check Firestore");
+            document.getElementById("admins-empty").style.display = "block";
+          }
+        );
+      }
+
+      function loadMembers() {
+        var loadingEl = document.getElementById("members-loading");
+        var emptyEl = document.getElementById("members-empty");
+
+        db.collection("members").orderBy("joinedAt", "desc").onSnapshot(
+          function(snap) {
+            loadingEl.style.display = "none";
+            membersCache = [];
+            snap.forEach(function(doc) {
+              membersCache.push({ id: doc.id, data: doc.data() });
+            });
+            renderMembers();
+          },
+          function(err) {
+            loadingEl.style.display = "none";
+            document.getElementById("members-empty").textContent = "Error loading members: " + (err.message || "check Firestore rules");
+            document.getElementById("members-empty").style.display = "block";
+          }
+        );
+      }
+
+      function matchesSearch(item, searchQuery) {
+        if (!searchQuery) return true;
+        var q = searchQuery.toLowerCase();
+        var email = (item.email || "").toLowerCase();
+        var name = (item.name || item.instagram_handle || item.note || "").toLowerCase();
+        var username = (item.username || item.instagram_handle || item.note || "").toLowerCase();
+        return email.indexOf(q) !== -1 || name.indexOf(q) !== -1 || username.indexOf(q) !== -1;
+      }
+
+      function renderAdmins() {
+        var searchQuery = (document.getElementById("search-users").value || "").trim();
+        var filtered = searchQuery ? adminUsersCache.filter(function(o) {
+          var d = o.data;
+          var email = (d.email || "").toLowerCase();
+          return email.indexOf(searchQuery.toLowerCase()) !== -1;
+        }) : adminUsersCache;
+        var tbody = document.getElementById("admins-tbody");
+        var emptyEl = document.getElementById("admins-empty");
+        var wrapEl = document.getElementById("admins-table-wrap");
+
+        tbody.innerHTML = "";
+        if (filtered.length === 0) {
+          wrapEl.style.display = "none";
+          emptyEl.style.display = "block";
+          emptyEl.textContent = searchQuery ? "No admin users match your search." : "No admin users yet. Add an admin user above (they need a Firebase Auth account with that email to sign in).";
+          return;
+        }
+        wrapEl.style.display = "block";
+        emptyEl.style.display = "none";
+
+        filtered.forEach(function(o) {
+          var d = o.data;
+          var email = d.email || "—";
+          var initial = getInitial(email.split("@")[0]);
+          var role = d.role || "admin";
+          var added = d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toLocaleDateString(undefined, { dateStyle: "medium" }) : "—";
+          var tr = document.createElement("tr");
+          tr.innerHTML =
+            "<td><div class='um-user-cell'><div class='um-avatar'>" + initial + "</div></div></td>" +
+            "<td><span class='um-user-email'>" + escapeHtml(email) + "</span></td>" +
+            "<td><span class='um-plan admin'>" + escapeHtml(role) + "</span></td>" +
+            "<td>" + added + "</td>" +
+            "<td><div class='um-actions'><button type='button' class='link danger btn-remove-admin-user' data-id=\"" + escapeHtml(o.id) + "\">Remove</button></div></td>";
+          tbody.appendChild(tr);
+        });
+        tbody.querySelectorAll(".btn-remove-admin-user").forEach(function(btn) {
+          btn.addEventListener("click", function() {
+            if (!confirm("Remove this admin user? They will lose access to the admin panel.")) return;
+            db.collection("admin_users").doc(btn.dataset.id).delete()
+              .catch(function(err) { alert("Could not remove: " + (err.message || "unknown")); });
+          });
+        });
+      }
+
+      function renderMembers() {
+        var searchQuery = (document.getElementById("search-users").value || "").trim();
+        var filtered = searchQuery
+          ? membersCache.filter(function(o) {
+              var d = o.data;
+              return matchesSearch({
+                email: d.email,
+                name: d.instagram_handle || d.note,
+                username: d.instagram_handle || d.note
+              }, searchQuery);
+            })
+          : membersCache;
+
+        var tbody = document.getElementById("members-tbody");
+        var emptyEl = document.getElementById("members-empty");
+        var wrapEl = document.getElementById("members-table-wrap");
+
+        tbody.innerHTML = "";
+        if (filtered.length === 0) {
+          wrapEl.style.display = "none";
+          emptyEl.style.display = "block";
+          emptyEl.textContent = searchQuery ? "No members match your search." : "No members yet. Add one above or they'll appear when someone pays via Stripe.";
+          return;
+        }
+        wrapEl.style.display = "block";
+        emptyEl.style.display = "none";
+
+        filtered.forEach(function(o) {
+          var d = o.data;
+          var email = d.email || "—";
+          var username = d.instagram_handle || d.note || email.split("@")[0] || "—";
+          var name = username;
+          var initial = getInitial(username !== "—" ? username : email);
+          var joined = d.joinedAt && d.joinedAt.toDate ? d.joinedAt.toDate().toLocaleDateString(undefined, { dateStyle: "medium" }) : "—";
+          var status = d.status || "active";
+          var planClass = status === "cancelled" ? "cancelled" : "active";
+          var planLabel = status === "cancelled" ? "Cancelled" : "Active";
+          var joinedMs = d.joinedAt && d.joinedAt.toDate ? d.joinedAt.toDate().getTime() : "";
+
+          var actions = (status !== "cancelled"
+              ? "<button type='button' class='link btn-mark-cancel' data-id='" + o.id + "' data-joined-ms='" + joinedMs + "'>Mark cancelled</button>"
+              : "") +
+            " <button type='button' class='link danger btn-delete' data-id='" + o.id + "'>Delete</button>";
+
+          var tr = document.createElement("tr");
+          if (status === "cancelled") tr.className = "cancelled";
+          tr.innerHTML =
+            "<td><div class='um-user-cell'><div class='um-avatar'>" + initial + "</div><div class='um-user-info'><span class='um-user-name'>" + escapeHtml(name) + "</span><span class='um-user-email'>" + escapeHtml(email) + "</span></div></div></td>" +
+            "<td><span class='um-user-name'>" + escapeHtml(name) + "</span></td>" +
+            "<td><span class='um-user-username'>" + escapeHtml(username) + "</span></td>" +
+            "<td><span class='um-user-email'>" + escapeHtml(email) + "</span></td>" +
+            "<td><span class='um-plan " + planClass + "'>" + planLabel + "</span></td>" +
+            "<td>" + joined + "</td>" +
+            "<td><div class='um-actions'>" + actions + "</div></td>";
+          tbody.appendChild(tr);
+        });
+
+        tbody.querySelectorAll(".btn-mark-cancel").forEach(function(btn) {
+          btn.addEventListener("click", function() {
+            var accessEnd;
+            var joinedMs = btn.dataset.joinedMs;
+            if (joinedMs) {
+              accessEnd = new Date(parseInt(joinedMs, 10));
+              accessEnd.setDate(accessEnd.getDate() + 30);
+            } else {
+              accessEnd = new Date();
+              accessEnd.setDate(accessEnd.getDate() + 30);
+            }
+            db.collection("members").doc(btn.dataset.id).update({
+              status: "cancelled",
+              cancelledAt: firebase.firestore.FieldValue.serverTimestamp(),
+              access_ends_at: firebase.firestore.Timestamp.fromDate(accessEnd)
+            });
+          });
+        });
+        tbody.querySelectorAll(".btn-delete").forEach(function(btn) {
+          btn.addEventListener("click", function() {
+            if (confirm("Remove this member from the list? This cannot be undone.")) {
+              db.collection("members").doc(btn.dataset.id).delete();
+            }
+          });
+        });
+      }
+    }
+  </script>
+</body>
+</html>

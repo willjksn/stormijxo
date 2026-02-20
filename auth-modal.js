@@ -49,7 +49,8 @@
     { id: "len", test: function(p) { return p.length >= 8; }, label: "At least 8 characters" },
     { id: "lower", test: function(p) { return /[a-z]/.test(p); }, label: "One lowercase letter" },
     { id: "upper", test: function(p) { return /[A-Z]/.test(p); }, label: "One uppercase letter" },
-    { id: "num", test: function(p) { return /\d/.test(p); }, label: "One number" }
+    { id: "num", test: function(p) { return /\d/.test(p); }, label: "One number" },
+    { id: "special", test: function(p) { return /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(p); }, label: "One special character (!@#$%^&* etc.)" }
   ];
 
   function updatePasswordReqs() {

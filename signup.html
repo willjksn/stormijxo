@@ -54,7 +54,7 @@
       <input type="email" id="email" required autocomplete="email" placeholder="you@example.com" />
       <label for="password">Password</label>
       <div class="password-row">
-        <input type="password" id="password" required autocomplete="new-password" minlength="6" placeholder="At least 6 characters" />
+        <input type="password" id="password" required autocomplete="new-password" minlength="8" placeholder="8+ chars, upper, lower, number, special (!@#$)" />
         <button type="button" id="toggle-password" class="btn-password-toggle" aria-label="Show password">Show</button>
       </div>
       <button type="submit" class="btn btn-primary">Sign up</button>
@@ -106,6 +106,15 @@
         this.textContent = show ? "Hide" : "Show";
       });
 
+      function validatePassword(p) {
+        if (p.length < 8) return "Password must be at least 8 characters.";
+        if (!/[a-z]/.test(p)) return "Password must include a lowercase letter.";
+        if (!/[A-Z]/.test(p)) return "Password must include an uppercase letter.";
+        if (!/\d/.test(p)) return "Password must include a number.";
+        if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(p)) return "Password must include a special character (!@#$%^&* etc.).";
+        return null;
+      }
+
       document.getElementById("signup-form").addEventListener("submit", function(e) {
         e.preventDefault();
         var name = document.getElementById("name").value.trim();
@@ -113,6 +122,11 @@
         var email = document.getElementById("email").value.trim();
         var password = document.getElementById("password").value;
         showError("");
+        var pwErr = validatePassword(password);
+        if (pwErr) {
+          showError(pwErr);
+          return;
+        }
         auth.createUserWithEmailAndPassword(email, password)
           .then(function(cred) {
             return cred.user.updateProfile({ displayName: name })

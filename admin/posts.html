@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Posts — Admin — My Inner circle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle fill='%23c97082' cx='16' cy='16' r='14'/></svg>" type="image/svg+xml" />
+  <style>
+    .admin-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 0.5rem; }
+    .admin-header .logo { font-size: 1.25rem; font-weight: 600; }
+    .admin-nav { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .admin-nav a, .admin-nav span { padding: 0.4rem 0.75rem; font-size: 0.9rem; color: var(--text-muted); text-decoration: none; border-radius: 8px; }
+    .admin-nav a:hover, .admin-nav span.active { color: var(--accent); background: var(--accent-soft); }
+    .admin-main { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+    .admin-main h1 { font-size: 1.35rem; margin-bottom: 0.5rem; }
+    .admin-main .intro { color: var(--text-muted); margin-bottom: 1.5rem; }
+    .content-block { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .content-block h2 { font-size: 1.1rem; margin: 0 0 1rem; }
+    .content-block label { display: block; margin-bottom: 0.35rem; font-weight: 500; font-size: 0.9rem; }
+    .content-block input[type="text"], .content-block input[type="url"] { width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.75rem; }
+    .content-block textarea { width: 100%; min-height: 100px; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; resize: vertical; }
+    .content-block .media-urls-hint { font-size: 0.85rem; color: var(--text-muted); margin-top: -0.5rem; margin-bottom: 0.75rem; }
+    .toggle-row { display: flex; align-items: center; gap: 0.75rem; margin-top: 1rem; }
+    .toggle-row label { margin: 0; font-weight: 500; }
+    .toggle-switch { position: relative; width: 44px; height: 24px; background: var(--border); border-radius: 999px; cursor: pointer; transition: background 0.2s; }
+    .toggle-switch.on { background: var(--accent); }
+    .toggle-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: #fff; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: transform 0.2s; }
+    .toggle-switch.on::after { transform: translateX(20px); }
+    .content-block .status { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; }
+    .content-block .error { color: #dc2626; }
+    .btn-logout { font-size: 0.9rem; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 0.4rem 0.75rem; border-radius: 8px; }
+    .btn-logout:hover { color: var(--accent); }
+    .posts-list { margin-top: 1.5rem; }
+    .posts-list h2 { font-size: 1.1rem; margin: 0 0 1rem; }
+    .posts-table-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow-x: auto; }
+    .posts-table { width: 100%; min-width: 500px; border-collapse: collapse; font-size: 0.9rem; }
+    .posts-table th { text-align: left; padding: 0.85rem 1rem; font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.03); }
+    .posts-table td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .posts-table tbody tr:last-child td { border-bottom: none; }
+    .posts-table tbody tr.unpublished { opacity: 0.75; }
+    .posts-table .post-title-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .posts-table .post-preview { max-width: 80px; height: 50px; border-radius: 6px; object-fit: cover; }
+    .posts-table .badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500; }
+    .posts-table .badge.published { background: rgba(34, 197, 94, 0.15); color: #15803d; }
+    .posts-table .badge.draft { background: var(--accent-soft); color: var(--accent); }
+    .posts-table .post-actions { display: flex; gap: 0.5rem; }
+    .posts-table .post-actions .link { color: var(--accent); background: none; border: none; cursor: pointer; font-size: 0.85rem; padding: 0; text-decoration: none; }
+    .posts-table .post-actions .link:hover { text-decoration: underline; }
+    .posts-table .post-actions .link.danger { color: #dc2626; }
+    .loading, .empty { color: var(--text-muted); padding: 2rem; text-align: center; }
+    .form-actions { display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap; }
+    .media-url-row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; }
+    .media-url-row input { flex: 1; margin-bottom: 0; }
+    .media-url-row .btn-icon { background: none; border: none; cursor: pointer; padding: 0.35rem; color: var(--text-muted); border-radius: 6px; }
+    .media-url-row .btn-icon:hover { color: #dc2626; }
+    #post-form-edit { display: none; }
+    #post-form-edit.visible { display: block; }
+  </style>
+</head>
+<body>
+  <header class="admin-header">
+    <span class="logo">Admin Dashboard</span>
+    <nav class="admin-nav">
+      <a href="../index.html">Home</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="users.html">User Management</a>
+      <a href="media.html">Media</a>
+      <a href="content.html">Content</a>
+      <span class="active">Posts</span>
+      <button type="button" id="btn-logout" class="btn-logout">Log out</button>
+    </nav>
+  </header>
+
+  <main class="admin-main">
+    <h1>Posts</h1>
+    <p class="intro">Create and manage member feed posts. Only published posts appear in the member feed.</p>
+
+    <section class="content-block" id="post-form-create">
+      <h2>Create post</h2>
+      <form id="create-form">
+        <label for="create-title">Title</label>
+        <input type="text" id="create-title" placeholder="e.g. Behind the scenes" required />
+        <label for="create-body">Body / Caption</label>
+        <textarea id="create-body" placeholder="Write your post caption…"></textarea>
+        <label>Media URLs</label>
+        <p class="media-urls-hint">Add image or video URLs (one per line). Images will be displayed in order.</p>
+        <div id="create-media-urls">
+          <div class="media-url-row">
+            <input type="url" class="media-url-input" placeholder="https://example.com/image.jpg" />
+            <button type="button" class="btn-icon btn-add-url" title="Add another URL">+</button>
+            <button type="button" class="btn-icon btn-remove-url" title="Remove">×</button>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <div id="toggle-published-create" class="toggle-switch" role="switch" aria-checked="true" tabindex="0" title="Publish post"></div>
+          <label for="toggle-published-create">Published (visible in feed)</label>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Create post</button>
+        </div>
+      </form>
+      <p class="status" id="status-create"></p>
+    </section>
+
+    <section class="content-block" id="post-form-edit">
+      <h2>Edit post</h2>
+      <form id="edit-form">
+        <input type="hidden" id="edit-id" />
+        <label for="edit-title">Title</label>
+        <input type="text" id="edit-title" placeholder="e.g. Behind the scenes" required />
+        <label for="edit-body">Body / Caption</label>
+        <textarea id="edit-body" placeholder="Write your post caption…"></textarea>
+        <label>Media URLs</label>
+        <div id="edit-media-urls"></div>
+        <div class="toggle-row">
+          <div id="toggle-published-edit" class="toggle-switch" role="switch" aria-checked="true" tabindex="0" title="Publish post"></div>
+          <label for="toggle-published-edit">Published (visible in feed)</label>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Save changes</button>
+          <button type="button" class="btn btn-secondary" id="btn-cancel-edit">Cancel</button>
+        </div>
+      </form>
+      <p class="status" id="status-edit"></p>
+    </section>
+
+    <section class="content-block posts-list">
+      <h2>Existing posts</h2>
+      <div id="posts-loading" class="loading">Loading…</div>
+      <div id="posts-empty" class="empty" style="display: none;">No posts yet. Create your first post above.</div>
+      <div id="posts-table-wrap" class="posts-table-wrap" style="display: none;">
+        <table class="posts-table">
+          <thead>
+            <tr>
+              <th>Preview</th>
+              <th>Title</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="posts-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="../firebase-config.js"></script>
+  <script src="admin-auth.js"></script>
+  <script>
+    if (typeof FIREBASE_CONFIG === "undefined" || !FIREBASE_CONFIG.apiKey) {
+      document.body.innerHTML = "<main class='admin-main'><h1>Firebase not configured</h1></main>";
+    } else {
+      firebase.initializeApp(FIREBASE_CONFIG);
+      var auth = firebase.auth();
+      var db = firebase.firestore();
+
+      ensureAdminAccess(function(user) {
+        if (!user) return;
+        loadPosts();
+      });
+
+      document.getElementById("btn-logout").addEventListener("click", function() { auth.signOut(); });
+
+      function escapeHtml(s) {
+        if (s == null || s === undefined) return "";
+        var div = document.createElement("div");
+        div.textContent = String(s);
+        return div.innerHTML;
+      }
+
+      function setToggle(id, on) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.classList.toggle("on", on);
+        el.setAttribute("aria-checked", on ? "true" : "false");
+      }
+
+      function getToggle(id) {
+        var el = document.getElementById(id);
+        return el ? el.classList.contains("on") : false;
+      }
+
+      function toggleClick(id, callback) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        function flip() {
+          var on = !el.classList.contains("on");
+          setToggle(id, on);
+          if (callback) callback(on);
+        }
+        el.addEventListener("click", flip);
+        el.addEventListener("keydown", function(e) {
+          if (e.key === " " || e.key === "Enter") { e.preventDefault(); flip(); }
+        });
+      }
+
+      function parseMediaUrls(containerId) {
+        var inputs = document.querySelectorAll("#" + containerId + " .media-url-input");
+        var urls = [];
+        inputs.forEach(function(inp) {
+          var v = (inp.value || "").trim();
+          if (v) urls.push(v);
+        });
+        return urls;
+      }
+
+      function addMediaUrlRow(containerId, value, noHandlers) {
+        var container = document.getElementById(containerId);
+        if (!container) return;
+        var row = document.createElement("div");
+        row.className = "media-url-row";
+        row.innerHTML =
+          "<input type=\"url\" class=\"media-url-input\" placeholder=\"https://example.com/image.jpg\" value=\"" + escapeHtml(value || "") + "\" />" +
+          "<button type=\"button\" class=\"btn-icon btn-add-url\" title=\"Add another URL\">+</button>" +
+          "<button type=\"button\" class=\"btn-icon btn-remove-url\" title=\"Remove\">&times;</button>";
+        container.appendChild(row);
+        if (!noHandlers) {
+          row.querySelector(".btn-add-url").addEventListener("click", function() {
+            addMediaUrlRow(containerId, "", noHandlers);
+          });
+          row.querySelector(".btn-remove-url").addEventListener("click", function() {
+            if (container.querySelectorAll(".media-url-row").length > 1) {
+              row.remove();
+            }
+          });
+        }
+      }
+
+      document.getElementById("create-media-urls").addEventListener("click", function(e) {
+        var container = document.getElementById("create-media-urls");
+        if (e.target.classList.contains("btn-add-url")) {
+          addMediaUrlRow("create-media-urls", "", true);
+        } else if (e.target.classList.contains("btn-remove-url") && container.querySelectorAll(".media-url-row").length > 1) {
+          e.target.closest(".media-url-row").remove();
+        }
+      });
+
+      toggleClick("toggle-published-create", function() {});
+
+      document.getElementById("create-form").addEventListener("submit", function(e) {
+        e.preventDefault();
+        var statusEl = document.getElementById("status-create");
+        var title = document.getElementById("create-title").value.trim();
+        if (!title) {
+          statusEl.textContent = "Title is required.";
+          statusEl.className = "status error";
+          return;
+        }
+        var body = document.getElementById("create-body").value.trim();
+        var mediaUrls = parseMediaUrls("create-media-urls");
+        var published = getToggle("toggle-published-create");
+
+        statusEl.textContent = "Creating…";
+        statusEl.className = "status";
+        var btn = document.querySelector("#create-form button[type=submit]");
+        btn.disabled = true;
+
+        var data = {
+          title: title,
+          body: body || "",
+          mediaUrls: mediaUrls,
+          published: published,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          likeCount: 0,
+          comments: []
+        };
+
+        db.collection("posts").add(data)
+          .then(function(ref) {
+            statusEl.textContent = "Post created. It will appear in the feed " + (published ? "immediately." : "when you publish it.");
+            statusEl.className = "status";
+            document.getElementById("create-title").value = "";
+            document.getElementById("create-body").value = "";
+            document.getElementById("create-media-urls").innerHTML =
+              "<div class=\"media-url-row\"><input type=\"url\" class=\"media-url-input\" placeholder=\"https://example.com/image.jpg\" /><button type=\"button\" class=\"btn-icon btn-add-url\" title=\"Add another URL\">+</button><button type=\"button\" class=\"btn-icon btn-remove-url\" title=\"Remove\">&times;</button></div>";
+            setToggle("toggle-published-create", true);
+            loadPosts();
+            btn.disabled = false;
+          })
+          .catch(function(err) {
+            statusEl.textContent = "Error: " + (err.message || "Create failed");
+            statusEl.className = "status error";
+            btn.disabled = false;
+          });
+      });
+
+      toggleClick("toggle-published-edit", function() {});
+
+      document.getElementById("edit-form").addEventListener("submit", function(e) {
+        e.preventDefault();
+        var statusEl = document.getElementById("status-edit");
+        var postId = document.getElementById("edit-id").value;
+        if (!postId) return;
+        var title = document.getElementById("edit-title").value.trim();
+        if (!title) {
+          statusEl.textContent = "Title is required.";
+          statusEl.className = "status error";
+          return;
+        }
+        var body = document.getElementById("edit-body").value.trim();
+        var mediaUrls = parseMediaUrls("edit-media-urls");
+        var published = getToggle("toggle-published-edit");
+
+        statusEl.textContent = "Saving…";
+        statusEl.className = "status";
+        var btn = document.querySelector("#edit-form button[type=submit]");
+        btn.disabled = true;
+
+        db.collection("posts").doc(postId).update({
+          title: title,
+          body: body || "",
+          mediaUrls: mediaUrls,
+          published: published,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        })
+          .then(function() {
+            statusEl.textContent = "Post updated.";
+            statusEl.className = "status";
+            document.getElementById("post-form-edit").classList.remove("visible");
+            document.getElementById("post-form-create").style.display = "block";
+            loadPosts();
+            btn.disabled = false;
+          })
+          .catch(function(err) {
+            statusEl.textContent = "Error: " + (err.message || "Update failed");
+            statusEl.className = "status error";
+            btn.disabled = false;
+          });
+      });
+
+      document.getElementById("btn-cancel-edit").addEventListener("click", function() {
+        document.getElementById("post-form-edit").classList.remove("visible");
+        document.getElementById("post-form-create").style.display = "block";
+        document.getElementById("status-edit").textContent = "";
+      });
+
+      function openEditForm(post) {
+        document.getElementById("edit-id").value = post.id;
+        document.getElementById("edit-title").value = post.title || "";
+        document.getElementById("edit-body").value = post.body || "";
+        var editUrls = document.getElementById("edit-media-urls");
+        editUrls.innerHTML = "";
+        var urls = post.mediaUrls || [];
+        if (urls.length === 0) {
+          addMediaUrlRow("edit-media-urls");
+        } else {
+          urls.forEach(function(url) { addMediaUrlRow("edit-media-urls", url); });
+        }
+        setToggle("toggle-published-edit", post.published !== false);
+        document.getElementById("status-edit").textContent = "";
+        document.getElementById("status-edit").className = "status";
+        document.getElementById("post-form-create").style.display = "none";
+        document.getElementById("post-form-edit").classList.add("visible");
+      }
+
+      function loadPosts() {
+        var loadingEl = document.getElementById("posts-loading");
+        var emptyEl = document.getElementById("posts-empty");
+        var tableWrap = document.getElementById("posts-table-wrap");
+        var tbody = document.getElementById("posts-tbody");
+
+        loadingEl.style.display = "block";
+        emptyEl.style.display = "none";
+        tableWrap.style.display = "none";
+
+        db.collection("posts").orderBy("createdAt", "desc").limit(100).get()
+          .then(function(snap) {
+            loadingEl.style.display = "none";
+            if (snap.empty) {
+              emptyEl.style.display = "block";
+              return;
+            }
+            tableWrap.style.display = "block";
+            tbody.innerHTML = "";
+            snap.forEach(function(doc) {
+              var d = doc.data();
+              var createdAt = d.createdAt && d.createdAt.toDate ? d.createdAt.toDate() : new Date(0);
+              var dateStr = createdAt.toLocaleDateString(undefined, { dateStyle: "medium" });
+              var mediaUrls = d.mediaUrls || [];
+              var thumbUrl = mediaUrls[0] || "";
+              var published = d.published !== false;
+              var tr = document.createElement("tr");
+              tr.className = published ? "" : "unpublished";
+              tr.innerHTML =
+                "<td><img src=\"" + escapeHtml(thumbUrl) + "\" alt=\"\" class=\"post-preview\" onerror=\"this.style.display='none'\"></td>" +
+                "<td class=\"post-title-cell\" title=\"" + escapeHtml(d.title || "Untitled") + "\">" + escapeHtml(d.title || "Untitled") + "</td>" +
+                "<td><span class=\"badge " + (published ? "published" : "draft") + "\">" + (published ? "Published" : "Draft") + "</span></td>" +
+                "<td>" + escapeHtml(dateStr) + "</td>" +
+                "<td><div class=\"post-actions\">" +
+                "<button type=\"button\" class=\"link btn-edit\" data-id=\"" + escapeHtml(doc.id) + "\">Edit</button>" +
+                "<button type=\"button\" class=\"link danger btn-delete\" data-id=\"" + escapeHtml(doc.id) + "\" data-title=\"" + escapeHtml(d.title || "Untitled") + "\">Delete</button>" +
+                "</div></td>";
+              tbody.appendChild(tr);
+
+              var post = {
+                id: doc.id,
+                title: d.title || "Untitled",
+                body: d.body || "",
+                mediaUrls: mediaUrls,
+                published: published,
+                createdAt: d.createdAt
+              };
+
+              tr.querySelector(".btn-edit").addEventListener("click", function() {
+                openEditForm(post);
+              });
+
+              tr.querySelector(".btn-delete").addEventListener("click", function() {
+                var title = this.dataset.title || "this post";
+                if (!confirm("Delete \"" + title + "\"? This cannot be undone.")) return;
+                var btn = this;
+                btn.disabled = true;
+                btn.textContent = "Deleting…";
+                db.collection("posts").doc(doc.id).delete()
+                  .then(function() {
+                    loadPosts();
+                    if (document.getElementById("edit-id").value === doc.id) {
+                      document.getElementById("post-form-edit").classList.remove("visible");
+                      document.getElementById("post-form-create").style.display = "block";
+                    }
+                  })
+                  .catch(function(err) {
+                    btn.disabled = false;
+                    btn.textContent = "Delete";
+                    alert("Delete failed: " + (err.message || "Unknown error"));
+                  });
+              });
+
+              var img = tr.querySelector(".post-preview");
+              if (img && !thumbUrl) img.style.display = "none";
+            });
+          })
+          .catch(function(err) {
+            loadingEl.style.display = "none";
+            emptyEl.textContent = "Could not load posts: " + (err.message || "Unknown error");
+            emptyEl.style.display = "block";
+          });
+      }
+    }
+  </script>
+</body>
+</html>
