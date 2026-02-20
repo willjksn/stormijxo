@@ -31,7 +31,11 @@
   padding: 0.4rem 0.6rem;
   border-radius: 8px;
   transition: color 0.2s, background 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
+.member-nav-main a.header-home-link svg { width: 1.15rem; height: 1.15rem; flex-shrink: 0; }
 .member-nav-main a:hover { color: var(--accent); background: var(--accent-soft); }
 .member-nav-main a.active { color: var(--accent); font-weight: 600; }
 .member-header .header-left .logo { flex-shrink: 0; }

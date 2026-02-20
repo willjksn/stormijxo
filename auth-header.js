@@ -15,6 +15,16 @@
   var auth = firebase.auth();
   auth.onAuthStateChanged(function(user) {
     if (user) {
+      var path = (window.location.pathname || "").replace(/^\//, "");
+      var isLanding = !path || path === "index.html" || path.endsWith("/index.html");
+      if (isLanding) {
+        var hash = (window.location.hash || "").toLowerCase();
+        var viewLanding = hash.indexOf("view=landing") !== -1;
+        if (!viewLanding) {
+          window.location.replace("member/feed.html");
+          return;
+        }
+      }
       link.href = "member/profile.html";
       link.textContent = "Profile";
     } else {

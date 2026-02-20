@@ -11,178 +11,232 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle fill='%23c97082' cx='16' cy='16' r='14'/></svg>" type="image/svg+xml" />
   <style>
     .admin-layout { display: flex; flex-direction: column; min-height: 100vh; }
-    .admin-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 0.5rem; }
-    .admin-header .logo { font-size: 1.25rem; font-weight: 600; }
-    .admin-nav { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-    .admin-nav a, .admin-nav span { padding: 0.4rem 0.75rem; font-size: 0.9rem; color: var(--text-muted); text-decoration: none; border-radius: 8px; }
-    .admin-nav a:hover, .admin-nav span.active { color: var(--accent); background: var(--accent-soft); }
-    .admin-main { flex: 1; overflow-x: hidden; overflow-y: auto; padding: 1.5rem; background: var(--bg); }
-    .admin-content { max-width: 1100px; margin: 0 auto; }
-    .um-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
-    .um-header h1 { font-size: 1.35rem; margin: 0; }
-    .um-toolbar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
-    .um-search { padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; width: 100%; min-width: 200px; max-width: 280px; background: var(--bg-card); }
+    .admin-header { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--border); }
+    .admin-header .logo { font-size: 1.25rem; font-weight: 600; color: var(--text); text-decoration: none; }
+    .admin-header .logo:hover { color: var(--accent); }
+    .admin-header-right { display: flex; align-items: center; gap: 1rem; }
+    .admin-header-right .header-link { display: flex; align-items: center; justify-content: center; color: var(--text-muted); text-decoration: none; padding: 0.5rem; border-radius: 8px; }
+    .admin-header-right .header-link:hover { color: var(--accent); background: var(--accent-soft); }
+    .admin-header-right .header-link svg { width: 1.25rem; height: 1.25rem; }
+    .admin-header-profile .profile-btn { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #c97082, #a855f7); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 1rem; }
+    .admin-header-profile .profile-dropdown { position: absolute; top: 100%; right: 0; margin-top: 0.5rem; min-width: 160px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 0.5rem; z-index: 50; display: none; }
+    .admin-header-profile.open .profile-dropdown { display: block; }
+    .admin-header-profile .profile-dropdown button,
+    .admin-header-profile .profile-dropdown a { display: block; width: 100%; text-align: left; padding: 0.6rem 0.75rem; font-size: 0.9rem; color: var(--text-muted); background: none; border: none; cursor: pointer; border-radius: 6px; font-family: inherit; text-decoration: none; }
+    .admin-header-profile .profile-dropdown button:hover,
+    .admin-header-profile .profile-dropdown a:hover { color: var(--accent); background: var(--accent-soft); }
+    .admin-tabs-bar { display: flex; justify-content: flex-end; align-items: center; padding: 0.5rem 1.5rem; background: var(--bg); gap: 0.35rem; }
+    .admin-tabs-bar .tab { padding: 0.4rem 0.85rem; font-size: 0.85rem; color: var(--text-muted); text-decoration: none; border: 1px solid var(--border); background: var(--bg-card); cursor: pointer; font-family: inherit; border-radius: 6px; }
+    .admin-tabs-bar .tab:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+    .admin-tabs-bar .tab.active { font-weight: 600; color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+    .admin-main { flex: 1; overflow-x: hidden; overflow-y: auto; padding: 1rem 1.5rem; background: var(--bg); }
+    .admin-content { width: 98%; max-width: 1920px; margin: 0 auto; overflow-x: hidden; }
+    .um-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); padding: 1.25rem; }
+    .um-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
+    .um-header h1 { font-size: 1.25rem; font-weight: 600; margin: 0; color: var(--text); letter-spacing: -0.02em; }
+    .um-toolbar { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+    .um-btn-add { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.85rem; font-size: 0.85rem; font-weight: 500; color: #fff; background: var(--accent); border: none; border-radius: 6px; cursor: pointer; font-family: inherit; text-decoration: none; }
+    .um-btn-add:hover { background: var(--accent-hover); color: #fff; }
+    .um-btn-add svg { width: 1rem; height: 1rem; flex-shrink: 0; }
+    .um-search { padding: 0.45rem 0.65rem 0.45rem 2rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; width: 100%; min-width: 200px; max-width: 260px; background: var(--bg-card); color: var(--text); }
     .um-search::placeholder { color: var(--text-muted); }
-    .um-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 1.5rem; }
-    .um-section-header { padding: 1rem 1.25rem; font-weight: 600; font-size: 1rem; color: var(--text-muted); background: rgba(0,0,0,0.02); border-bottom: 1px solid var(--border); }
-    .um-section-empty { padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
-    .um-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .um-table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 0.9rem; }
-    .um-table th { text-align: left; padding: 0.85rem 1.25rem; font-weight: 600; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.02); }
-    .um-table td { padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .um-search-wrap { position: relative; }
+    .um-search-wrap .um-search-icon { position: absolute; left: 0.65rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+    .um-search-wrap .um-search-icon svg { width: 0.95rem; height: 0.95rem; }
+    .um-table-wrap { overflow-x: auto; overflow-y: visible; -webkit-overflow-scrolling: touch; }
+    .um-table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 0.875rem; color: var(--text); }
+    .um-table th { text-align: left; padding: 0.5rem 0.85rem; font-weight: 600; color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); background: var(--bg); }
+    .um-table td { padding: 0.55rem 0.85rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
     .um-table tbody tr:last-child td { border-bottom: none; }
-    .um-table tbody tr:hover { background: rgba(0,0,0,0.02); }
-    .um-table tbody tr.cancelled { opacity: 0.7; }
-    .um-user-cell { display: flex; align-items: center; gap: 0.75rem; }
-    .um-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #a855f7); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.95rem; flex-shrink: 0; }
-    .um-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
-    .um-user-info { min-width: 0; }
-    .um-user-name { font-weight: 500; display: block; color: var(--text); }
-    .um-user-username { font-size: 0.85rem; color: var(--text-muted); }
-    .um-user-email { font-size: 0.85rem; color: var(--text-muted); }
-    .um-plan { display: inline-block; padding: 0.25rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500; }
-    .um-plan.active { background: rgba(34, 197, 94, 0.15); color: #15803d; }
-    .um-plan.cancelled { background: var(--accent-soft); color: var(--accent-hover); }
-    .um-plan.admin { background: rgba(139, 157, 195, 0.2); color: var(--blue-hint); }
+    .um-table tbody tr:hover { background: var(--accent-soft); }
+    .um-table tbody tr.um-sep-row td { padding: 0.4rem 0.85rem; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--bg); font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+    .um-table tbody tr.um-totals-row td { background: var(--bg); font-weight: 500; border-bottom: 1px solid var(--border); padding: 0.5rem 0.85rem; font-size: 0.875rem; }
+    .um-totals-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); flex-shrink: 0; }
+    .um-totals-icon svg { width: 1.1rem; height: 1.1rem; }
+    .um-user-cell { display: flex; align-items: center; gap: 0.6rem; }
+    .um-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #c97082, #a855f7); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.875rem; flex-shrink: 0; overflow: hidden; }
+    .um-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .um-user-info { min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+    .um-user-name-line { display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem; }
+    .um-user-name { font-weight: 500; color: var(--text); }
+    .um-user-email { font-size: 0.8rem; color: var(--text-muted); display: block; word-break: break-all; }
+    .um-badge { display: inline-block; padding: 0.15rem 0.4rem; border-radius: 999px; font-size: 0.65rem; font-weight: 600; flex-shrink: 0; }
+    .um-badge-admin { background: rgba(139, 157, 195, 0.2); color: var(--blue-hint); }
+    .um-plan-active { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 999px; font-size: 0.7rem; font-weight: 600; color: #15803d; background: rgba(34, 197, 94, 0.15); }
+    .um-plan-cancelled { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 999px; font-size: 0.7rem; font-weight: 600; color: #b91c1c; background: rgba(185, 28, 28, 0.12); }
+    .um-remaining { font-size: 0.8rem; color: var(--text-muted); }
+    .um-spend { font-weight: 600; color: var(--accent); }
+    .um-admin-sticky { position: sticky; top: 0; z-index: 5; background: var(--bg-card); border-bottom: 1px solid var(--border); }
+    .um-members-scroll { overflow: visible; }
+    .um-admin-sticky .um-table { margin-bottom: 0; }
+    .um-members-scroll .um-table { margin-top: 0; }
+    .um-table-fixed { table-layout: fixed; }
+    .um-table-fixed th:nth-child(1), .um-table-fixed td:nth-child(1) { width: 22%; min-width: 130px; }
+    .um-table-fixed th:nth-child(2), .um-table-fixed td:nth-child(2) { width: 10%; min-width: 80px; }
+    .um-table-fixed th:nth-child(3), .um-table-fixed td:nth-child(3) { width: 11%; min-width: 90px; }
+    .um-table-fixed th:nth-child(4), .um-table-fixed td:nth-child(4) { width: 14%; min-width: 100px; }
+    .um-table-fixed th:nth-child(5), .um-table-fixed td:nth-child(5) { width: 10%; min-width: 85px; }
+    .um-table-fixed th:nth-child(6), .um-table-fixed td:nth-child(6) { width: 18%; min-width: 120px; }
+    .um-table-fixed th:nth-child(7), .um-table-fixed td:nth-child(7) { width: 15%; min-width: 120px; }
+    .um-sep-row-standalone { padding: 0.35rem 0.85rem; border-top: 1px solid var(--border); background: var(--bg); font-size: 0.7rem; font-weight: 500; color: var(--text-muted); letter-spacing: 0.03em; }
     .um-actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
-    .um-actions .link { color: var(--accent); background: none; border: none; cursor: pointer; font-size: 0.85rem; padding: 0; text-decoration: none; }
-    .um-actions .link:hover { text-decoration: underline; }
-    .um-actions .link.danger { color: #dc2626; }
-    .um-add-form { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.01); }
-    .um-add-form h3 { font-size: 0.95rem; margin: 0 0 0.75rem; font-weight: 600; }
+    .um-actions .link { background: none; border: none; cursor: pointer; font-size: 0.8rem; padding: 0; text-decoration: none; font-family: inherit; }
+    .um-actions .link.manage { color: var(--accent); }
+    .um-actions .link.manage:hover { text-decoration: underline; }
+    .um-actions .link.reward { color: var(--blue-hint); }
+    .um-actions .link.reward:hover { text-decoration: underline; }
+    .um-actions .link.danger { color: #b91c1c; display: inline-flex; align-items: center; gap: 0.25rem; }
+    .um-actions .link.danger:hover { text-decoration: underline; }
+    .um-actions .link.danger svg { width: 0.875rem; height: 0.875rem; flex-shrink: 0; }
+    .um-add-form { padding: 1.25rem 1.5rem; border: 1px solid var(--border); background: var(--bg); border-radius: 8px; margin-bottom: 1rem; }
+    .um-add-form h3 { font-size: 0.95rem; margin: 0 0 0.75rem; font-weight: 600; color: var(--text); }
     .um-add-form .form-row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; }
     .um-add-form label { display: block; margin-bottom: 0.35rem; font-size: 0.85rem; font-weight: 500; color: var(--text-muted); }
-    .um-add-form input { padding: 0.5rem 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; min-width: 180px; }
-    .um-add-form .btn { margin-top: 0; }
-    .um-add-form .checkbox-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; }
-    .um-add-form .checkbox-row input[type="checkbox"] { width: auto; min-width: auto; margin: 0; }
-    .um-add-status { color: var(--text-muted); }
+    .um-add-form input, .um-add-form select { padding: 0.5rem 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; min-width: 180px; background: var(--bg-card); color: var(--text); }
+    .um-add-status { color: var(--text-muted); font-size: 0.9rem; }
     .um-add-status.success { color: #15803d; }
-    .um-add-status.error { color: #dc2626; }
-    .btn-logout { font-size: 0.9rem; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 0.4rem 0.75rem; border-radius: 8px; }
-    .btn-logout:hover { color: var(--accent); }
-    .loading { color: var(--text-muted); padding: 2rem; text-align: center; }
-    .um-setup-callout { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; font-size: 0.95rem; }
+    .um-add-status.error { color: #b91c1c; }
+    .loading { color: var(--text-muted); padding: 1.5rem; text-align: center; font-size: 0.9rem; }
+    .um-section-empty { padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.875rem; }
+    .um-add-form p { color: var(--text-muted); }
+    .um-add-form .link.manage { color: var(--accent); }
+    .um-add-form .link.reward { color: var(--blue-hint); }
+    .um-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; display: none; align-items: center; justify-content: center; padding: 1rem; }
+    .um-modal-overlay.open { display: flex; }
+    .um-modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.15); width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; }
+    .um-modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); }
+    .um-modal-header h2 { margin: 0; font-size: 1.25rem; font-weight: 600; color: var(--text); }
+    .um-modal-header p { margin: 0.35rem 0 0; font-size: 0.85rem; color: var(--text-muted); }
+    .um-modal-body { padding: 1.5rem; }
+    .um-modal-body .um-field { margin-bottom: 1rem; }
+    .um-modal-body .um-field:last-of-type { margin-bottom: 0; }
+    .um-modal-body label { display: block; margin-bottom: 0.35rem; font-size: 0.9rem; font-weight: 500; color: var(--text); }
+    .um-modal-body input[type="text"], .um-modal-body input[type="email"], .um-modal-body input[type="password"] { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: var(--bg-card); color: var(--text); box-sizing: border-box; }
+    .um-modal-body input::placeholder { color: var(--text-muted); }
+    .um-modal-body .um-field-row { display: flex; align-items: center; gap: 0.5rem; }
+    .um-modal-body .um-field-row input { flex: 1; }
+    .um-modal-body .um-toggle-pw { font-size: 0.85rem; color: var(--accent); background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; }
+    .um-modal-body .um-toggle-pw:hover { text-decoration: underline; }
+    .um-modal-body .um-checkbox { display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; }
+    .um-modal-body .um-checkbox input { width: auto; margin: 0; }
+    .um-modal-body .um-checkbox label { margin: 0; font-weight: 400; }
+    .um-modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.75rem; }
+    .um-modal-status { margin-top: 0.75rem; font-size: 0.9rem; min-height: 1.25rem; }
+    .um-modal-status.success { color: #15803d; }
+    .um-modal-status.error { color: #b91c1c; }
   </style>
 </head>
 <body class="admin-layout">
   <header class="admin-header">
-    <span class="logo">Admin Dashboard</span>
-    <nav class="admin-nav">
-      <a href="../index.html">Home</a>
-      <a href="dashboard.html">Dashboard</a>
-      <span class="active">User Management</span>
-      <a href="media.html">Media</a>
-      <a href="content.html">Content</a>
-      <a href="posts.html">Posts</a>
-      <button type="button" id="btn-logout" class="btn-logout">Log out</button>
-    </nav>
+    <a href="dashboard.html" class="logo">Admin Dashboard</a>
+    <div class="admin-header-right">
+      <a href="../member/feed.html" class="header-link" target="_blank" rel="noopener" title="Home">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </a>
+      <div class="admin-header-profile" id="admin-header-profile">
+        <button type="button" class="profile-btn" id="admin-profile-btn" aria-haspopup="true" aria-expanded="false" title="Profile menu">
+          <span id="admin-profile-initial">A</span>
+        </button>
+        <div class="profile-dropdown">
+          <a href="../member/profile.html" target="_blank" rel="noopener">Your profile</a>
+          <a href="mailto:stormijxo@gmail.com?subject=Report%20a%20problem">Report a problem</a>
+          <button type="button" id="btn-logout">Log out</button>
+        </div>
+      </div>
+    </div>
   </header>
+
+  <nav class="admin-tabs-bar" aria-label="Dashboard sections">
+    <a href="dashboard.html" class="tab">Overview</a>
+    <a href="users.html" class="tab active">Users</a>
+    <a href="dashboard.html" class="tab">Tools</a>
+  </nav>
 
   <main class="admin-main">
     <div class="admin-content">
-      <div class="um-setup-callout" id="setup-callout" style="display: none;">
-        <strong>Who can access the admin panel?</strong> People listed under <strong>Admins</strong> below (and anyone you add with &quot;Add admin user&quot;). Add each admin&#8217;s email and choose Role: Admin. They must have a Firebase Auth account with that email to sign in at <strong>admin/login.html</strong>.
-        <button type="button" class="btn btn-primary um-setup-btn" id="btn-setup-both-admins" style="margin-top: 0.75rem;">Add will_jackson@icloud.com and stormij.xo@gmail.com as admins</button>
-      </div>
-      <div class="um-header">
-        <h1>User Management</h1>
-        <div class="um-toolbar">
-          <input type="search" id="search-users" class="um-search" placeholder="Search by name, username, or email…" />
-          <button type="button" class="btn btn-primary" id="btn-add-admin-user">Add admin user</button>
-          <button type="button" class="btn btn-secondary" id="btn-add-member">Add member</button>
-        </div>
-      </div>
-
-      <div id="add-admin-user-form" class="um-section" style="display: none;">
-        <div class="um-add-form">
-          <h3>Add admin user</h3>
-          <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 0.75rem;">Users with role Admin can access the admin panel. They must sign in with this email (create the account in Firebase Authentication if needed).</p>
-          <form id="add-admin-form">
-            <div class="form-row">
-              <div>
-                <label for="admin-user-email">Email</label>
-                <input type="email" id="admin-user-email" placeholder="admin@example.com" required />
-              </div>
-              <div>
-                <label for="admin-user-role">Role</label>
-                <select id="admin-user-role" style="padding:0.5rem 0.65rem;border:1px solid var(--border);border-radius:8px;font-size:0.9rem;min-width:120px;">
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-              <button type="submit" class="btn btn-primary">Add</button>
-              <button type="button" class="btn btn-secondary" id="btn-cancel-add-admin">Cancel</button>
+      <div class="um-card">
+        <div class="um-header">
+          <h1>User Management</h1>
+          <div class="um-toolbar">
+            <button type="button" class="um-btn-add" id="btn-add-user">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+              Add User
+            </button>
+            <div class="um-search-wrap">
+              <span class="um-search-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </span>
+              <input type="search" id="search-users" class="um-search" placeholder="Search by name or email…" aria-label="Search users" />
             </div>
-          </form>
-          <p id="add-admin-status" class="um-add-status" style="margin-top:0.75rem;font-size:0.9rem;min-height:1.5rem;"></p>
+          </div>
+        </div>
+
+        <div id="users-loading" class="loading">Loading…</div>
+        <div id="users-empty" class="um-section-empty" style="display: none;"></div>
+        <div id="users-table-wrap" class="um-table-wrap" style="display: none;">
+          <div id="um-admin-sticky" class="um-admin-sticky">
+            <table class="um-table um-table-fixed">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Plan</th>
+                  <th>Signup Date</th>
+                  <th>Remaining access</th>
+                  <th>Monthly Spend</th>
+                  <th>Store purchases</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="users-tbody-admins"></tbody>
+            </table>
+            <div id="um-sep-members" class="um-sep-row-standalone" style="display: none;">Members</div>
+          </div>
+          <div class="um-members-scroll">
+            <table class="um-table um-table-fixed">
+              <tbody id="users-tbody-members"></tbody>
+            </table>
+          </div>
         </div>
       </div>
-
-      <div id="add-member-form" class="um-section" style="display: none;">
-        <div class="um-add-form">
-          <h3>Add member manually</h3>
-          <p style="font-size:0.85rem;color:var(--text-muted);margin:0 0 0.75rem;">Members are paying fans. Add one here or they appear when someone pays via Stripe.</p>
-          <form id="add-member-form-el">
-            <div class="form-row">
-              <div>
-                <label for="new-email">Email</label>
-                <input type="email" id="new-email" placeholder="member@example.com" required />
-              </div>
-              <div>
-                <label for="new-note">Instagram / Username</label>
-                <input type="text" id="new-note" placeholder="@username" />
-              </div>
-              <button type="submit" class="btn btn-primary">Add</button>
-              <button type="button" class="btn btn-secondary" id="btn-cancel-add-member">Cancel</button>
-            </div>
-          </form>
-          <p id="add-status" class="um-add-status" style="margin-top:0.75rem;font-size:0.9rem;min-height:1.5rem;"></p>
-        </div>
-      </div>
-
-      <section class="um-section">
-        <div class="um-section-header">Admins</div>
-        <div id="admins-loading" class="loading">Loading…</div>
-        <div id="admins-empty" class="um-section-empty" style="display: none;">No admin users yet. Add an admin user above (they need a Firebase Auth account with that email to sign in).</div>
-        <div id="admins-table-wrap" class="um-table-wrap" style="display: none;">
-          <table class="um-table">
-            <thead>
-              <tr>
-                <th>Profile</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Added</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="admins-tbody"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="um-section">
-        <div class="um-section-header">Members</div>
-        <div id="members-loading" class="loading">Loading…</div>
-        <div id="members-empty" class="um-section-empty" style="display: none;">No members yet. Add one above or they'll appear when someone pays via Stripe.</div>
-        <div id="members-table-wrap" class="um-table-wrap" style="display: none;">
-          <table class="um-table">
-            <thead>
-              <tr>
-                <th>Profile</th>
-                <th>Name</th>
-                <th>Username</th>
-                <th>Email</th>
-                <th>Plan</th>
-                <th>Signup Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="members-tbody"></tbody>
-          </table>
-        </div>
-      </section>
     </div>
   </main>
+
+  <div id="um-add-user-modal" class="um-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="um-modal-title">
+    <div class="um-modal" onclick="event.stopPropagation()">
+      <div class="um-modal-header">
+        <h2 id="um-modal-title">Add New User</h2>
+        <p>Add a new member. Welcome email can include login instructions if you use invite links.</p>
+      </div>
+      <form id="um-add-user-form">
+        <div class="um-modal-body">
+          <div class="um-field">
+            <label for="um-new-user-email">Email *</label>
+            <input type="email" id="um-new-user-email" placeholder="user@example.com" required />
+          </div>
+          <div class="um-field">
+            <label for="um-new-user-password">Custom Password (optional)</label>
+            <div class="um-field-row">
+              <input type="password" id="um-new-user-password" placeholder="Leave blank for default" autocomplete="new-password" />
+              <button type="button" class="um-toggle-pw" id="um-toggle-pw" aria-label="Show password">Show</button>
+            </div>
+          </div>
+          <div class="um-field">
+            <label for="um-new-user-display-name">Display Name (optional)</label>
+            <input type="text" id="um-new-user-display-name" placeholder="John Doe" />
+          </div>
+          <div class="um-checkbox">
+            <input type="checkbox" id="um-send-welcome-email" checked />
+            <label for="um-send-welcome-email">Send welcome email with login credentials</label>
+          </div>
+          <p id="um-modal-status" class="um-modal-status"></p>
+        </div>
+        <div class="um-modal-footer">
+          <button type="button" class="btn btn-secondary" id="um-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="um-modal-submit">Create User</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
@@ -199,48 +253,76 @@
 
       var membersCache = [];
       var adminUsersCache = [];
+      var spendByEmail = {};
 
-      var SETUP_ADMIN_EMAILS = ["will_jackson@icloud.com", "stormij.xo@gmail.com"];
+      var DEFAULT_ADMIN_EMAILS = ["will_jackson@icloud.com", "stormijxo@gmail.com"];
 
-      ensureAdminAccess(function(user) {
-        if (!user) return;
-        document.getElementById("setup-callout").style.display = "block";
-        loadAdminUsers();
-        loadMembers();
-      });
-
-      document.getElementById("btn-setup-both-admins").addEventListener("click", function() {
-        var btn = this;
-        btn.disabled = true;
-        btn.textContent = "Adding…";
-        db.collection("admin_users").get().then(function(snap) {
+      function ensureDefaultAdmins() {
+        return db.collection("admin_users").get().then(function(snap) {
           var existing = {};
           snap.forEach(function(d) { existing[(d.data().email || "").toLowerCase()] = true; });
-          var toAdd = SETUP_ADMIN_EMAILS.filter(function(e) { return !existing[e.toLowerCase()]; });
-          if (toAdd.length === 0) {
-            btn.textContent = "Both already added";
-            setTimeout(function() { btn.disabled = false; btn.textContent = "Add will_jackson@icloud.com and stormij.xo@gmail.com as admins"; }, 2000);
-            return;
-          }
+          var toAdd = DEFAULT_ADMIN_EMAILS.filter(function(e) { return !existing[e.toLowerCase()]; });
+          if (toAdd.length === 0) return Promise.resolve();
           var batch = db.batch();
           toAdd.forEach(function(email) {
             var ref = db.collection("admin_users").doc();
             batch.set(ref, { email: email, role: "admin", createdAt: firebase.firestore.FieldValue.serverTimestamp() });
           });
           return batch.commit();
-        }).then(function() {
-          if (arguments.length) loadAdminUsers();
-          btn.textContent = "Done. Both are now admins.";
-          btn.disabled = false;
-          setTimeout(function() { btn.textContent = "Add will_jackson@icloud.com and stormij.xo@gmail.com as admins"; }, 3000);
-        }).catch(function(err) {
-          btn.disabled = false;
-          btn.textContent = "Add will_jackson@icloud.com and stormij.xo@gmail.com as admins";
-          alert("Error: " + (err.message || "failed"));
         });
+      }
+
+      ensureAdminAccess(function(user) {
+        if (!user) return;
+        var initialEl = document.getElementById("admin-profile-initial");
+        if (initialEl && user.email) initialEl.textContent = (user.email.charAt(0) || "A").toUpperCase();
+        loadAdminUsers();
+        loadMembers();
+        loadSpendData();
+        ensureDefaultAdmins().catch(function(err) { console.warn("Ensure default admins:", err); });
       });
 
+      function loadSpendData() {
+        var now = new Date();
+        var monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        function norm(email) { return (email || "").toString().trim().toLowerCase(); }
+        Promise.all([
+          db.collection("tips").get().catch(function() { return { forEach: function() {} }; }),
+          db.collection("purchases").get().catch(function() { return { forEach: function() {} }; })
+        ]).then(function(results) {
+          spendByEmail = {};
+          results[0].forEach(function(doc) {
+            var d = doc.data();
+            var email = norm(d.email);
+            if (!email) return;
+            if (!spendByEmail[email]) spendByEmail[email] = { monthlyCents: 0, storeItems: [] };
+            var cents = typeof d.amountCents === "number" ? d.amountCents : 0;
+            var tippedAt = d.tippedAt && d.tippedAt.toDate ? d.tippedAt.toDate() : null;
+            if (tippedAt && tippedAt >= monthStart) spendByEmail[email].monthlyCents += cents;
+          });
+          results[1].forEach(function(doc) {
+            var d = doc.data();
+            var email = norm(d.email || d.memberEmail || d.userEmail);
+            if (!email) return;
+            if (!spendByEmail[email]) spendByEmail[email] = { monthlyCents: 0, storeItems: [] };
+            var cents = typeof d.amountCents === "number" ? d.amountCents : (typeof d.amount === "number" ? Math.round(d.amount * 100) : 0);
+            var createdAt = d.createdAt && d.createdAt.toDate ? d.createdAt.toDate() : (d.purchasedAt && d.purchasedAt.toDate ? d.purchasedAt.toDate() : null);
+            if (createdAt && createdAt >= monthStart) spendByEmail[email].monthlyCents += cents;
+            var name = (d.productName || d.productId || d.sku || "Item").toString();
+            if (name && spendByEmail[email].storeItems.indexOf(name) === -1) spendByEmail[email].storeItems.push(name);
+          });
+          renderUsers();
+        });
+      }
+
       document.getElementById("btn-logout").addEventListener("click", function() { auth.signOut(); });
+      (function() {
+        var profile = document.getElementById("admin-header-profile");
+        var btn = document.getElementById("admin-profile-btn");
+        if (!profile || !btn) return;
+        btn.addEventListener("click", function(e) { e.stopPropagation(); profile.classList.toggle("open"); btn.setAttribute("aria-expanded", profile.classList.contains("open")); });
+        document.addEventListener("click", function() { profile.classList.remove("open"); btn.setAttribute("aria-expanded", "false"); });
+      })();
 
       function escapeHtml(s) {
         if (s == null || s === undefined) return "";
@@ -255,267 +337,313 @@
         return (s.charAt(0) || "?").toUpperCase();
       }
 
-      document.getElementById("btn-add-admin-user").addEventListener("click", function() {
-        document.getElementById("add-member-form").style.display = "none";
-        document.getElementById("add-admin-user-form").style.display = "block";
-      });
-      document.getElementById("btn-add-member").addEventListener("click", function() {
-        document.getElementById("add-admin-user-form").style.display = "none";
-        document.getElementById("add-member-form").style.display = "block";
-      });
-      document.getElementById("btn-cancel-add-admin").addEventListener("click", function() {
-        document.getElementById("add-admin-user-form").style.display = "none";
-      });
-      document.getElementById("btn-cancel-add-member").addEventListener("click", function() {
-        document.getElementById("add-member-form").style.display = "none";
-      });
+      var modal = document.getElementById("um-add-user-modal");
+      var modalStatus = document.getElementById("um-modal-status");
+      var pwInput = document.getElementById("um-new-user-password");
+      var togglePwBtn = document.getElementById("um-toggle-pw");
 
-      function setAddStatus(elId, msg, type) {
-        var el = document.getElementById(elId);
-        if (!el) return;
-        el.textContent = msg || "";
-        el.className = "um-add-status" + (type === "success" ? " success" : type === "error" ? " error" : "");
+      function openAddUserModal() {
+        modal.classList.add("open");
+        document.getElementById("um-new-user-email").value = "";
+        document.getElementById("um-new-user-password").value = "";
+        document.getElementById("um-new-user-display-name").value = "";
+        document.getElementById("um-send-welcome-email").checked = true;
+        modalStatus.textContent = "";
+        modalStatus.className = "um-modal-status";
+        if (pwInput) { pwInput.type = "password"; if (togglePwBtn) togglePwBtn.textContent = "Show"; }
+        document.getElementById("um-new-user-email").focus();
       }
 
-      document.getElementById("add-admin-form").addEventListener("submit", function(e) {
-        e.preventDefault();
-        var email = document.getElementById("admin-user-email").value.trim();
-        var role = document.getElementById("admin-user-role").value || "admin";
-        if (!email) {
-          setAddStatus("add-admin-status", "Email is required.", "error");
-          return;
-        }
-        var btn = e.target.querySelector('button[type="submit"]');
-        btn.disabled = true;
-        setAddStatus("add-admin-status", "Adding…", "");
-        db.collection("admin_users").add({
-          email: email,
-          role: role,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }).then(function(ref) {
-          document.getElementById("admin-user-email").value = "";
-          setAddStatus("add-admin-status", "Admin user added. They can sign in at admin/login.html with this email.", "success");
-          btn.disabled = false;
-          loadAdminUsers();
-          setTimeout(function() { setAddStatus("add-admin-status", ""); }, 5000);
-        }).catch(function(err) {
-          btn.disabled = false;
-          setAddStatus("add-admin-status", "Could not add: " + (err.message || "check Firestore"), "error");
-          console.error("Admin user add error:", err);
-        });
-      });
+      function closeAddUserModal() {
+        modal.classList.remove("open");
+      }
 
-      document.getElementById("add-member-form-el").addEventListener("submit", function(e) {
+      document.getElementById("btn-add-user").addEventListener("click", openAddUserModal);
+      document.getElementById("um-modal-cancel").addEventListener("click", closeAddUserModal);
+      modal.addEventListener("click", function(e) { if (e.target === modal) closeAddUserModal(); });
+      document.addEventListener("keydown", function(e) { if (e.key === "Escape" && modal.classList.contains("open")) closeAddUserModal(); });
+
+      if (togglePwBtn && pwInput) {
+        togglePwBtn.addEventListener("click", function() {
+          if (pwInput.type === "password") { pwInput.type = "text"; togglePwBtn.textContent = "Hide"; }
+          else { pwInput.type = "password"; togglePwBtn.textContent = "Show"; }
+        });
+      }
+
+      function setModalStatus(msg, type) {
+        modalStatus.textContent = msg || "";
+        modalStatus.className = "um-modal-status" + (type === "success" ? " success" : type === "error" ? " error" : "");
+      }
+
+      document.getElementById("um-add-user-form").addEventListener("submit", function(e) {
         e.preventDefault();
-        var email = document.getElementById("new-email").value.trim();
-        var note = document.getElementById("new-note").value.trim();
-        if (!email) {
-          setAddStatus("add-status", "Email is required.", "error");
-          return;
-        }
-        var btn = e.target.querySelector('button[type="submit"]');
+        var email = document.getElementById("um-new-user-email").value.trim();
+        var displayName = document.getElementById("um-new-user-display-name").value.trim();
+        var sendWelcome = document.getElementById("um-send-welcome-email").checked;
+        if (!email) { setModalStatus("Email is required.", "error"); return; }
+        var btn = document.getElementById("um-modal-submit");
         btn.disabled = true;
-        setAddStatus("add-status", "Adding…", "");
+        setModalStatus("Creating…", "");
         db.collection("members").add({
           email: email,
-          note: note || null,
-          instagram_handle: note || null,
+          displayName: displayName || null,
+          note: displayName || null,
+          instagram_handle: null,
           status: "active",
-          joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+          joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          sendWelcomeEmail: sendWelcome
         }).then(function(ref) {
-          document.getElementById("new-email").value = "";
-          document.getElementById("new-note").value = "";
-          setAddStatus("add-status", "Member added. Document ID: " + ref.id, "success");
+          setModalStatus("User created successfully.", "success");
           btn.disabled = false;
-          setTimeout(function() { setAddStatus("add-status", ""); }, 4000);
+          loadMembers();
+          setTimeout(function() { closeAddUserModal(); setModalStatus(""); }, 1500);
         }).catch(function(err) {
           btn.disabled = false;
-          setAddStatus("add-status", "Could not add: " + (err.message || "check Firestore"), "error");
-          console.error("Members add error:", err);
+          setModalStatus("Could not create user: " + (err.message || "please try again"), "error");
         });
       });
 
-      document.getElementById("search-users").addEventListener("input", function() {
-        renderAdmins();
-        renderMembers();
-      });
+      document.getElementById("search-users").addEventListener("input", function() { renderUsers(); });
 
       function loadAdminUsers() {
-        var loadingEl = document.getElementById("admins-loading");
-        db.collection("admin_users").orderBy("createdAt", "desc").onSnapshot(
+        db.collection("admin_users").onSnapshot(
           function(snap) {
-            loadingEl.style.display = "none";
             adminUsersCache = [];
-            snap.forEach(function(doc) {
-              adminUsersCache.push({ id: doc.id, data: doc.data() });
+            snap.forEach(function(doc) { adminUsersCache.push({ id: doc.id, data: doc.data() }); });
+            adminUsersCache.sort(function(a, b) {
+              var at = a.data.createdAt && a.data.createdAt.toDate ? a.data.createdAt.toDate() : null;
+              var bt = b.data.createdAt && b.data.createdAt.toDate ? b.data.createdAt.toDate() : null;
+              if (!at && !bt) return 0;
+              if (!at) return 1;
+              if (!bt) return -1;
+              return bt.getTime() - at.getTime();
             });
-            renderAdmins();
+            renderUsers();
           },
-          function(err) {
-            loadingEl.style.display = "none";
-            document.getElementById("admins-empty").textContent = "Error loading admin users: " + (err.message || "check Firestore");
-            document.getElementById("admins-empty").style.display = "block";
-          }
+          function(err) { console.error("Admin users error:", err); }
         );
       }
 
       function loadMembers() {
-        var loadingEl = document.getElementById("members-loading");
-        var emptyEl = document.getElementById("members-empty");
-
+        var loadingEl = document.getElementById("users-loading");
         db.collection("members").orderBy("joinedAt", "desc").onSnapshot(
           function(snap) {
             loadingEl.style.display = "none";
             membersCache = [];
-            snap.forEach(function(doc) {
-              membersCache.push({ id: doc.id, data: doc.data() });
-            });
-            renderMembers();
+            snap.forEach(function(doc) { membersCache.push({ id: doc.id, data: doc.data() }); });
+            renderUsers();
           },
           function(err) {
             loadingEl.style.display = "none";
-            document.getElementById("members-empty").textContent = "Error loading members: " + (err.message || "check Firestore rules");
-            document.getElementById("members-empty").style.display = "block";
+            document.getElementById("users-empty").textContent = "Error loading users: " + (err.message || "check Firestore");
+            document.getElementById("users-empty").style.display = "block";
           }
         );
       }
 
-      function matchesSearch(item, searchQuery) {
-        if (!searchQuery) return true;
-        var q = searchQuery.toLowerCase();
-        var email = (item.email || "").toLowerCase();
-        var name = (item.name || item.instagram_handle || item.note || "").toLowerCase();
-        var username = (item.username || item.instagram_handle || item.note || "").toLowerCase();
-        return email.indexOf(q) !== -1 || name.indexOf(q) !== -1 || username.indexOf(q) !== -1;
+      function mergeUsers() {
+        var adminEmails = {};
+        adminUsersCache.forEach(function(o) { adminEmails[(o.data.email || "").toLowerCase()] = true; });
+        function norm(e) { return (e || "").trim().toLowerCase(); }
+        var list = [];
+        membersCache.forEach(function(o) {
+          var d = o.data;
+          var email = norm(d.email);
+          var spend = spendByEmail[email] || { monthlyCents: 0, storeItems: [] };
+          list.push({
+            id: o.id,
+            type: "member",
+            email: d.email || "",
+            name: (d.displayName || d.instagram_handle || d.note || email.split("@")[0] || "—").toString().trim(),
+            avatarUrl: d.avatarUrl || d.photoURL || null,
+            isAdmin: !!adminEmails[email],
+            signupDate: d.joinedAt && d.joinedAt.toDate ? d.joinedAt.toDate() : null,
+            status: d.status || "active",
+            accessEndsAt: d.access_ends_at && d.access_ends_at.toDate ? d.access_ends_at.toDate() : null,
+            monthlySpendCents: spend.monthlyCents,
+            storeItems: spend.storeItems || []
+          });
+        });
+        adminUsersCache.forEach(function(o) {
+          var d = o.data;
+          var email = norm(d.email);
+          if (adminEmails[email]) {
+            var inList = list.some(function(u) { return norm(u.email) === email; });
+            if (!inList) {
+              var spend = spendByEmail[email] || { monthlyCents: 0, storeItems: [] };
+              list.push({
+                id: o.id,
+                type: "admin",
+                email: d.email || "",
+                name: (d.email || "").split("@")[0] || "—",
+                avatarUrl: null,
+                isAdmin: true,
+                signupDate: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate() : null,
+                status: "active",
+                accessEndsAt: null,
+                monthlySpendCents: spend.monthlyCents,
+                storeItems: spend.storeItems || [],
+                authOnly: false
+              });
+            }
+          }
+        });
+        DEFAULT_ADMIN_EMAILS.forEach(function(email) {
+          var normEmail = norm(email);
+          if (list.some(function(u) { return norm(u.email) === normEmail; })) return;
+          list.push({
+            id: "auth-" + normEmail.replace(/@|\\./g, "-"),
+            type: "admin",
+            email: email,
+            name: (email.split("@")[0] || "—"),
+            avatarUrl: null,
+            isAdmin: true,
+            signupDate: null,
+            status: "active",
+            accessEndsAt: null,
+            monthlySpendCents: 0,
+            storeItems: [],
+            authOnly: true
+          });
+        });
+        list.sort(function(a, b) {
+          if (a.isAdmin !== b.isAdmin) return a.isAdmin ? -1 : 1;
+          if (!a.signupDate && !b.signupDate) return 0;
+          if (!a.signupDate) return 1;
+          if (!b.signupDate) return -1;
+          return b.signupDate.getTime() - a.signupDate.getTime();
+        });
+        return list;
       }
 
-      function renderAdmins() {
-        var searchQuery = (document.getElementById("search-users").value || "").trim();
-        var filtered = searchQuery ? adminUsersCache.filter(function(o) {
-          var d = o.data;
-          var email = (d.email || "").toLowerCase();
-          return email.indexOf(searchQuery.toLowerCase()) !== -1;
-        }) : adminUsersCache;
-        var tbody = document.getElementById("admins-tbody");
-        var emptyEl = document.getElementById("admins-empty");
-        var wrapEl = document.getElementById("admins-table-wrap");
+      function matchesSearch(user, q) {
+        if (!q) return true;
+        q = q.toLowerCase();
+        var email = (user.email || "").toLowerCase();
+        var name = (user.name || "").toLowerCase();
+        return email.indexOf(q) !== -1 || name.indexOf(q) !== -1;
+      }
 
-        tbody.innerHTML = "";
+      function remainingAccessText(accessEndsAt, status) {
+        if (status !== "cancelled" || !accessEndsAt) return "—";
+        var now = new Date();
+        var end = accessEndsAt instanceof Date ? accessEndsAt : new Date(accessEndsAt);
+        if (end <= now) return "Expired";
+        var days = Math.ceil((end - now) / (24 * 60 * 60 * 1000));
+        if (days <= 1) return "1 day left";
+        if (days < 30) return days + " days left";
+        return "Until " + end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+      }
+
+      function renderUserRow(u) {
+        var name = u.name || u.email.split("@")[0] || "—";
+        var initial = getInitial(name !== "—" ? name : u.email);
+        var avatarHtml = u.avatarUrl
+          ? "<img src=\"" + escapeHtml(u.avatarUrl) + "\" alt=\"\" />"
+          : escapeHtml(initial);
+        var signupStr = u.signupDate ? u.signupDate.toLocaleDateString(undefined, { month: "numeric", day: "numeric", year: "numeric" }) : "—";
+        var spendStr = (u.monthlySpendCents || 0) > 0 ? "$" + (u.monthlySpendCents / 100).toFixed(2) : "—";
+        var itemsStr = (u.storeItems && u.storeItems.length) ? u.storeItems.join(", ") : "—";
+        var adminBadge = u.isAdmin ? "<span class='um-badge um-badge-admin'>ADMIN</span>" : "";
+        var planHtml = u.isAdmin ? "—" : (u.status === "cancelled"
+          ? "<span class='um-plan-cancelled'>Cancelled</span>"
+          : "<span class='um-plan-active'>Active</span>");
+        var remainingStr = remainingAccessText(u.accessEndsAt, u.status);
+        var deleteBtn = u.authOnly ? "" : " <button type='button' class='link danger um-btn-delete' data-id='" + escapeHtml(u.id) + "' data-type='" + escapeHtml(u.type) + "'><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='3 6 5 6 21 6'/><path d='M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2'/><line x1='10' y1='11' x2='10' y2='17'/><line x1='14' y1='11' x2='14' y2='17'/></svg> Delete</button>";
+        var actions = "<button type='button' class='link manage um-btn-manage' data-id='" + escapeHtml(u.id) + "' data-type='" + escapeHtml(u.type) + "'>Manage</button>" +
+          " <button type='button' class='link reward um-btn-reward' data-id='" + escapeHtml(u.id) + "'>Grant Reward</button>" + deleteBtn;
+        var tr = document.createElement("tr");
+        if (u.status === "cancelled") tr.style.opacity = "0.85";
+        tr.innerHTML =
+          "<td><div class='um-user-cell'><div class='um-avatar'>" + avatarHtml + "</div><div class='um-user-info'><span class='um-user-name-line'><span class='um-user-name'>" + escapeHtml(name) + "</span>" + adminBadge + "</span><span class='um-user-email'>" + escapeHtml(u.email) + "</span></div></div></td>" +
+          "<td>" + planHtml + "</td>" +
+          "<td>" + signupStr + "</td>" +
+          "<td><span class='um-remaining'>" + escapeHtml(remainingStr) + "</span></td>" +
+          "<td><span class='um-spend'>" + spendStr + "</span></td>" +
+          "<td>" + escapeHtml(itemsStr) + "</td>" +
+          "<td><div class='um-actions'>" + actions + "</div></td>";
+        return tr;
+      }
+
+      function bindRowActions(container) {
+        if (!container) return;
+        container.querySelectorAll(".um-btn-manage").forEach(function(btn) {
+          btn.addEventListener("click", function() {
+            alert("Manage user " + btn.dataset.id + " (placeholder — wire to your user detail or edit page).");
+          });
+        });
+        container.querySelectorAll(".um-btn-reward").forEach(function(btn) {
+          btn.addEventListener("click", function() { alert("Grant Reward (placeholder — wire to your reward flow)."); });
+        });
+        container.querySelectorAll(".um-btn-delete").forEach(function(btn) {
+          btn.addEventListener("click", function() {
+            var id = btn.dataset.id;
+            var type = btn.dataset.type || "member";
+            if (id && id.indexOf("auth-") === 0) {
+              alert("This admin is managed in Firebase Authentication. Remove them there if needed.");
+              return;
+            }
+            if (!confirm("Remove this user? This cannot be undone.")) return;
+            if (type === "admin")
+              db.collection("admin_users").doc(id).delete().catch(function(err) { alert("Could not remove: " + (err.message || "unknown")); });
+            else
+              db.collection("members").doc(id).delete().catch(function(err) { alert("Could not remove: " + (err.message || "unknown")); });
+          });
+        });
+      }
+
+      function renderUsers() {
+        var searchQuery = (document.getElementById("search-users").value || "").trim();
+        var merged = mergeUsers();
+        var filtered = searchQuery ? merged.filter(function(u) { return matchesSearch(u, searchQuery); }) : merged;
+
+        var adminTbody = document.getElementById("users-tbody-admins");
+        var membersTbody = document.getElementById("users-tbody-members");
+        var sepEl = document.getElementById("um-sep-members");
+        var emptyEl = document.getElementById("users-empty");
+        var wrapEl = document.getElementById("users-table-wrap");
+
+        adminTbody.innerHTML = "";
+        membersTbody.innerHTML = "";
+
         if (filtered.length === 0) {
-          wrapEl.style.display = "none";
-          emptyEl.style.display = "block";
-          emptyEl.textContent = searchQuery ? "No admin users match your search." : "No admin users yet. Add an admin user above (they need a Firebase Auth account with that email to sign in).";
+          wrapEl.style.display = "block";
+          emptyEl.style.display = "none";
+          emptyEl.textContent = searchQuery ? "No users match your search." : "No users yet. Use Add User to add an admin or member.";
           return;
         }
+
         wrapEl.style.display = "block";
         emptyEl.style.display = "none";
 
-        filtered.forEach(function(o) {
-          var d = o.data;
-          var email = d.email || "—";
-          var initial = getInitial(email.split("@")[0]);
-          var role = d.role || "admin";
-          var added = d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toLocaleDateString(undefined, { dateStyle: "medium" }) : "—";
-          var tr = document.createElement("tr");
-          tr.innerHTML =
-            "<td><div class='um-user-cell'><div class='um-avatar'>" + initial + "</div></div></td>" +
-            "<td><span class='um-user-email'>" + escapeHtml(email) + "</span></td>" +
-            "<td><span class='um-plan admin'>" + escapeHtml(role) + "</span></td>" +
-            "<td>" + added + "</td>" +
-            "<td><div class='um-actions'><button type='button' class='link danger btn-remove-admin-user' data-id=\"" + escapeHtml(o.id) + "\">Remove</button></div></td>";
-          tbody.appendChild(tr);
+        var admins = filtered.filter(function(u) { return u.isAdmin; });
+        var members = filtered.filter(function(u) { return !u.isAdmin; });
+
+        var totalMonthlyCents = 0;
+        merged.forEach(function(u) { totalMonthlyCents += u.monthlySpendCents || 0; });
+        var monthYear = new Date().toLocaleString(undefined, { month: "long", year: "numeric" });
+        var totalsRow = document.createElement("tr");
+        totalsRow.className = "um-totals-row";
+        totalsRow.innerHTML =
+          "<td><div class='um-user-cell'><div class='um-totals-icon'><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='20' x2='18' y2='10'/><line x1='12' y1='20' x2='12' y2='4'/><line x1='6' y1='20' x2='6' y2='14'/></svg></div><span>Monthly Totals</span></div></td>" +
+          "<td>—</td>" +
+          "<td>" + escapeHtml(monthYear) + "</td>" +
+          "<td>—</td>" +
+          "<td><span class='um-spend'>" + (totalMonthlyCents > 0 ? "$" + (totalMonthlyCents / 100).toFixed(2) : "—") + "</span></td>" +
+          "<td>—</td>" +
+          "<td>—</td>";
+        adminTbody.appendChild(totalsRow);
+
+        admins.forEach(function(u) {
+          adminTbody.appendChild(renderUserRow(u));
         });
-        tbody.querySelectorAll(".btn-remove-admin-user").forEach(function(btn) {
-          btn.addEventListener("click", function() {
-            if (!confirm("Remove this admin user? They will lose access to the admin panel.")) return;
-            db.collection("admin_users").doc(btn.dataset.id).delete()
-              .catch(function(err) { alert("Could not remove: " + (err.message || "unknown")); });
-          });
-        });
-      }
-
-      function renderMembers() {
-        var searchQuery = (document.getElementById("search-users").value || "").trim();
-        var filtered = searchQuery
-          ? membersCache.filter(function(o) {
-              var d = o.data;
-              return matchesSearch({
-                email: d.email,
-                name: d.instagram_handle || d.note,
-                username: d.instagram_handle || d.note
-              }, searchQuery);
-            })
-          : membersCache;
-
-        var tbody = document.getElementById("members-tbody");
-        var emptyEl = document.getElementById("members-empty");
-        var wrapEl = document.getElementById("members-table-wrap");
-
-        tbody.innerHTML = "";
-        if (filtered.length === 0) {
-          wrapEl.style.display = "none";
-          emptyEl.style.display = "block";
-          emptyEl.textContent = searchQuery ? "No members match your search." : "No members yet. Add one above or they'll appear when someone pays via Stripe.";
-          return;
-        }
-        wrapEl.style.display = "block";
-        emptyEl.style.display = "none";
-
-        filtered.forEach(function(o) {
-          var d = o.data;
-          var email = d.email || "—";
-          var username = d.instagram_handle || d.note || email.split("@")[0] || "—";
-          var name = username;
-          var initial = getInitial(username !== "—" ? username : email);
-          var joined = d.joinedAt && d.joinedAt.toDate ? d.joinedAt.toDate().toLocaleDateString(undefined, { dateStyle: "medium" }) : "—";
-          var status = d.status || "active";
-          var planClass = status === "cancelled" ? "cancelled" : "active";
-          var planLabel = status === "cancelled" ? "Cancelled" : "Active";
-          var joinedMs = d.joinedAt && d.joinedAt.toDate ? d.joinedAt.toDate().getTime() : "";
-
-          var actions = (status !== "cancelled"
-              ? "<button type='button' class='link btn-mark-cancel' data-id='" + o.id + "' data-joined-ms='" + joinedMs + "'>Mark cancelled</button>"
-              : "") +
-            " <button type='button' class='link danger btn-delete' data-id='" + o.id + "'>Delete</button>";
-
-          var tr = document.createElement("tr");
-          if (status === "cancelled") tr.className = "cancelled";
-          tr.innerHTML =
-            "<td><div class='um-user-cell'><div class='um-avatar'>" + initial + "</div><div class='um-user-info'><span class='um-user-name'>" + escapeHtml(name) + "</span><span class='um-user-email'>" + escapeHtml(email) + "</span></div></div></td>" +
-            "<td><span class='um-user-name'>" + escapeHtml(name) + "</span></td>" +
-            "<td><span class='um-user-username'>" + escapeHtml(username) + "</span></td>" +
-            "<td><span class='um-user-email'>" + escapeHtml(email) + "</span></td>" +
-            "<td><span class='um-plan " + planClass + "'>" + planLabel + "</span></td>" +
-            "<td>" + joined + "</td>" +
-            "<td><div class='um-actions'>" + actions + "</div></td>";
-          tbody.appendChild(tr);
+        if (sepEl) sepEl.style.display = (admins.length > 0 && members.length > 0) ? "block" : "none";
+        members.forEach(function(u) {
+          membersTbody.appendChild(renderUserRow(u));
         });
 
-        tbody.querySelectorAll(".btn-mark-cancel").forEach(function(btn) {
-          btn.addEventListener("click", function() {
-            var accessEnd;
-            var joinedMs = btn.dataset.joinedMs;
-            if (joinedMs) {
-              accessEnd = new Date(parseInt(joinedMs, 10));
-              accessEnd.setDate(accessEnd.getDate() + 30);
-            } else {
-              accessEnd = new Date();
-              accessEnd.setDate(accessEnd.getDate() + 30);
-            }
-            db.collection("members").doc(btn.dataset.id).update({
-              status: "cancelled",
-              cancelledAt: firebase.firestore.FieldValue.serverTimestamp(),
-              access_ends_at: firebase.firestore.Timestamp.fromDate(accessEnd)
-            });
-          });
-        });
-        tbody.querySelectorAll(".btn-delete").forEach(function(btn) {
-          btn.addEventListener("click", function() {
-            if (confirm("Remove this member from the list? This cannot be undone.")) {
-              db.collection("members").doc(btn.dataset.id).delete();
-            }
-          });
-        });
+        bindRowActions(adminTbody);
+        bindRowActions(membersTbody);
       }
     }
   </script>
