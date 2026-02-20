@@ -18,7 +18,7 @@
       link.href = "admin/dashboard.html";
       link.textContent = "Dashboard";
     } else {
-      link.href = "admin/login.html";
+      link.href = "login.html";
       link.textContent = "Log in";
     }
   });

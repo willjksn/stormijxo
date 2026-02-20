@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Log in — Inner Circle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle fill='%23c97082' cx='16' cy='16' r='14'/></svg>" type="image/svg+xml" />
+  <style>
+    .auth-page { max-width: 380px; margin: 3rem auto; padding: 2rem 1.5rem; }
+    .auth-page h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    .auth-page .subtitle { color: var(--text-muted); margin-bottom: 1.5rem; }
+    .auth-form label { display: block; margin-bottom: 0.35rem; font-weight: 500; font-size: 0.9rem; }
+    .auth-form input { width: 100%; padding: 0.65rem; margin-bottom: 1rem; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box; }
+    .auth-form input:focus { outline: none; border-color: var(--accent); }
+    .password-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+    .password-row input { margin-bottom: 0; flex: 1; }
+    .btn-password-toggle { border: 1px solid var(--border); background: #fff; color: var(--text-muted); border-radius: 8px; padding: 0.65rem 0.75rem; cursor: pointer; font-size: 0.85rem; }
+    .btn-password-toggle:hover { color: var(--accent); border-color: var(--accent); }
+    .auth-form .btn { width: 100%; margin-top: 0.5rem; }
+    .auth-divider { display: flex; align-items: center; gap: 1rem; margin: 1.25rem 0; color: var(--text-muted); font-size: 0.9rem; }
+    .auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+    .btn-google { width: 100%; padding: 0.65rem; border: 1px solid var(--border); background: #fff; border-radius: 8px; cursor: pointer; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    .btn-google:hover { background: var(--bg); border-color: var(--accent); }
+    .auth-error { color: #c53030; font-size: 0.9rem; margin-bottom: 1rem; display: none; }
+    .auth-error.visible { display: block; }
+    .auth-footer { text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted); }
+    .auth-footer a { color: var(--accent); text-decoration: none; }
+    .auth-footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <a href="index.html" class="logo logo-pop"><img src="assets/logo.svg" alt="Inner Circle" class="logo-img" /></a>
+    <nav class="header-nav">
+      <a href="signup.html" class="header-link">Sign up</a>
+      <a href="login.html" class="header-login">Log in</a>
+    </nav>
+  </header>
+
+  <main class="auth-page">
+    <h1>Log in</h1>
+    <p class="subtitle">Welcome back to Inner Circle.</p>
+    <p id="auth-error" class="auth-error" role="alert"></p>
+    <form id="login-form" class="auth-form">
+      <label for="email">Email</label>
+      <input type="email" id="email" required autocomplete="email" placeholder="you@example.com" />
+      <label for="password">Password</label>
+      <div class="password-row">
+        <input type="password" id="password" required autocomplete="current-password" />
+        <button type="button" id="toggle-password" class="btn-password-toggle" aria-label="Show password">Show</button>
+      </div>
+      <button type="submit" class="btn btn-primary">Log in</button>
+    </form>
+    <div class="auth-divider">or</div>
+    <button type="button" id="btn-google" class="btn-google">Continue with Google</button>
+    <p class="auth-footer">Don’t have an account? <a href="signup.html">Sign up</a></p>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script>
+    (function() {
+      if (typeof FIREBASE_CONFIG === "undefined" || !FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey === "YOUR_API_KEY") {
+        document.body.innerHTML = "<main class='auth-page'><h1>Firebase not configured</h1><p>Add your Firebase config in <code>firebase-config.js</code>.</p><a href='index.html'>← Back to home</a></main>";
+        return;
+      }
+      firebase.initializeApp(FIREBASE_CONFIG);
+      var auth = firebase.auth();
+
+      auth.onAuthStateChanged(function(user) {
+        if (user) {
+          window.location.href = "member/index.html";
+        }
+      });
+
+      function showError(msg) {
+        var el = document.getElementById("auth-error");
+        el.textContent = msg || "";
+        el.classList.toggle("visible", !!msg);
+      }
+
+      document.getElementById("toggle-password").addEventListener("click", function() {
+        var input = document.getElementById("password");
+        var show = input.type === "password";
+        input.type = show ? "text" : "password";
+        this.textContent = show ? "Hide" : "Show";
+      });
+
+      document.getElementById("login-form").addEventListener("submit", function(e) {
+        e.preventDefault();
+        var email = document.getElementById("email").value.trim();
+        var password = document.getElementById("password").value;
+        showError("");
+        auth.signInWithEmailAndPassword(email, password)
+          .then(function() {
+            window.location.href = "member/index.html";
+          })
+          .catch(function(err) {
+            showError(err.message || "Log in failed.");
+          });
+      });
+
+      document.getElementById("btn-google").addEventListener("click", function() {
+        var provider = new firebase.auth.GoogleAuthProvider();
+        showError("");
+        auth.signInWithPopup(provider)
+          .then(function(result) {
+            var user = result.user;
+            var db = firebase.firestore();
+            var userRef = db.collection("users").doc(user.uid);
+            return userRef.get().then(function(doc) {
+              if (!doc.exists) {
+                return userRef.set({
+                  email: user.email || null,
+                  displayName: user.displayName || null,
+                  username: (user.displayName || "").replace(/\s+/g, "").toLowerCase().slice(0, 32) || user.uid.slice(0, 12),
+                  createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+              }
+            });
+          })
+          .then(function() {
+            window.location.href = "member/index.html";
+          })
+          .catch(function(err) {
+            showError(err.message || "Sign in with Google failed.");
+          });
+      });
+    })();
+  </script>
+</body>
+</html>

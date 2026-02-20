@@ -4,11 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle fill='%23c97082' cx='16' cy='16' r='14'/></svg>" type="image/svg+xml" />
-  <title>My Inner circle — Private IG Close Friends</title>
-  <meta name="description" content="Join my private Instagram Close Friends for exclusive stories, weekly drops, and behind-the-scenes." />
+  <title>My Inner circle — Exclusive Content & Member App</title>
+  <meta name="description" content="Subscribe for exclusive content and behind-the-scenes access. Cancel anytime." />
   <!-- Share previews -->
-  <meta property="og:title" content="My Inner circle — Private IG Close Friends" />
-  <meta property="og:description" content="The good stuff — private stories & drops, just for you." />
+  <meta property="og:title" content="My Inner circle — Exclusive Content & Member App" />
+  <meta property="og:description" content="Exclusive content — all in one place. Cancel anytime." />
   <meta property="og:image" content="assets/hero.png" />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -18,12 +18,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@400;500;600&family=Great+Vibes&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="auth-modal.css" />
 </head>
 <body>
   <header class="site-header">
     <a href="index.html" class="logo logo-pop"><img src="assets/logo.svg" alt="My Inner circle" class="logo-img" /></a>
     <nav class="header-nav">
-      <a href="admin/login.html" id="header-auth-link" class="header-login">Log in</a>
+      <a href="#" class="header-link" data-open-auth-signup>Sign up</a>
+      <a href="#" id="header-auth-link" class="header-login" data-open-auth-login>Log in</a>
     </nav>
   </header>
 
@@ -40,7 +42,7 @@
         <p class="hero-handle-line hero-stagger" style="--delay: 0.25s"><span class="hero-social-links" id="hero-social-links" aria-label="Social links"></span></p>
         <p class="hero-tagline hero-stagger" style="--delay: 0.4s">Lifestyle creator · Travel · BTS</p>
         <p class="hero-promise hero-stagger" style="--delay: 0.55s"><span class="hero-promise-line">Inner Circle</span></p>
-        <p class="hero-tagline hero-stagger" style="--delay: 0.7s">Instagram Close Friends is a private story list where I share content only selected members can see.</p>
+        <p class="hero-tagline hero-stagger" style="--delay: 0.7s">Exclusive content and more — all in one place. Subscribe and get in.</p>
       </div>
     </section>
 
@@ -52,11 +54,9 @@
     <section class="perks reveal">
       <h2 class="section-title">What you get</h2>
       <ul class="perks-list">
-        <li>The stuff I don’t share anywhere else</li>
-        <li>Normal day-to-day life</li>
-        <li>Real, unfiltered BTS & little moments with me</li>
-        <li>Q&A real life honesty</li>
-        <li>Less "internet version" of me</li>
+        <li>Exclusive posts & drops</li>
+        <li>Content I don’t share anywhere else</li>
+        <li>Real, unfiltered BTS & little moments</li>
       </ul>
       <a href="#pricing" id="perks-get-in" class="btn btn-primary btn-shine">Get in</a>
     </section>
@@ -64,7 +64,7 @@
     <!-- Preview (blur / social proof) -->
     <section class="preview reveal" id="preview-section">
       <h2 class="section-title flirty">What you’ll see</h2>
-      <p class="preview-sub">A peek at what’s waiting for you in the Inner Circle.</p>
+      <p class="preview-sub">A peek at the exclusive content waiting for you.</p>
       <div class="preview-grid">
         <div class="preview-card preview-stagger" style="--stagger: 0" data-landing-slot="preview1"><img src="assets/preview1.png" alt="Close Friends preview" class="preview-img" data-landing-default /></div>
         <div class="preview-card preview-stagger" style="--stagger: 1" data-landing-slot="preview2"><img src="assets/preview2.png" alt="BTS preview" class="preview-img" data-landing-default /></div>
@@ -86,13 +86,13 @@
       <div class="tiers">
         <article class="tier-card tier-featured">
           <span class="tier-ribbon">Join the circle</span>
-          <h3>Close Friends</h3>
+          <h3>Monthly membership</h3>
           <p class="price"><span class="amount">$12.00</span></p>
           <ul>
-            <li>Monthly subscription</li>
+            <li>Access to exclusive content</li>
             <li>Cancel anytime</li>
           </ul>
-          <a href="https://buy.stripe.com/4gM4gB2LM5m4brQgHvds400" class="btn btn-primary btn-shine">Yes, add me — $12/mo</a>
+          <a href="https://buy.stripe.com/4gM4gB2LM5m4brQgHvds400" class="btn btn-primary btn-shine">Subscribe — $12/mo</a>
         </article>
       </div>
       <p class="trust-line"><span class="trust-icon" aria-hidden="true">🔒</span> Secure payment via Stripe <span class="trust-sep">·</span> <span class="trust-icon" aria-hidden="true">✓</span> Cancel anytime</p>
@@ -126,16 +126,20 @@
       <h2 class="section-title">FAQ</h2>
       <dl class="faq-list faq-accordion">
         <div class="faq-item">
-          <dt><button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-1" id="faq-q1">How do I get added to Inner Circle?</button></dt>
-          <dd id="faq-1" role="region" aria-labelledby="faq-q1" class="faq-answer"><div class="faq-answer-inner">After you subscribe, you’ll get a confirmation page. DM me to confirm, so I can add you to my Close Friends.</div></dd>
+          <dt><button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-1" id="faq-q1">How do I get access?</button></dt>
+          <dd id="faq-1" role="region" aria-labelledby="faq-q1" class="faq-answer"><div class="faq-answer-inner">Subscribe above, then create an account or log in. You’ll get access right away.</div></dd>
         </div>
         <div class="faq-item">
-          <dt><button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-2" id="faq-q2">When do I get access?</button></dt>
-          <dd id="faq-2" role="region" aria-labelledby="faq-q2" class="faq-answer"><div class="faq-answer-inner">Once you’re added to Close Friends, you’ll see my private stories right away. I add new members in batches, so allow up to 24 hours after you’ve sent your DM.</div></dd>
+          <dt><button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-2" id="faq-q2">What’s in the member area?</button></dt>
+          <dd id="faq-2" role="region" aria-labelledby="faq-q2" class="faq-answer"><div class="faq-answer-inner">Exclusive posts and more. Content you won’t find anywhere else.</div></dd>
         </div>
         <div class="faq-item">
           <dt><button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-3" id="faq-q3">Can I cancel?</button></dt>
-          <dd id="faq-3" role="region" aria-labelledby="faq-q3" class="faq-answer"><div class="faq-answer-inner">Yes. Cancel anytime from your Stripe customer portal (link in your receipt email). No questions asked.</div></dd>
+          <dd id="faq-3" role="region" aria-labelledby="faq-q3" class="faq-answer"><div class="faq-answer-inner">Yes. Cancel anytime with one click — you’ll be taken to Stripe’s portal.</div></dd>
+        </div>
+        <div class="faq-item">
+          <dt><button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-4" id="faq-q4">Can I tip without subscribing?</button></dt>
+          <dd id="faq-4" role="region" aria-labelledby="faq-q4" class="faq-answer"><div class="faq-answer-inner">Yes. Use the tip section above — it’s a one-time payment, no subscription. Show love whenever you want.</div></dd>
         </div>
       </dl>
     </section>
@@ -148,9 +152,83 @@
     </section>
   </main>
 
+  <!-- Auth modal (EchoFlux-style) -->
+  <div id="auth-modal-overlay" class="auth-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+    <div class="auth-modal">
+      <div class="auth-modal-header">
+        <div class="auth-modal-brand">
+          <img src="assets/logo-auth.png" alt="Inner Circle" class="auth-modal-logo" />
+        </div>
+        <button type="button" class="auth-modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="auth-modal-title">
+        <h2 id="auth-modal-title">Create your account</h2>
+        <p class="subtitle">Start using Inner Circle.</p>
+      </div>
+      <div class="auth-modal-tabs">
+        <button type="button" class="auth-modal-tab" data-tab="login">Log In</button>
+        <button type="button" class="auth-modal-tab active" data-tab="signup">Sign Up</button>
+      </div>
+      <div class="auth-modal-body">
+        <p id="auth-modal-error" class="auth-modal-error" role="alert"></p>
+
+        <div class="auth-modal-panel active" data-panel="signup">
+          <form id="auth-signup-form" class="auth-modal-form">
+            <label for="auth-signup-name">Full Name</label>
+            <input type="text" id="auth-signup-name" required autocomplete="name" placeholder="Your name" />
+            <label for="auth-signup-username">Username</label>
+            <input type="text" id="auth-signup-username" required autocomplete="username" placeholder="username" />
+            <label for="auth-signup-email">Email</label>
+            <input type="email" id="auth-signup-email" required autocomplete="email" placeholder="you@example.com" />
+            <label for="auth-signup-password">Password</label>
+            <div class="input-row">
+              <input type="password" id="auth-signup-password" required minlength="8" placeholder="Password" aria-describedby="auth-password-reqs" autocomplete="new-password" />
+              <button type="button" class="btn-show" aria-controls="auth-signup-password" aria-label="Show password">Show</button>
+            </div>
+            <div id="auth-password-reqs" class="auth-password-reqs">
+              <ul>
+                <li id="auth-req-len"><span class="req-icon"></span> At least 8 characters</li>
+                <li id="auth-req-lower"><span class="req-icon"></span> One lowercase letter</li>
+                <li id="auth-req-upper"><span class="req-icon"></span> One uppercase letter</li>
+                <li id="auth-req-num"><span class="req-icon"></span> One number</li>
+              </ul>
+            </div>
+            <label for="auth-signup-confirm">Confirm Password</label>
+            <div class="input-row">
+              <input type="password" id="auth-signup-confirm" required placeholder="Re-enter password" autocomplete="new-password" />
+              <button type="button" class="btn-show" aria-controls="auth-signup-confirm" aria-label="Show password">Show</button>
+            </div>
+            <div class="terms-row">
+              <input type="checkbox" id="auth-signup-terms" required />
+              <label for="auth-signup-terms">I agree to the <a href="terms.html" target="_blank">Terms of Service</a> and <a href="privacy.html" target="_blank">Privacy Policy</a></label>
+            </div>
+            <button type="submit" class="btn btn-primary">Sign Up</button>
+            <div class="auth-modal-divider">or</div>
+            <button type="button" id="auth-signup-google" class="btn-google"><svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Continue with Google</button>
+          </form>
+        </div>
+
+        <div class="auth-modal-panel" data-panel="login">
+          <form id="auth-login-form" class="auth-modal-form">
+            <label for="auth-login-email">Email</label>
+            <input type="email" id="auth-login-email" required autocomplete="email" placeholder="you@example.com" />
+            <label for="auth-login-password">Password</label>
+            <div class="input-row">
+              <input type="password" id="auth-login-password" required autocomplete="current-password" placeholder="Password" />
+              <button type="button" class="btn-show" aria-controls="auth-login-password" aria-label="Show password">Show</button>
+            </div>
+            <button type="submit" class="btn btn-primary">Log In</button>
+            <div class="auth-modal-divider">or</div>
+            <button type="button" id="auth-login-google" class="btn-google"><svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Continue with Google</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <footer class="site-footer">
     <div class="social-links" id="social-links" data-landing-social aria-label="Social links"></div>
-    <p class="footer-legal"><a href="terms.html">Terms</a> · <a href="privacy.html">Privacy</a> · Cancel anytime</p>
+    <p class="footer-legal"><a href="terms.html">Terms</a> · <a href="privacy.html">Privacy</a></p>
   </footer>
 
   <script src="script.js"></script>
@@ -159,6 +237,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
   <script src="firebase-config.js"></script>
   <script src="auth-header.js"></script>
+  <script src="auth-modal.js"></script>
   <script src="landing-media.js"></script>
   <script>
     (function() {

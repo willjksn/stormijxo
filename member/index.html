@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Member area — Inner Circle</title>
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a href="../index.html" class="logo logo-pop"><img src="../assets/logo.svg" alt="Inner Circle" class="logo-img" /></a>
+    <nav class="header-nav">
+      <span class="header-link">Member area</span>
+      <button type="button" id="btn-logout" class="header-login">Log out</button>
+    </nav>
+  </header>
+  <main style="max-width: 600px; margin: 4rem auto; padding: 2rem; text-align: center;">
+    <h1>Welcome</h1>
+    <p class="intro" style="color: var(--text-muted);">You’re logged in. The member feed and content will appear here.</p>
+    <a href="../index.html" class="btn btn-primary">Back to home</a>
+  </main>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="../firebase-config.js"></script>
+  <script>
+    (function() {
+      if (typeof FIREBASE_CONFIG === "undefined" || !FIREBASE_CONFIG.apiKey) return;
+      firebase.initializeApp(FIREBASE_CONFIG);
+      firebase.auth().onAuthStateChanged(function(user) {
+        if (!user) window.location.href = "../login.html";
+      });
+      document.getElementById("btn-logout").addEventListener("click", function() {
+        firebase.auth().signOut().then(function() { window.location.href = "../index.html"; });
+      });
+    })();
+  </script>
+</body>
+</html>

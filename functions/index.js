@@ -34,8 +34,8 @@ tipApp.post("/", async function(req, res) {
             currency: "usd",
             unit_amount: amountCents,
             product_data: {
-              name: "Tip",
-              description: "One-time tip to show appreciation",
+              name: "Tip for Stormi J__XO",
+              description: "One-time tip for Stormi J__XO",
               images: [],
             },
           },
@@ -50,7 +50,7 @@ tipApp.post("/", async function(req, res) {
       custom_fields: [
         {
           key: "instagram_handle",
-          label: { type: "custom", custom: "Instagram handle (optional)" },
+          label: { type: "custom", custom: "(optional) Who's showing love?" },
           type: "text",
           optional: true,
         },
