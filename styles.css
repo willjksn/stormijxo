@@ -160,10 +160,8 @@ body {
   color: #fff;
 }
 
-/* Sections */
-main {
-  max-width: 720px;
-  margin: 0 auto;
+/* Sections – no global max-width; padding only on plain main (e.g. homepage) */
+main:not([class]) {
   padding: 2rem 1.5rem 4rem;
 }
 
