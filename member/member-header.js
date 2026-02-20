@@ -1,14 +1,23 @@
 /**
  * Member header: profile avatar (link to profile) and menu dropdown.
  * Call initMemberHeader(user) after auth.
+ * Admin button is shown only for allowed admin emails.
  */
+var ADMIN_EMAILS = ["will_jackson@icloud.com", "stormijxo@gmail.com"];
+
 function initMemberHeader(user) {
   var imgEl = document.getElementById("header-avatar-img");
   var initEl = document.getElementById("header-avatar-initials");
   var wrapEl = document.getElementById("profile-avatar-wrap");
   var dropEl = document.getElementById("profile-dropdown");
+  var adminLink = document.getElementById("header-admin-link");
 
   if (!wrapEl || !dropEl) return;
+
+  var email = (user && (user.email || user.emailAddress)) ? (user.email || user.emailAddress).trim().toLowerCase() : "";
+  if (adminLink && ADMIN_EMAILS.indexOf(email) !== -1) {
+    adminLink.style.display = "";
+  }
 
   if (user.photoURL && imgEl) {
     imgEl.src = user.photoURL;

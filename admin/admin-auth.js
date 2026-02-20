@@ -13,7 +13,7 @@
   var db = firebase.firestore();
 
   // Temporary: these emails can always access admin (match login allowlist)
-  var ALLOWED_ADMIN_EMAILS = ["will_jackson@icloud.com", "stormij.xo@gmail.com"];
+  var ALLOWED_ADMIN_EMAILS = ["will_jackson@icloud.com", "stormijxo@gmail.com"];
 
   function checkIsAdmin(userEmail) {
     var emailNorm = (userEmail || "").trim().toLowerCase();
