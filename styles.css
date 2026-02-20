@@ -38,9 +38,16 @@ body {
   transform: translateY(0);
 }
 
-/* Header */
+/* Header – same height on all pages (home, admin, login, member, etc.) */
+:root {
+  --header-height: 80px;
+  --header-padding-y: 0.5rem;
+  --header-padding-x: 1.5rem;
+}
+
 .site-header {
-  padding: 0.5rem 1.5rem 0.6rem;
+  min-height: var(--header-height);
+  padding: var(--header-padding-y) var(--header-padding-x);
   background: linear-gradient(135deg, rgba(253, 244, 246, 0.98) 0%, rgba(255, 250, 252, 0.98) 50%, rgba(245, 238, 248, 0.98) 100%);
   border-bottom: 1px solid var(--border);
   display: flex;
@@ -50,6 +57,14 @@ body {
   gap: 0.5rem;
   box-shadow: 0 2px 20px rgba(201, 112, 130, 0.06);
   animation: headerEnter 0.5s ease-out;
+}
+
+.admin-header,
+.login-header,
+.member-header {
+  min-height: var(--header-height);
+  padding: var(--header-padding-y) var(--header-padding-x);
+  box-sizing: border-box;
 }
 
 @keyframes headerEnter {
@@ -119,10 +134,30 @@ body {
   filter: drop-shadow(0 2px 6px rgba(201, 112, 130, 0.35)) brightness(1.08);
 }
 
+/* Logo on login header (admin login page) – same size as site header */
+.login-header .logo {
+  display: block;
+  flex-shrink: 0;
+  line-height: 0;
+}
+.login-header .logo .logo-img {
+  width: 240px;
+  height: 64px;
+  min-width: 200px;
+  object-fit: contain;
+  display: block;
+  vertical-align: top;
+}
+
 @media (max-width: 640px) {
   .logo-img {
     width: min(240px, 62vw);
     height: 50px;
+  }
+  .login-header .logo .logo-img {
+    width: min(240px, 62vw);
+    height: 50px;
+    min-height: 50px;
   }
 }
 

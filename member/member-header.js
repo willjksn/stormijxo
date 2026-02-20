@@ -19,34 +19,38 @@ function initMemberHeader(user) {
     adminLink.style.display = "";
   }
 
-  if (user.photoURL && imgEl) {
+  if (user && user.photoURL && imgEl) {
     imgEl.src = user.photoURL;
     imgEl.alt = (user.displayName || "User") + " photo";
     imgEl.style.display = "block";
     if (initEl) initEl.style.display = "none";
-  } else if (initEl) {
-    var initials = "?";
-    if (user.displayName) {
+  } else if (initEl && user) {
+    var initials = "";
+    if (user.displayName && user.displayName.trim()) {
       var parts = user.displayName.trim().split(/\s+/);
       initials = parts.length >= 2
         ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-        : (parts[0][0] || "?").toUpperCase();
-    } else if (user.email) {
-      initials = user.email[0].toUpperCase();
+        : (parts[0][0] || "").toUpperCase();
+    } else if (user.email && user.email.trim()) {
+      initials = user.email.trim()[0].toUpperCase();
     }
-    initEl.textContent = initials.slice(0, 2);
-    initEl.style.display = "flex";
+    if (initials && /[A-Z0-9]/i.test(initials)) {
+      initEl.textContent = initials.slice(0, 2);
+      initEl.style.display = "flex";
+    }
     if (imgEl) imgEl.style.display = "none";
   }
 
-  wrapEl.addEventListener("click", function(e) {
-    e.stopPropagation();
-    var open = dropEl.classList.toggle("open");
-    wrapEl.setAttribute("aria-expanded", open);
-  });
-
-  document.addEventListener("click", function() {
-    dropEl.classList.remove("open");
-    wrapEl.setAttribute("aria-expanded", "false");
-  });
+  if (!wrapEl.dataset.listener) {
+    wrapEl.dataset.listener = "1";
+    wrapEl.addEventListener("click", function(e) {
+      e.stopPropagation();
+      var open = dropEl.classList.toggle("open");
+      wrapEl.setAttribute("aria-expanded", open);
+    });
+    document.addEventListener("click", function() {
+      dropEl.classList.remove("open");
+      wrapEl.setAttribute("aria-expanded", "false");
+    });
+  }
 }
