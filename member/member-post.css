@@ -1,0 +1,32 @@
+/* Member single post */
+.member-post-main { max-width: 640px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+.post-loading { color: var(--text-muted); padding: 2rem 0; }
+.post-error { color: #c53030; padding: 2rem 0; }
+.post-back { margin-bottom: 1rem; }
+.post-back a { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; }
+.post-back a:hover { color: var(--accent); }
+.post-title { font-family: var(--serif); font-size: 1.75rem; font-weight: 600; margin: 0 0 0.35rem; }
+.post-date { color: var(--text-muted); font-size: 0.9rem; margin: 0 0 1.25rem; }
+.post-media {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.post-media-img {
+  width: 100%;
+  border-radius: 12px;
+  display: block;
+  background: var(--border);
+}
+.post-body {
+  font-size: 1rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.post-body br { display: block; content: ""; margin-top: 0.5em; }
+.post-comments { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+.post-comments h3 { font-size: 1rem; font-weight: 600; margin: 0 0 1rem; }
+.post-comment { font-size: 0.95rem; line-height: 1.5; margin-bottom: 0.75rem; color: var(--text); }
+.post-comment-username { font-weight: 600; margin-right: 0.35rem; }

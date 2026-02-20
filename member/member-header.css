@@ -21,7 +21,19 @@
   flex-wrap: wrap;
   gap: 0.5rem;
 }
-.member-header .header-left { display: flex; align-items: center; gap: 1.5rem; flex-shrink: 0; }
+.member-header .header-left { display: flex; align-items: center; gap: 1.5rem; flex-shrink: 0; flex-wrap: wrap; }
+.member-nav-main { display: flex; align-items: center; gap: 1.25rem; }
+.member-nav-main a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  transition: color 0.2s, background 0.2s;
+}
+.member-nav-main a:hover { color: var(--accent); background: var(--accent-soft); }
+.member-nav-main a.active { color: var(--accent); font-weight: 600; }
 .member-header .header-left .logo { flex-shrink: 0; }
 .member-header .header-left .logo .logo-img { flex-shrink: 0; }
 .member-header .header-profile-link {
@@ -37,12 +49,25 @@
   color: var(--accent);
   background: var(--accent-soft);
 }
-.member-header .header-right { position: relative; }
-.member-header .profile-avatar-wrap {
+.member-header .header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   position: relative;
-  cursor: pointer;
-  flex-shrink: 0;
 }
+.member-header .profile-avatar-wrap {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: box-shadow 0.2s;
+}
+.member-header .profile-avatar-wrap:hover {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.member-header .header-profile-wrap { position: relative; }
+.member-header .profile-avatar-wrap { flex-shrink: 0; }
 .member-header .profile-avatar {
   width: 40px;
   height: 40px;

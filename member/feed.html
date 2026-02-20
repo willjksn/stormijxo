@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Home — Inner Circle</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <link rel="stylesheet" href="./member-header.css" />
+  <link rel="stylesheet" href="./member-feed.css" />
+</head>
+<body>
+  <header class="member-header">
+    <div class="header-left">
+      <a href="../index.html" class="logo logo-pop"><img src="../assets/logo.svg" alt="Inner Circle" class="logo-img" /></a>
+      <nav class="member-nav-main">
+        <a href="feed.html" class="active">Home</a>
+      </nav>
+    </div>
+    <div class="header-right header-profile-wrap">
+      <div class="profile-avatar-wrap" id="profile-avatar-wrap" aria-haspopup="true" aria-expanded="false" title="Profile menu">
+        <img id="header-avatar-img" class="profile-avatar" src="" alt="Profile" style="display: none;" />
+        <div id="header-avatar-initials" class="profile-avatar-initials">?</div>
+      </div>
+      <div class="profile-dropdown" id="profile-dropdown">
+        <a href="profile.html">Your Profile</a>
+        <a href="#" id="link-report">Report a Problem</a>
+        <button type="button" id="btn-logout" class="sign-out">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="member-renewal-wrap" class="member-renewal-wrap" style="display: none;">
+    <main class="member-renewal-main">
+      <h1>Subscription required</h1>
+      <p class="member-renewal-msg"></p>
+      <a href="../index.html#subscribe" class="btn btn-primary member-renewal-btn">Renew subscription</a>
+      <p><a href="profile.html">Go to profile</a></p>
+    </main>
+  </div>
+
+  <main class="member-main member-feed-main">
+    <div class="feed-header">
+      <h1 class="feed-title">Home</h1>
+      <button type="button" id="feed-view-toggle" class="feed-view-toggle" title="Switch to grid view" aria-label="Switch to grid view">
+        <svg class="icon-grid" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <svg class="icon-list" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="feed-loading" class="feed-loading">Loading…</div>
+    <div id="feed-empty" class="feed-empty" style="display: none;">No posts yet.</div>
+    <div id="feed-list" class="feed-list feed-view-list"></div>
+    <div id="feed-grid" class="feed-grid feed-view-grid" style="display: none;"></div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="../firebase-config.js"></script>
+  <script src="member-demo.js"></script>
+  <script src="member-header.js"></script>
+  <script src="member-access.js"></script>
+  <script>
+    (function() {
+      function escapeHtml(s) {
+        var div = document.createElement("div");
+        div.textContent = s;
+        return div.innerHTML;
+      }
+      if (typeof FIREBASE_CONFIG === "undefined" || !FIREBASE_CONFIG.apiKey) return;
+      firebase.initializeApp(FIREBASE_CONFIG);
+      var auth = firebase.auth();
+      var db = firebase.firestore();
+
+      ensureMemberAccess(function(currentUser, memberDoc) {
+        if (!currentUser) return;
+        var user = currentUser;
+        likedPosts = getLikedStorage();
+        db.collection("users").doc(user.uid).collection("bookmarks").get().then(function(snap) {
+          bookmarkedPosts = {};
+          snap.forEach(function(d) { bookmarkedPosts[d.id] = true; });
+        }).catch(function() {});
+        db.collection("users").doc(user.uid).get().then(function(doc) {
+          var d = doc.exists ? doc.data() : {};
+          initMemberHeader({
+            uid: user.uid,
+            displayName: user.displayName,
+            email: user.email,
+            photoURL: d.avatarUrl || user.photoURL
+          });
+        }).catch(function() {
+          initMemberHeader(user);
+        });
+
+        var feedList = document.getElementById("feed-list");
+        var feedGrid = document.getElementById("feed-grid");
+        var feedLoading = document.getElementById("feed-loading");
+        var feedEmpty = document.getElementById("feed-empty");
+        var viewToggle = document.getElementById("feed-view-toggle");
+        var currentView = "list";
+        var postsCache = [];
+        var likedPosts = {};
+        var bookmarkedPosts = {};
+        var CREATOR_USERNAME = "stormij";
+
+        function getLikedStorage() {
+          try {
+            var s = localStorage.getItem("feed-likes");
+            return s ? JSON.parse(s) : {};
+          } catch (e) { return {}; }
+        }
+        function setLikedStorage(obj) {
+          try { localStorage.setItem("feed-likes", JSON.stringify(obj)); } catch (e) {}
+        }
+        function isLiked(postId, isDemo) {
+          if (isDemo) return likedPosts[postId] || false;
+          return likedPosts[postId] || false;
+        }
+        function getLikeCount(p) {
+          var base = typeof p.likeCount === "number" ? p.likeCount : 0;
+          var isDemo = p.id && p.id.indexOf("demo-") === 0;
+          return base + (isDemo && likedPosts[p.id] ? 1 : 0);
+        }
+
+        function formatRelativeDate(post) {
+          var date;
+          if (post.createdAt && post.createdAt.toDate) date = post.createdAt.toDate();
+          else if (post.createdAt instanceof Date) date = post.createdAt;
+          else if (post.dateStr) date = new Date(post.dateStr);
+          else return post.dateStr || "";
+          var now = new Date();
+          var diffMs = now - date;
+          var diffMins = Math.floor(diffMs / 60000);
+          var diffHours = Math.floor(diffMs / 3600000);
+          var diffDays = Math.floor(diffMs / 86400000);
+          var diffWeeks = Math.floor(diffMs / 604800000);
+          if (diffMs < 60000) return "Just now";
+          if (diffMs < 3600000) return diffMins + " min" + (diffMins !== 1 ? "s" : "");
+          if (diffMs < 86400000) return diffHours + " hour" + (diffHours !== 1 ? "s" : "");
+          if (diffMs < 604800000) return diffDays + " day" + (diffDays !== 1 ? "s" : "");
+          if (diffMs < 2592000000) return diffWeeks + " week" + (diffWeeks !== 1 ? "s" : "");
+          return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+        }
+
+        function renderPostCard(p) {
+          var urls = p.mediaUrls || [];
+          var mediaHtml = "";
+          if (urls.length > 0) {
+            mediaHtml = "<a href=\"post.html?id=" + escapeHtml(p.id) + "\" class=\"feed-card-media-wrap\">" +
+              "<img src=\"" + escapeHtml(urls[0]) + "\" alt=\"\" class=\"feed-card-media\" loading=\"lazy\" />" +
+              (urls.length > 1 ? "<span class=\"feed-card-count\">+" + (urls.length - 1) + "</span>" : "") +
+              "</a>";
+          }
+          var body = (p.body || "").slice(0, 150);
+          if ((p.body || "").length > 150) body += "…";
+          var dateStr = formatRelativeDate(p);
+          var comments = p.comments || [];
+          var likeCount = getLikeCount(p);
+          var isL = isLiked(p.id, p.id.indexOf("demo-") === 0);
+          var isB = bookmarkedPosts[p.id] || false;
+          var commentsHtml = "";
+          if (comments.length > 0) {
+            var preview = comments.slice(0, 2).map(function(c) {
+              var un = escapeHtml((c.username || c.author || "user"));
+              return "<div class=\"feed-card-comment\"><span class=\"comment-username\">" + un + "</span>" + escapeHtml(c.text) + "</div>";
+            }).join("");
+            commentsHtml = "<a href=\"post.html?id=" + escapeHtml(p.id) + "#comments\" class=\"feed-card-view-comments\">View all " + comments.length + " comments</a>" +
+              "<div class=\"feed-card-comments-list\">" + preview + "</div>";
+          }
+          var heartClass = isL ? " feed-card-action-btn liked" : " feed-card-action-btn";
+          var bookmarkClass = (isB ? " feed-card-action-btn bookmarked bookmark-btn" : " feed-card-action-btn bookmark-btn");
+          return "<div class=\"feed-card-header\">" +
+            "<div class=\"feed-card-avatar\"><img src=\"../assets/sj-heart-icon.png\" alt=\"stormij\" class=\"feed-card-avatar-img\" /></div>" +
+            "<div class=\"feed-card-creator\"><span class=\"feed-card-username\">" + escapeHtml(CREATOR_USERNAME) + "</span></div>" +
+            "<span class=\"feed-card-time\">" + escapeHtml(dateStr) + "</span>" +
+            "</div>" + mediaHtml +
+            "<div class=\"feed-card-actions\">" +
+            "<span class=\"feed-card-action-group\">" +
+            "<button type=\"button\" class=\"feed-card-action-btn" + heartClass + "\" data-post-id=\"" + escapeHtml(p.id) + "\" data-action=\"like\" aria-label=\"Like\">" +
+            "<svg class=\"heart-outline\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z\"/></svg>" +
+            "<svg class=\"heart-filled\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path d=\"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z\"/></svg>" +
+            "</button><span class=\"feed-card-action-count\">" + likeCount + "</span></span>" +
+            "<a href=\"post.html?id=" + escapeHtml(p.id) + "#comments\" class=\"feed-card-action-group feed-card-action-link\" aria-label=\"Comments\">" +
+            "<svg class=\"feed-card-comment-icon\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/></svg>" +
+            "<span class=\"feed-card-action-count\">" + (comments.length) + "</span></a>" +
+            "<button type=\"button\" class=\"feed-card-action-btn" + bookmarkClass + "\" data-post-id=\"" + escapeHtml(p.id) + "\" data-action=\"bookmark\" aria-label=\"Save\">" +
+            "<svg class=\"bookmark-outline\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z\"/></svg>" +
+            "<svg class=\"bookmark-filled\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path d=\"M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z\"/></svg>" +
+            "</button>" +
+            "</div>" +
+            "<div class=\"feed-card-body\">" +
+            (body ? "<p class=\"feed-card-caption\"><span class=\"caption-username\">" + escapeHtml(CREATOR_USERNAME) + "</span>" + escapeHtml(body) + "</p>" : "") +
+            commentsHtml +
+            "<a href=\"post.html?id=" + escapeHtml(p.id) + "\" class=\"feed-card-link\">View post</a>" +
+            "</div>";
+        }
+
+        function attachCardHandlers(card) {
+          var likeBtn = card.querySelector("[data-action=like]");
+          var bookmarkBtn = card.querySelector("[data-action=bookmark]");
+          var postId = likeBtn && likeBtn.dataset.postId;
+          if (!postId) return;
+          if (likeBtn) {
+            likeBtn.addEventListener("click", function(e) { e.preventDefault(); handleLike(postId); });
+          }
+          if (bookmarkBtn) {
+            bookmarkBtn.addEventListener("click", function(e) { e.preventDefault(); handleBookmark(postId); });
+          }
+        }
+
+        function handleLike(postId) {
+          var isDemo = postId.indexOf("demo-") === 0;
+          if (isDemo) {
+            likedPosts[postId] = !likedPosts[postId];
+            setLikedStorage(likedPosts);
+            renderCards();
+            return;
+          }
+          if (!user) return;
+          var likeRef = db.collection("posts").doc(postId).collection("likes").doc(user.uid);
+          if (likedPosts[postId]) {
+            likeRef.delete();
+            db.collection("posts").doc(postId).update({ likeCount: firebase.firestore.FieldValue.increment(-1) });
+            likedPosts[postId] = false;
+          } else {
+            likeRef.set({ createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+            db.collection("posts").doc(postId).update({ likeCount: firebase.firestore.FieldValue.increment(1) });
+            likedPosts[postId] = true;
+          }
+          var p = postsCache.filter(function(x) { return x.id === postId; })[0];
+          if (p) p.likeCount = (p.likeCount || 0) + (likedPosts[postId] ? 1 : -1);
+          renderCards();
+        }
+
+        function handleBookmark(postId) {
+          if (!user) return;
+          var ref = db.collection("users").doc(user.uid).collection("bookmarks").doc(postId);
+          if (bookmarkedPosts[postId]) {
+            ref.delete();
+            bookmarkedPosts[postId] = false;
+          } else {
+            ref.set({ postId: postId, savedAt: firebase.firestore.FieldValue.serverTimestamp() });
+            bookmarkedPosts[postId] = true;
+          }
+          renderCards();
+        }
+
+        function renderCards() {
+          feedList.innerHTML = "";
+          postsCache.forEach(function(p) {
+            var card = document.createElement("article");
+            card.className = "feed-card";
+            card.dataset.postId = p.id;
+            card.innerHTML = renderPostCard(p);
+            attachCardHandlers(card);
+            feedList.appendChild(card);
+          });
+        }
+
+        function renderGrid() {
+          feedGrid.innerHTML = "";
+          postsCache.forEach(function(p) {
+            var urls = p.mediaUrls || [];
+            urls.forEach(function(url, i) {
+              var a = document.createElement("a");
+              a.href = "post.html?id=" + escapeHtml(p.id) + (i > 0 ? "&img=" + i : "");
+              a.className = "feed-grid-item";
+              var img = document.createElement("img");
+              img.src = url;
+              img.alt = "";
+              img.loading = "lazy";
+              a.appendChild(img);
+              feedGrid.appendChild(a);
+            });
+          });
+        }
+
+        function applyView() {
+          if (currentView === "grid") {
+            feedList.style.display = "none";
+            feedGrid.style.display = "grid";
+            renderGrid();
+            viewToggle.title = "Switch to list view";
+            viewToggle.querySelector(".icon-grid").style.display = "none";
+            viewToggle.querySelector(".icon-list").style.display = "block";
+          } else {
+            feedList.style.display = "flex";
+            feedGrid.style.display = "none";
+            renderCards();
+            viewToggle.title = "Switch to grid view";
+            viewToggle.querySelector(".icon-grid").style.display = "block";
+            viewToggle.querySelector(".icon-list").style.display = "none";
+          }
+        }
+
+        viewToggle.addEventListener("click", function() {
+          currentView = currentView === "list" ? "grid" : "list";
+          applyView();
+        });
+
+        function setPosts(posts) {
+          postsCache = posts;
+          feedEmpty.style.display = posts.length === 0 ? "block" : "none";
+          feedList.style.display = currentView === "list" ? "flex" : "none";
+          feedGrid.style.display = currentView === "grid" ? "grid" : "none";
+          if (posts.length > 0) {
+            renderCards();
+            if (currentView === "grid") renderGrid();
+          }
+        }
+
+        db.collection("posts")
+          .where("published", "==", true)
+          .orderBy("createdAt", "desc")
+          .limit(50)
+          .onSnapshot(function(snap) {
+            feedLoading.style.display = "none";
+            var posts = [];
+            if (snap.empty) {
+              var now = Date.now();
+              posts = DEMO_POSTS.map(function(p, i) {
+                var offsets = [37 * 60000, 2 * 86400000, 21 * 86400000, 45 * 86400000];
+                var createdAt = new Date(now - (offsets[i] || 86400000));
+                return { id: p.id, title: p.title, body: p.body, mediaUrls: p.mediaUrls, dateStr: p.dateStr, createdAt: createdAt, comments: p.comments || [], likeCount: p.likeCount || 0 };
+              });
+            } else {
+              snap.forEach(function(doc) {
+                var d = doc.data();
+                var cs = d.comments || [];
+                posts.push({
+                  id: doc.id,
+                  title: d.title || "Untitled",
+                  body: d.body || "",
+                  mediaUrls: d.mediaUrls || [],
+                  createdAt: d.createdAt,
+                  dateStr: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toLocaleDateString(undefined, { dateStyle: "medium" }) : "",
+                  comments: cs.map(function(c) { return { username: c.username || c.author, text: c.text }; }),
+                  likeCount: typeof d.likeCount === "number" ? d.likeCount : 0
+                });
+              });
+              var uid = user.uid;
+              Promise.all(posts.map(function(p) {
+                return db.collection("posts").doc(p.id).collection("likes").doc(uid).get();
+              })).then(function(results) {
+                results.forEach(function(doc, i) {
+                  if (doc.exists && posts[i]) likedPosts[posts[i].id] = true;
+                });
+                setPosts(posts);
+              }).catch(function() { setPosts(posts); });
+              return;
+            }
+            setPosts(posts);
+          }, function(err) {
+            feedLoading.style.display = "none";
+            var now = Date.now();
+            setPosts(DEMO_POSTS.map(function(p, i) {
+              var offsets = [37 * 60000, 2 * 86400000, 21 * 86400000, 45 * 86400000];
+              var createdAt = new Date(now - (offsets[i] || 86400000));
+              return { id: p.id, title: p.title, body: p.body, mediaUrls: p.mediaUrls, dateStr: p.dateStr, createdAt: createdAt, comments: p.comments || [], likeCount: p.likeCount || 0 };
+            }));
+          });
+      });
+
+      document.getElementById("btn-logout").addEventListener("click", function() {
+        auth.signOut().then(function() { window.location.href = "../index.html"; });
+      });
+      var linkReport = document.getElementById("link-report");
+      if (linkReport) linkReport.addEventListener("click", function(e) { e.preventDefault(); });
+    })();
+  </script>
+</body>
+</html>

@@ -4,50 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Member area — Inner Circle</title>
-  <link rel="stylesheet" href="../styles.css" />
-  <link rel="stylesheet" href="./member-header.css" />
+  <meta http-equiv="refresh" content="0;url=feed.html" />
+  <script>window.location.replace("feed.html");</script>
 </head>
 <body>
-  <header class="member-header">
-    <div class="header-left">
-      <a href="../index.html" class="logo logo-pop"><img src="../assets/logo.svg" alt="Inner Circle" class="logo-img" /></a>
-      <a href="profile.html" class="header-profile-link">Profile</a>
-    </div>
-    <div class="header-right">
-      <div class="profile-avatar-wrap" id="profile-avatar-wrap" aria-haspopup="true" aria-expanded="false" title="Click for menu">
-        <img id="header-avatar-img" class="profile-avatar" src="" alt="Profile" style="display: none;" />
-        <div id="header-avatar-initials" class="profile-avatar-initials">?</div>
-      </div>
-      <div class="profile-dropdown" id="profile-dropdown">
-        <a href="profile.html">Your Profile</a>
-        <a href="#" id="link-report">Report a Problem</a>
-        <button type="button" id="btn-logout" class="sign-out">Sign out</button>
-      </div>
-    </div>
-  </header>
-  <main style="max-width: 600px; margin: 4rem auto; padding: 2rem; text-align: center;">
-    <h1>Welcome</h1>
-    <p class="intro" style="color: var(--text-muted);">You’re logged in. The member feed and content will appear here.</p>
-    <a href="../index.html" class="btn btn-primary">Back to home</a>
-  </main>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
-  <script src="../firebase-config.js"></script>
-  <script src="member-header.js"></script>
-  <script>
-    (function() {
-      if (typeof FIREBASE_CONFIG === "undefined" || !FIREBASE_CONFIG.apiKey) return;
-      firebase.initializeApp(FIREBASE_CONFIG);
-      var auth = firebase.auth();
-      auth.onAuthStateChanged(function(user) {
-        if (!user) { window.location.href = "../login.html"; return; }
-        window.location.replace("profile.html");
-      });
-      document.getElementById("btn-logout").addEventListener("click", function() {
-        auth.signOut().then(function() { window.location.href = "../index.html"; });
-      });
-      document.getElementById("link-report").addEventListener("click", function(e) { e.preventDefault(); });
-    })();
-  </script>
+  <p><a href="feed.html">Go to Feed</a></p>
 </body>
 </html>

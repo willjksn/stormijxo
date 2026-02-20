@@ -75,7 +75,9 @@
 
       auth.onAuthStateChanged(function(user) {
         if (user) {
-          window.location.href = "member/profile.html";
+          var params = new URLSearchParams(window.location.search || "");
+          var redirect = params.get("redirect");
+          window.location.href = redirect && /^member\//.test(redirect) ? redirect : "member/profile.html";
         }
       });
 
@@ -99,7 +101,9 @@
         showError("");
         auth.signInWithEmailAndPassword(email, password)
           .then(function() {
-            window.location.href = "member/profile.html";
+            var params = new URLSearchParams(window.location.search || "");
+            var redirect = params.get("redirect");
+            window.location.href = redirect && /^member\//.test(redirect) ? redirect : "member/profile.html";
           })
           .catch(function(err) {
             showError(err.message || "Log in failed.");
@@ -126,7 +130,9 @@
             });
           })
           .then(function() {
-            window.location.href = "member/profile.html";
+            var params = new URLSearchParams(window.location.search || "");
+            var redirect = params.get("redirect");
+            window.location.href = redirect && /^member\//.test(redirect) ? redirect : "member/profile.html";
           })
           .catch(function(err) {
             showError(err.message || "Sign in with Google failed.");

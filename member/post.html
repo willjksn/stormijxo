@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Post — Inner Circle</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <link rel="stylesheet" href="./member-header.css" />
+  <link rel="stylesheet" href="./member-post.css" />
+</head>
+<body>
+  <header class="member-header">
+    <div class="header-left">
+      <a href="../index.html" class="logo logo-pop"><img src="../assets/logo.svg" alt="Inner Circle" class="logo-img" /></a>
+      <nav class="member-nav-main">
+        <a href="feed.html">Home</a>
+      </nav>
+    </div>
+    <div class="header-right header-profile-wrap">
+      <div class="profile-avatar-wrap" id="profile-avatar-wrap" aria-haspopup="true" aria-expanded="false" title="Profile menu">
+        <img id="header-avatar-img" class="profile-avatar" src="" alt="Profile" style="display: none;" />
+        <div id="header-avatar-initials" class="profile-avatar-initials">?</div>
+      </div>
+      <div class="profile-dropdown" id="profile-dropdown">
+        <a href="profile.html">Your Profile</a>
+        <a href="#" id="link-report">Report a Problem</a>
+        <button type="button" id="btn-logout" class="sign-out">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="member-renewal-wrap" class="member-renewal-wrap" style="display: none;">
+    <main class="member-renewal-main">
+      <h1>Subscription required</h1>
+      <p class="member-renewal-msg"></p>
+      <a href="../index.html#subscribe" class="btn btn-primary member-renewal-btn">Renew subscription</a>
+      <p><a href="profile.html">Go to profile</a></p>
+    </main>
+  </div>
+
+  <main class="member-main member-post-main">
+    <div id="post-loading" class="post-loading">Loading…</div>
+    <div id="post-error" class="post-error" style="display: none;">Could not load post.</div>
+    <article id="post-article" class="post-article" style="display: none;">
+      <nav class="post-back"><a href="feed.html">&larr; Back to Home</a></nav>
+      <h1 id="post-title" class="post-title"></h1>
+      <p id="post-date" class="post-date"></p>
+      <div id="post-media" class="post-media"></div>
+      <div id="post-body" class="post-body"></div>
+      <div id="post-comments" class="post-comments" style="display: none;"></div>
+    </article>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="../firebase-config.js"></script>
+  <script src="member-demo.js"></script>
+  <script src="member-header.js"></script>
+  <script src="member-access.js"></script>
+  <script>
+    (function() {
+      if (typeof FIREBASE_CONFIG === "undefined" || !FIREBASE_CONFIG.apiKey) return;
+      firebase.initializeApp(FIREBASE_CONFIG);
+      var auth = firebase.auth();
+      var db = firebase.firestore();
+
+      var params = new URLSearchParams(window.location.search || "");
+      var postId = params.get("id");
+      var imgIndex = parseInt(params.get("img") || "0", 10);
+
+      ensureMemberAccess(function(user, memberDoc) {
+        if (!user) return;
+        db.collection("users").doc(user.uid).get().then(function(doc) {
+          var d = doc.exists ? doc.data() : {};
+          initMemberHeader({
+            uid: user.uid,
+            displayName: user.displayName,
+            email: user.email,
+            photoURL: d.avatarUrl || user.photoURL
+          });
+        }).catch(function() {
+          initMemberHeader(user);
+        });
+
+        var postLoading = document.getElementById("post-loading");
+        var postError = document.getElementById("post-error");
+        var postArticle = document.getElementById("post-article");
+
+        if (!postId) {
+          postLoading.style.display = "none";
+          postError.textContent = "No post specified.";
+          postError.style.display = "block";
+          return;
+        }
+
+        var demoPost = postId.indexOf("demo-") === 0 ? getDemoPost(postId) : null;
+        if (demoPost) {
+          postLoading.style.display = "none";
+          postError.style.display = "none";
+          postArticle.style.display = "block";
+          document.getElementById("post-title").textContent = demoPost.title || "Untitled";
+          document.title = (demoPost.title || "Post") + " — Inner Circle";
+          document.getElementById("post-date").textContent = demoPost.dateStr || "";
+          var mediaEl = document.getElementById("post-media");
+          mediaEl.innerHTML = "";
+          var urls = demoPost.mediaUrls || [];
+          var startIdx = (imgIndex >= 0 && imgIndex < urls.length) ? imgIndex : 0;
+          for (var i = 0; i < urls.length; i++) {
+            var idx = (startIdx + i) % urls.length;
+            var img = document.createElement("img");
+            img.src = urls[idx];
+            img.alt = "";
+            img.className = "post-media-img";
+            img.loading = i === 0 ? "eager" : "lazy";
+            mediaEl.appendChild(img);
+          }
+          var bodyEl = document.getElementById("post-body");
+          var body = (demoPost.body || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          body = body.replace(/\n/g, "<br />");
+          bodyEl.innerHTML = body;
+          var comments = demoPost.comments || [];
+          var commentsEl = document.getElementById("post-comments");
+          if (comments.length > 0) {
+            commentsEl.style.display = "block";
+            commentsEl.innerHTML = "<h3 id=\"comments\">Comments</h3>" + comments.map(function(c) {
+              var un = (c.username || c.author || "user").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+              var tx = (c.text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br />");
+              return "<div class=\"post-comment\"><span class=\"post-comment-username\">" + un + "</span> " + tx + "</div>";
+            }).join("");
+          }
+          return;
+        }
+
+        db.collection("posts").doc(postId).get()
+          .then(function(doc) {
+            postLoading.style.display = "none";
+            if (!doc.exists) {
+              postError.textContent = "Post not found.";
+              postError.style.display = "block";
+              return;
+            }
+            var d = doc.data();
+            if (!d.published) {
+              postError.textContent = "Post not found.";
+              postError.style.display = "block";
+              return;
+            }
+            postError.style.display = "none";
+            postArticle.style.display = "block";
+
+            document.getElementById("post-title").textContent = d.title || "Untitled";
+            document.title = (d.title || "Post") + " — Inner Circle";
+            var dateStr = d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toLocaleDateString(undefined, { dateStyle: "medium" }) : "";
+            document.getElementById("post-date").textContent = dateStr;
+
+            var mediaEl = document.getElementById("post-media");
+            mediaEl.innerHTML = "";
+            var urls = d.mediaUrls || [];
+            var startIdx = (imgIndex >= 0 && imgIndex < urls.length) ? imgIndex : 0;
+            for (var i = 0; i < urls.length; i++) {
+              var idx = (startIdx + i) % urls.length;
+              var img = document.createElement("img");
+              img.src = urls[idx];
+              img.alt = "";
+              img.className = "post-media-img";
+              img.loading = i === 0 ? "eager" : "lazy";
+              mediaEl.appendChild(img);
+            }
+
+            var bodyEl = document.getElementById("post-body");
+            var body = d.body || "";
+            body = body.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            body = body.replace(/\n/g, "<br />");
+            bodyEl.innerHTML = body;
+            var comments = d.comments || [];
+            var commentsEl = document.getElementById("post-comments");
+            if (comments.length > 0) {
+              commentsEl.style.display = "block";
+              commentsEl.innerHTML = "<h3 id=\"comments\">Comments</h3>" + comments.map(function(c) {
+                var un = (c.username || c.author || "user").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                var tx = (c.text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br />");
+                return "<div class=\"post-comment\"><span class=\"post-comment-username\">" + un + "</span> " + tx + "</div>";
+              }).join("");
+            }
+          })
+          .catch(function() {
+            postLoading.style.display = "none";
+            postError.textContent = "Could not load post.";
+            postError.style.display = "block";
+          });
+      });
+
+      document.getElementById("btn-logout").addEventListener("click", function() {
+        auth.signOut().then(function() { window.location.href = "../index.html"; });
+      });
+      var linkReport = document.getElementById("link-report");
+      if (linkReport) linkReport.addEventListener("click", function(e) { e.preventDefault(); });
+    })();
+  </script>
+</body>
+</html>

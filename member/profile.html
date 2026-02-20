@@ -152,16 +152,22 @@
     }
     .emoji-category-bar span:hover { background: var(--accent-soft); }
     .emoji-category-bar span.active { background: var(--accent-soft); }
+    .member-renewal-wrap { max-width: 480px; margin: 2rem auto; padding: 2rem 1.5rem; text-align: center; }
+    .member-renewal-main h1 { font-size: 1.5rem; margin: 0 0 1rem; }
+    .member-renewal-main .member-renewal-msg { color: var(--text-muted); margin-bottom: 1.25rem; }
+    .member-renewal-main .member-renewal-btn { display: inline-block; margin-bottom: 1rem; }
   </style>
 </head>
 <body>
   <header class="member-header">
     <div class="header-left">
       <a href="../index.html" class="logo logo-pop"><img src="../assets/logo.svg" alt="Inner Circle" class="logo-img" /></a>
-      <a href="profile.html" class="header-profile-link">Profile</a>
+      <nav class="member-nav-main">
+        <a href="feed.html">Home</a>
+      </nav>
     </div>
-    <div class="header-right">
-      <div class="profile-avatar-wrap" id="profile-avatar-wrap" aria-haspopup="true" aria-expanded="false" title="Click for menu">
+    <div class="header-right header-profile-wrap">
+      <div class="profile-avatar-wrap" id="profile-avatar-wrap" aria-haspopup="true" aria-expanded="false" title="Profile menu">
         <img id="header-avatar-img" class="profile-avatar" src="" alt="Profile" style="display: none;" />
         <div id="header-avatar-initials" class="profile-avatar-initials">?</div>
       </div>
@@ -173,7 +179,16 @@
     </div>
   </header>
 
-  <main class="profile-page">
+  <div id="member-renewal-wrap" class="member-renewal-wrap" style="display: none;">
+    <main class="member-renewal-main">
+      <h1>Subscription required</h1>
+      <p class="member-renewal-msg"></p>
+      <a href="../index.html#subscribe" class="btn btn-primary member-renewal-btn">Renew subscription</a>
+      <p><a href="profile.html">Go to profile</a></p>
+    </main>
+  </div>
+
+  <main class="profile-page member-main">
     <nav class="member-nav">
       <a href="../index.html">&larr; Home</a>
     </nav>
@@ -239,6 +254,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-functions-compat.js"></script>
   <script src="../firebase-config.js"></script>
   <script src="member-header.js"></script>
+  <script src="member-access.js"></script>
   <script>
     (function() {
       if (typeof FIREBASE_CONFIG === "undefined" || !FIREBASE_CONFIG.apiKey) {
@@ -294,11 +310,8 @@
         }
       }
 
-      auth.onAuthStateChanged(function(user) {
-        if (!user) {
-          window.location.href = "../login.html";
-          return;
-        }
+      ensureMemberAccess(function(user, memberDoc) {
+        if (!user) return;
         var userRef = db.collection("users").doc(user.uid);
         userRef.get().then(function(doc) {
           var d = doc.exists ? doc.data() : {};

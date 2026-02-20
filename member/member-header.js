@@ -1,5 +1,5 @@
 /**
- * Member header: profile avatar and dropdown.
+ * Member header: profile avatar (link to profile) and menu dropdown.
  * Call initMemberHeader(user) after auth.
  */
 function initMemberHeader(user) {

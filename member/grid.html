@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grid — Inner Circle</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <link rel="stylesheet" href="./member-header.css" />
+  <link rel="stylesheet" href="./member-grid.css" />
+</head>
+<body>
+  <header class="member-header">
+    <div class="header-left">
+      <a href="../index.html" class="logo logo-pop"><img src="../assets/logo.svg" alt="Inner Circle" class="logo-img" /></a>
+      <nav class="member-nav-main">
+        <a href="feed.html">Home</a>
+      </nav>
+    </div>
+    <div class="header-right header-profile-wrap">
+      <div class="profile-avatar-wrap" id="profile-avatar-wrap" aria-haspopup="true" aria-expanded="false" title="Profile menu">
+        <img id="header-avatar-img" class="profile-avatar" src="" alt="Profile" style="display: none;" />
+        <div id="header-avatar-initials" class="profile-avatar-initials">?</div>
+      </div>
+      <div class="profile-dropdown" id="profile-dropdown">
+        <a href="profile.html">Your Profile</a>
+        <a href="#" id="link-report">Report a Problem</a>
+        <button type="button" id="btn-logout" class="sign-out">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="member-renewal-wrap" class="member-renewal-wrap" style="display: none;">
+    <main class="member-renewal-main">
+      <h1>Subscription required</h1>
+      <p class="member-renewal-msg"></p>
+      <a href="../index.html#subscribe" class="btn btn-primary member-renewal-btn">Renew subscription</a>
+      <p><a href="profile.html">Go to profile</a></p>
+    </main>
+  </div>
+
+  <main class="member-main member-grid-main">
+    <h1 class="grid-title">Gallery</h1>
+    <div id="grid-loading" class="grid-loading">Loading…</div>
+    <div id="grid-empty" class="grid-empty" style="display: none;">No media yet.</div>
+    <div id="grid-gallery" class="grid-gallery"></div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="../firebase-config.js"></script>
+  <script src="member-header.js"></script>
+  <script src="member-access.js"></script>
+  <script>
+    (function() {
+      if (typeof FIREBASE_CONFIG === "undefined" || !FIREBASE_CONFIG.apiKey) return;
+      firebase.initializeApp(FIREBASE_CONFIG);
+      var auth = firebase.auth();
+      var db = firebase.firestore();
+
+      ensureMemberAccess(function(user, memberDoc) {
+        if (!user) return;
+        db.collection("users").doc(user.uid).get().then(function(doc) {
+          var d = doc.exists ? doc.data() : {};
+          initMemberHeader({
+            uid: user.uid,
+            displayName: user.displayName,
+            email: user.email,
+            photoURL: d.avatarUrl || user.photoURL
+          });
+        }).catch(function() {
+          initMemberHeader(user);
+        });
+
+        var gridGallery = document.getElementById("grid-gallery");
+        var gridLoading = document.getElementById("grid-loading");
+        var gridEmpty = document.getElementById("grid-empty");
+
+        db.collection("posts")
+          .where("published", "==", true)
+          .orderBy("createdAt", "desc")
+          .limit(100)
+          .get()
+          .then(function(snap) {
+            gridLoading.style.display = "none";
+            var items = [];
+            snap.forEach(function(doc) {
+              var d = doc.data();
+              var urls = d.mediaUrls || [];
+              urls.forEach(function(url, i) {
+                items.push({ url: url, postId: doc.id, index: i });
+              });
+            });
+            if (items.length === 0) {
+              gridEmpty.style.display = "block";
+              return;
+            }
+            gridEmpty.style.display = "none";
+            items.forEach(function(item) {
+              var a = document.createElement("a");
+              a.href = "post.html?id=" + item.postId + (item.index > 0 ? "&img=" + item.index : "");
+              a.className = "grid-item";
+              var img = document.createElement("img");
+              img.src = item.url;
+              img.alt = "";
+              img.loading = "lazy";
+              a.appendChild(img);
+              gridGallery.appendChild(a);
+            });
+          })
+          .catch(function(err) {
+            gridLoading.style.display = "none";
+            gridEmpty.textContent = "Could not load gallery.";
+            gridEmpty.style.display = "block";
+          });
+      });
+
+      document.getElementById("btn-logout").addEventListener("click", function() {
+        auth.signOut().then(function() { window.location.href = "../index.html"; });
+      });
+      var linkReport = document.getElementById("link-report");
+      if (linkReport) linkReport.addEventListener("click", function(e) { e.preventDefault(); });
+    })();
+  </script>
+</body>
+</html>
