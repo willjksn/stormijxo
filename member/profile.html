@@ -304,6 +304,22 @@
         var imgEl = document.getElementById("profile-avatar-img");
         var initEl = document.getElementById("profile-avatar-initials");
         if (photoURL && imgEl) {
+          var initialsForFallback = "?";
+          if (displayName) {
+            var displayParts = displayName.trim().split(/\s+/);
+            initialsForFallback = displayParts.length >= 2
+              ? (displayParts[0][0] + displayParts[displayParts.length - 1][0]).toUpperCase()
+              : (displayParts[0][0] || "?").toUpperCase();
+          } else if (email) {
+            initialsForFallback = email[0].toUpperCase();
+          }
+          imgEl.onerror = function() {
+            if (initEl) {
+              initEl.textContent = initialsForFallback.slice(0, 2);
+              initEl.style.display = "flex";
+            }
+            imgEl.style.display = "none";
+          };
           imgEl.src = photoURL;
           imgEl.alt = (displayName || "User") + " photo";
           imgEl.style.display = "block";

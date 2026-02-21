@@ -11,6 +11,7 @@
   if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
   var auth = firebase.auth();
   var db = firebase.firestore();
+  var ADMIN_HEADER_CACHE_KEY = "admin_header_avatar_cache_v1";
 
   // Temporary: these emails can always access admin (match login allowlist)
   var ALLOWED_ADMIN_EMAILS = ["will_jackson@icloud.com", "stormijxo@gmail.com"];
@@ -32,6 +33,62 @@
       .limit(1)
       .get()
       .then(function(snap) { return snap.size; });
+  }
+
+  function computeInitial(displayName, email) {
+    var name = (displayName || "").toString().trim();
+    if (name) return name.charAt(0).toUpperCase();
+    var em = (email || "").toString().trim();
+    return em ? em.charAt(0).toUpperCase() : "?";
+  }
+
+  function readAvatarCache() {
+    try {
+      var raw = localStorage.getItem(ADMIN_HEADER_CACHE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeAvatarCache(user) {
+    try {
+      localStorage.setItem(ADMIN_HEADER_CACHE_KEY, JSON.stringify({
+        displayName: user && user.displayName ? user.displayName : "",
+        email: user && user.email ? user.email : "",
+        photoURL: user && user.photoURL ? user.photoURL : ""
+      }));
+    } catch (e) {}
+  }
+
+  function renderAdminAvatar(displayName, email, photoURL) {
+    var btn = document.getElementById("admin-profile-btn");
+    if (!btn) return;
+    var initial = computeInitial(displayName, email);
+    if (photoURL) {
+      var safeUrl = String(photoURL).replace(/"/g, "&quot;");
+      btn.innerHTML = "<img src=\"" + safeUrl + "\" alt=\"\" onerror=\"this.parentElement.innerHTML='<span id=\\'admin-profile-avatar\\' class=\\'profile-btn-default\\'>" + initial + "</span>'\" />";
+    } else {
+      btn.innerHTML = "<span id='admin-profile-avatar' class='profile-btn-default'>" + initial + "</span>";
+    }
+  }
+
+  window.applyAdminHeaderAvatar = function(user) {
+    if (!user) return;
+    renderAdminAvatar(user.displayName, user.email, user.photoURL);
+    writeAvatarCache(user);
+  };
+
+  window.hydrateAdminHeaderAvatar = function() {
+    var cache = readAvatarCache();
+    if (!cache) return;
+    renderAdminAvatar(cache.displayName, cache.email, cache.photoURL);
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", window.hydrateAdminHeaderAvatar);
+  } else {
+    window.hydrateAdminHeaderAvatar();
   }
 
   window.ensureAdminAccess = function(callback) {

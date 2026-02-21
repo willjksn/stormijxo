@@ -1,4 +1,89 @@
 {
   "buildCommand": "npm run generate-firebase-config",
-  "outputDirectory": "."
+  "outputDirectory": ".",
+  "redirects": [
+    {
+      "source": "/(.*)\\.html",
+      "destination": "/$1",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/member/feed",
+      "destination": "/member/feed.html"
+    },
+    {
+      "source": "/member/grid",
+      "destination": "/member/grid.html"
+    },
+    {
+      "source": "/member/post",
+      "destination": "/member/post.html"
+    },
+    {
+      "source": "/member/profile",
+      "destination": "/member/profile.html"
+    },
+    {
+      "source": "/member/treats",
+      "destination": "/member/treats.html"
+    },
+    {
+      "source": "/member/calendar",
+      "destination": "/member/calendar.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/login.html"
+    },
+    {
+      "source": "/signup",
+      "destination": "/signup.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/terms.html"
+    },
+    {
+      "source": "/success",
+      "destination": "/success.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin/index.html"
+    },
+    {
+      "source": "/admin/login",
+      "destination": "/admin/login.html"
+    },
+    {
+      "source": "/admin/dashboard",
+      "destination": "/admin/dashboard.html"
+    },
+    {
+      "source": "/admin/posts",
+      "destination": "/admin/posts.html"
+    },
+    {
+      "source": "/admin/users",
+      "destination": "/admin/users.html"
+    },
+    {
+      "source": "/admin/content",
+      "destination": "/admin/content.html"
+    },
+    {
+      "source": "/admin/media",
+      "destination": "/admin/media.html"
+    }
+  ]
 }
