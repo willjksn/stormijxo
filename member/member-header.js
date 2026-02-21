@@ -6,6 +6,12 @@
 var ADMIN_EMAILS = ["will_jackson@icloud.com", "stormijxo@gmail.com"];
 var MEMBER_HEADER_CACHE_KEY = "member_header_cache_v1";
 
+function setAdminLinkVisible(adminLink, isVisible) {
+  if (!adminLink) return;
+  adminLink.style.visibility = isVisible ? "visible" : "hidden";
+  adminLink.style.pointerEvents = isVisible ? "auto" : "none";
+}
+
 function computeUserInitials(user) {
   var initials = "";
   if (user && user.displayName && user.displayName.trim()) {
@@ -63,9 +69,7 @@ function applyCachedMemberHeader() {
   var cache = readHeaderCache();
   if (!cache) return;
 
-  if (adminLink) {
-    adminLink.style.display = ADMIN_EMAILS.indexOf((cache.email || "").toLowerCase()) !== -1 ? "" : "none";
-  }
+  setAdminLinkVisible(adminLink, ADMIN_EMAILS.indexOf((cache.email || "").toLowerCase()) !== -1);
 
   if (cache.photoURL) {
     showHeaderAvatar(imgEl, initEl, cache.photoURL, cache.displayName, cache.initials);
@@ -84,9 +88,7 @@ function initMemberHeader(user) {
   if (!wrapEl || !dropEl) return;
 
   var email = (user && (user.email || user.emailAddress)) ? (user.email || user.emailAddress).trim().toLowerCase() : "";
-  if (adminLink) {
-    adminLink.style.display = ADMIN_EMAILS.indexOf(email) !== -1 ? "" : "none";
-  }
+  setAdminLinkVisible(adminLink, ADMIN_EMAILS.indexOf(email) !== -1);
 
   if (user && user.photoURL) {
     showHeaderAvatar(imgEl, initEl, user.photoURL, user.displayName, computeUserInitials(user));

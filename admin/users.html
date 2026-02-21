@@ -201,6 +201,10 @@
             <table class="um-table um-table-fixed">
               <tbody id="users-tbody-members"></tbody>
             </table>
+            <div id="um-sep-tippers" class="um-sep-row-standalone" style="display: none;">Tippers</div>
+            <table class="um-table um-table-fixed">
+              <tbody id="users-tbody-tippers"></tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -260,6 +264,7 @@
       var membersCache = [];
       var adminUsersCache = [];
       var spendByEmail = {};
+      var tipperByEmail = {};
 
       var DEFAULT_ADMIN_EMAILS = ["will_jackson@icloud.com", "stormijxo@gmail.com"];
 
@@ -296,6 +301,7 @@
           db.collection("purchases").get().catch(function() { return { forEach: function() {} }; })
         ]).then(function(results) {
           spendByEmail = {};
+          tipperByEmail = {};
           results[0].forEach(function(doc) {
             var d = doc.data();
             var email = norm(d.email);
@@ -304,6 +310,23 @@
             var cents = typeof d.amountCents === "number" ? d.amountCents : 0;
             var tippedAt = d.tippedAt && d.tippedAt.toDate ? d.tippedAt.toDate() : null;
             if (tippedAt && tippedAt >= monthStart) spendByEmail[email].monthlyCents += cents;
+            if (!tipperByEmail[email]) {
+              tipperByEmail[email] = {
+                email: d.email || email,
+                name: (d.instagram_handle || d.email || email).toString().trim(),
+                tipCount: 0,
+                totalCents: 0,
+                lastTippedAt: null
+              };
+            }
+            tipperByEmail[email].tipCount += 1;
+            tipperByEmail[email].totalCents += cents > 0 ? cents : 0;
+            if (d.instagram_handle) {
+              tipperByEmail[email].name = String(d.instagram_handle).trim();
+            }
+            if (tippedAt && (!tipperByEmail[email].lastTippedAt || tippedAt > tipperByEmail[email].lastTippedAt)) {
+              tipperByEmail[email].lastTippedAt = tippedAt;
+            }
           });
           results[1].forEach(function(doc) {
             var d = doc.data();
@@ -521,6 +544,42 @@
         return list;
       }
 
+      function buildTippers(existingUsers) {
+        function norm(e) { return (e || "").toString().trim().toLowerCase(); }
+        var existingByEmail = {};
+        existingUsers.forEach(function(u) {
+          var email = norm(u.email);
+          if (email) existingByEmail[email] = true;
+        });
+        var list = [];
+        Object.keys(tipperByEmail).forEach(function(email) {
+          if (!email || existingByEmail[email]) return;
+          var t = tipperByEmail[email] || {};
+          var spend = spendByEmail[email] || { monthlyCents: 0, storeItems: [] };
+          var tipSummary = "Tips: " + (t.tipCount || 0) + " ($" + ((t.totalCents || 0) / 100).toFixed(2) + ")";
+          list.push({
+            id: "tipper-" + email.replace(/[^a-z0-9]/gi, "-"),
+            type: "tipper",
+            email: t.email || email,
+            name: (t.name || email.split("@")[0] || "—").toString().trim(),
+            avatarUrl: null,
+            isAdmin: false,
+            signupDate: t.lastTippedAt || null,
+            status: "active",
+            accessEndsAt: null,
+            monthlySpendCents: spend.monthlyCents || 0,
+            storeItems: [tipSummary]
+          });
+        });
+        list.sort(function(a, b) {
+          if (!a.signupDate && !b.signupDate) return 0;
+          if (!a.signupDate) return 1;
+          if (!b.signupDate) return -1;
+          return b.signupDate.getTime() - a.signupDate.getTime();
+        });
+        return list;
+      }
+
       function matchesSearch(user, q) {
         if (!q) return true;
         q = q.toLowerCase();
@@ -550,13 +609,17 @@
         var spendStr = (u.monthlySpendCents || 0) > 0 ? "$" + (u.monthlySpendCents / 100).toFixed(2) : "—";
         var itemsStr = (u.storeItems && u.storeItems.length) ? u.storeItems.join(", ") : "—";
         var adminBadge = u.isAdmin ? "<span class='um-badge um-badge-admin'>ADMIN</span>" : "";
-        var planHtml = u.isAdmin ? "—" : (u.status === "cancelled"
+        var planHtml = u.type === "tipper"
+          ? "<span class='um-plan-active'>Tipper</span>"
+          : (u.isAdmin ? "—" : (u.status === "cancelled"
           ? "<span class='um-plan-cancelled'>Cancelled</span>"
-          : "<span class='um-plan-active'>Active</span>");
+          : "<span class='um-plan-active'>Active</span>"));
         var remainingStr = remainingAccessText(u.accessEndsAt, u.status);
-        var deleteBtn = u.authOnly ? "" : " <button type='button' class='link danger um-btn-delete' data-id='" + escapeHtml(u.id) + "' data-type='" + escapeHtml(u.type) + "'><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='3 6 5 6 21 6'/><path d='M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2'/><line x1='10' y1='11' x2='10' y2='17'/><line x1='14' y1='11' x2='14' y2='17'/></svg> Delete</button>";
-        var actions = "<button type='button' class='link manage um-btn-manage' data-id='" + escapeHtml(u.id) + "' data-type='" + escapeHtml(u.type) + "'>Manage</button>" +
-          " <button type='button' class='link reward um-btn-reward' data-id='" + escapeHtml(u.id) + "'>Grant Reward</button>" + deleteBtn;
+        var deleteBtn = (u.authOnly || u.type === "tipper") ? "" : " <button type='button' class='link danger um-btn-delete' data-id='" + escapeHtml(u.id) + "' data-type='" + escapeHtml(u.type) + "'><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='3 6 5 6 21 6'/><path d='M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2'/><line x1='10' y1='11' x2='10' y2='17'/><line x1='14' y1='11' x2='14' y2='17'/></svg> Delete</button>";
+        var actions = u.type === "tipper"
+          ? "—"
+          : ("<button type='button' class='link manage um-btn-manage' data-id='" + escapeHtml(u.id) + "' data-type='" + escapeHtml(u.type) + "'>Manage</button>" +
+            " <button type='button' class='link reward um-btn-reward' data-id='" + escapeHtml(u.id) + "'>Grant Reward</button>" + deleteBtn);
         var tr = document.createElement("tr");
         if (u.status === "cancelled") tr.style.opacity = "0.85";
         tr.innerHTML =
@@ -600,21 +663,26 @@
       function renderUsers() {
         var searchQuery = (document.getElementById("search-users").value || "").trim();
         var merged = mergeUsers();
+        var tippers = buildTippers(merged);
         var filtered = searchQuery ? merged.filter(function(u) { return matchesSearch(u, searchQuery); }) : merged;
+        var filteredTippers = searchQuery ? tippers.filter(function(u) { return matchesSearch(u, searchQuery); }) : tippers;
 
         var adminTbody = document.getElementById("users-tbody-admins");
         var membersTbody = document.getElementById("users-tbody-members");
+        var tippersTbody = document.getElementById("users-tbody-tippers");
         var sepEl = document.getElementById("um-sep-members");
+        var tippersSepEl = document.getElementById("um-sep-tippers");
         var emptyEl = document.getElementById("users-empty");
         var wrapEl = document.getElementById("users-table-wrap");
 
         adminTbody.innerHTML = "";
         membersTbody.innerHTML = "";
+        if (tippersTbody) tippersTbody.innerHTML = "";
 
-        if (filtered.length === 0) {
+        if (filtered.length === 0 && filteredTippers.length === 0) {
           wrapEl.style.display = "block";
           emptyEl.style.display = "none";
-          emptyEl.textContent = searchQuery ? "No users match your search." : "No users yet. Use Add User to add an admin or member.";
+          emptyEl.textContent = searchQuery ? "No users or tippers match your search." : "No users yet. Use Add User to add an admin or member.";
           return;
         }
 
@@ -646,9 +714,14 @@
         members.forEach(function(u) {
           membersTbody.appendChild(renderUserRow(u));
         });
+        if (tippersSepEl) tippersSepEl.style.display = filteredTippers.length > 0 ? "block" : "none";
+        filteredTippers.forEach(function(u) {
+          if (tippersTbody) tippersTbody.appendChild(renderUserRow(u));
+        });
 
         bindRowActions(adminTbody);
         bindRowActions(membersTbody);
+        if (tippersTbody) bindRowActions(tippersTbody);
       }
     }
   </script>
