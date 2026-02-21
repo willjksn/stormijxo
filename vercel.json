@@ -7,11 +7,15 @@
       "destination": "/$1",
       "permanent": true
     },
-    {
-      "source": "/member/:path*",
-      "destination": "/:path*",
-      "permanent": true
-    }
+    { "source": "/member", "destination": "/home", "permanent": true },
+    { "source": "/member/", "destination": "/home", "permanent": true },
+    { "source": "/member/index", "destination": "/home", "permanent": true },
+    { "source": "/member/feed", "destination": "/home", "permanent": true },
+    { "source": "/member/grid", "destination": "/grid", "permanent": true },
+    { "source": "/member/post", "destination": "/post", "permanent": true },
+    { "source": "/member/profile", "destination": "/profile", "permanent": true },
+    { "source": "/member/treats", "destination": "/treats", "permanent": true },
+    { "source": "/member/calendar", "destination": "/calendar", "permanent": true }
   ],
   "rewrites": [
     {
