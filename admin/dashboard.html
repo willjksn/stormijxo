@@ -181,6 +181,11 @@
               <div class="value" id="metric-refunds">—</div>
               <div class="sublabel">Track when you add refunds</div>
             </div>
+            <div class="stat-card">
+              <div class="label">Tips total</div>
+              <div class="value" id="metric-tips-total">—</div>
+              <div class="sublabel">30d: <span id="metric-tips-30d">—</span> · Tips: <span id="metric-tips-count">—</span></div>
+            </div>
           </div>
         </div>
 
@@ -468,6 +473,9 @@
           setEl("metric-avg-order", totalTx > 0 && totalRevenue > 0 ? "$" + (totalRevenue / 100 / totalTx).toFixed(2) : "—");
           setEl("metric-repeat-buyers", repeatBuyers > 0 ? repeatBuyers : "0");
           setEl("metric-refunds", "—");
+          setEl("metric-tips-total", tipsTotalCents > 0 ? "$" + (tipsTotalCents / 100).toFixed(2) : "$0.00");
+          setEl("metric-tips-30d", tips30dCents > 0 ? "$" + (tips30dCents / 100).toFixed(2) : "$0.00");
+          setEl("metric-tips-count", tipsCount > 0 ? String(tipsCount) : "0");
 
           var sorted = Object.keys(byEmail).map(function(k) { return byEmail[k]; }).filter(function(o) { return o.totalCents > 0; }).sort(function(a, b) { return b.totalCents - a.totalCents; });
           renderTopSpenders(sorted, document.getElementById("top-spenders-list"), document.getElementById("top-spenders-toggle"), document.getElementById("top-spenders-card"));
@@ -518,6 +526,9 @@
           setEl("metric-avg-order", "—");
           setEl("metric-repeat-buyers", "—");
           setEl("metric-refunds", "—");
+          setEl("metric-tips-total", "—");
+          setEl("metric-tips-30d", "—");
+          setEl("metric-tips-count", "—");
           renderTopSpenders(null, document.getElementById("top-spenders-list"), document.getElementById("top-spenders-toggle"), document.getElementById("top-spenders-card"));
         });
 

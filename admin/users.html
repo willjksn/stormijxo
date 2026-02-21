@@ -714,10 +714,16 @@
         members.forEach(function(u) {
           membersTbody.appendChild(renderUserRow(u));
         });
-        if (tippersSepEl) tippersSepEl.style.display = filteredTippers.length > 0 ? "block" : "none";
-        filteredTippers.forEach(function(u) {
-          if (tippersTbody) tippersTbody.appendChild(renderUserRow(u));
-        });
+        if (tippersSepEl) tippersSepEl.style.display = "block";
+        if (filteredTippers.length > 0) {
+          filteredTippers.forEach(function(u) {
+            if (tippersTbody) tippersTbody.appendChild(renderUserRow(u));
+          });
+        } else if (tippersTbody) {
+          var emptyTipsRow = document.createElement("tr");
+          emptyTipsRow.innerHTML = "<td colspan='7' class='um-section-empty'>No tippers yet.</td>";
+          tippersTbody.appendChild(emptyTipsRow);
+        }
 
         bindRowActions(adminTbody);
         bindRowActions(membersTbody);
