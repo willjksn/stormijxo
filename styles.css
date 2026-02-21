@@ -197,6 +197,8 @@ body {
 
 /* Sections – no global max-width; padding only on plain main (e.g. homepage) */
 main:not([class]) {
+  max-width: 720px;
+  margin: 0 auto;
   padding: 2rem 1.5rem 4rem;
 }
 

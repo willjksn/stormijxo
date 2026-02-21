@@ -269,7 +269,7 @@ exports.createCustomerPortalSession = functions
     }
     const returnUrl = typeof data === "object" && data && typeof data.returnUrl === "string"
       ? data.returnUrl
-      : "https://stormij.vercel.app/member/profile.html";
+      : "https://stormij.vercel.app/profile";
 
     const config = functions.config();
     const stripeSecret = config.stripe && config.stripe.secret;

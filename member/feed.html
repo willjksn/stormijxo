@@ -13,28 +13,28 @@
     <div class="header-left">
       <a href="../index.html" class="logo logo-pop"><img src="../assets/logo.svg" alt="My Inner circle" class="logo-img" /></a>
       <nav class="member-nav-main">
-        <a href="feed.html" class="header-home-link active" title="Home">
+        <a href="/home" class="header-home-link active" title="Home">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           <span>Home</span>
         </a>
-        <a href="treats.html" title="Treats">
+        <a href="/treats" title="Treats">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
           <span>Treats</span>
         </a>
-        <a href="calendar.html" title="Calendar">
+        <a href="/calendar" title="Calendar">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           <span>Calendar</span>
         </a>
       </nav>
     </div>
     <div class="header-right header-profile-wrap">
-      <a href="../admin/dashboard.html" id="header-admin-link" class="header-admin-btn" style="display: none;">Admin</a>
+      <a href="/admin/dashboard" id="header-admin-link" class="header-admin-btn" style="display: none;">Admin</a>
       <div class="profile-avatar-wrap" id="profile-avatar-wrap" aria-haspopup="true" aria-expanded="false" title="Profile menu">
         <img id="header-avatar-img" class="profile-avatar" src="" alt="Profile" style="display: none;" />
         <div id="header-avatar-initials" class="profile-avatar-initials" style="display: none;"></div>
       </div>
       <div class="profile-dropdown" id="profile-dropdown">
-        <a href="profile.html">Your Profile</a>
+        <a href="/profile">Your Profile</a>
         <a href="#" id="link-report">Report a Problem</a>
         <button type="button" id="btn-logout" class="sign-out">Sign out</button>
       </div>
@@ -46,7 +46,7 @@
       <h1>Subscription required</h1>
       <p class="member-renewal-msg"></p>
       <a href="../index.html#subscribe" class="btn btn-primary member-renewal-btn">Renew subscription</a>
-      <p><a href="profile.html">Go to profile</a></p>
+      <p><a href="/profile">Go to profile</a></p>
     </main>
   </div>
 
@@ -157,7 +157,7 @@
           var urls = p.mediaUrls || [];
           var mediaHtml = "";
           if (urls.length > 0) {
-            mediaHtml = "<a href=\"post.html?id=" + escapeHtml(p.id) + "\" class=\"feed-card-media-wrap\">" +
+            mediaHtml = "<a href=\"/post?id=" + escapeHtml(p.id) + "\" class=\"feed-card-media-wrap\">" +
               "<img src=\"" + escapeHtml(urls[0]) + "\" alt=\"\" class=\"feed-card-media\" loading=\"lazy\" />" +
               (urls.length > 1 ? "<span class=\"feed-card-count\">+" + (urls.length - 1) + "</span>" : "") +
               "</a>";
@@ -175,7 +175,7 @@
               var un = escapeHtml((c.username || c.author || "user"));
               return "<div class=\"feed-card-comment\"><span class=\"comment-username\">" + un + "</span>" + escapeHtml(c.text) + "</div>";
             }).join("");
-            commentsHtml = "<a href=\"post.html?id=" + escapeHtml(p.id) + "#comments\" class=\"feed-card-view-comments\">View all " + comments.length + " comments</a>" +
+            commentsHtml = "<a href=\"/post?id=" + escapeHtml(p.id) + "#comments\" class=\"feed-card-view-comments\">View all " + comments.length + " comments</a>" +
               "<div class=\"feed-card-comments-list\">" + preview + "</div>";
           }
           var heartClass = isL ? " feed-card-action-btn liked" : " feed-card-action-btn";
@@ -191,7 +191,7 @@
             "<svg class=\"heart-outline\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z\"/></svg>" +
             "<svg class=\"heart-filled\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path d=\"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z\"/></svg>" +
             "</button><span class=\"feed-card-action-count\">" + likeCount + "</span></span>" +
-            "<a href=\"post.html?id=" + escapeHtml(p.id) + "#comments\" class=\"feed-card-action-group feed-card-action-link\" aria-label=\"Comments\">" +
+            "<a href=\"/post?id=" + escapeHtml(p.id) + "#comments\" class=\"feed-card-action-group feed-card-action-link\" aria-label=\"Comments\">" +
             "<svg class=\"feed-card-comment-icon\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/></svg>" +
             "<span class=\"feed-card-action-count\">" + (comments.length) + "</span></a>" +
             "<button type=\"button\" class=\"feed-card-action-btn" + bookmarkClass + "\" data-post-id=\"" + escapeHtml(p.id) + "\" data-action=\"bookmark\" aria-label=\"Save\">" +
@@ -202,7 +202,7 @@
             "<div class=\"feed-card-body\">" +
             (body ? "<p class=\"feed-card-caption\"><span class=\"caption-username\">" + escapeHtml(CREATOR_USERNAME) + "</span>" + escapeHtml(body) + "</p>" : "") +
             commentsHtml +
-            "<a href=\"post.html?id=" + escapeHtml(p.id) + "\" class=\"feed-card-link\">View post</a>" +
+            "<a href=\"/post?id=" + escapeHtml(p.id) + "\" class=\"feed-card-link\">View post</a>" +
             "</div>";
         }
 
@@ -274,7 +274,7 @@
             var urls = p.mediaUrls || [];
             urls.forEach(function(url, i) {
               var a = document.createElement("a");
-              a.href = "post.html?id=" + escapeHtml(p.id) + (i > 0 ? "&img=" + i : "");
+              a.href = "/post?id=" + escapeHtml(p.id) + (i > 0 ? "&img=" + i : "");
               a.className = "feed-grid-item";
               var img = document.createElement("img");
               img.src = url;

@@ -38,7 +38,7 @@
 </head>
 <body>
   <header class="login-header">
-    <a href="../index.html" class="logo logo-pop"><img src="../assets/logo.svg" alt="My Inner circle" class="logo-img" /></a>
+    <a href="/" class="logo logo-pop"><img src="../assets/logo.svg" alt="My Inner circle" class="logo-img" /></a>
   </header>
   <main class="login-page">
     <h1>My Inner circle — Admin</h1>
@@ -53,7 +53,7 @@
       </div>
       <button type="submit" class="btn btn-primary">Log in</button>
     </form>
-    <a href="../index.html" class="back-link">← Back to site</a>
+    <a href="/" class="back-link">← Back to site</a>
   </main>
 
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
@@ -62,7 +62,7 @@
   <script src="../firebase-config.js"></script>
   <script>
     if (typeof FIREBASE_CONFIG === "undefined" || !FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey === "YOUR_API_KEY") {
-      document.body.innerHTML = "<main class='login-page'><h1>Firebase not configured</h1><p>Edit <code>firebase-config.js</code> in the project root and add your Firebase project config.</p><a href='../index.html' class='back-link'>← Back to site</a></main>";
+      document.body.innerHTML = "<main class='login-page'><h1>Firebase not configured</h1><p>Edit <code>firebase-config.js</code> in the project root and add your Firebase project config.</p><a href='/' class='back-link'>← Back to site</a></main>";
     } else {
       firebase.initializeApp(FIREBASE_CONFIG);
       var auth = firebase.auth();

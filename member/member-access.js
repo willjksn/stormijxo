@@ -16,8 +16,11 @@ function ensureMemberAccess(callback) {
 
   auth.onAuthStateChanged(function(user) {
     if (!user) {
-      var path = (window.location.pathname || "").replace(/^\//, "") || "member/feed.html";
-      window.location.href = "../login.html?redirect=" + encodeURIComponent(path);
+      var path = (window.location.pathname || "").replace(/^\//, "") || "home";
+      if (path.indexOf("member/") === 0) path = path.slice(7);
+      path = path.replace(/\.html$/, "");
+      if (path === "feed") path = "home";
+      window.location.href = "/login?redirect=" + encodeURIComponent(path);
       return;
     }
     if (callback) callback(user, null);
@@ -40,6 +43,6 @@ function showRenewal(user) {
       "<h1>Subscription required</h1>" +
       "<p>Your subscription has expired or is not active. <a href='/index.html#subscribe'>Renew here</a> to access the member area.</p>" +
       "<p><a href='../index.html' class='btn btn-primary'>Back to home</a></p>" +
-      "<p style='margin-top:1.5rem'><a href='profile.html'>Go to profile</a></p></main>";
+      "<p style='margin-top:1.5rem'><a href='/profile'>Go to profile</a></p></main>";
   }
 }

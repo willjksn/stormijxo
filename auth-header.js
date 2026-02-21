@@ -21,11 +21,11 @@
         var hash = (window.location.hash || "").toLowerCase();
         var viewLanding = hash.indexOf("view=landing") !== -1;
         if (!viewLanding) {
-          window.location.replace("member/feed.html");
+          window.location.replace("/home");
           return;
         }
       }
-      link.href = "member/profile.html";
+      link.href = "/profile";
       link.textContent = "Profile";
     } else {
       link.href = "login.html";

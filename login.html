@@ -77,7 +77,7 @@
         if (user) {
           var params = new URLSearchParams(window.location.search || "");
           var redirect = params.get("redirect");
-          window.location.href = redirect && /^member\//.test(redirect) ? redirect : "member/feed.html";
+          window.location.href = redirect && /^[a-z0-9/_-]+$/i.test(redirect) ? (redirect.charAt(0) === "/" ? redirect : "/" + redirect) : "/home";
         }
       });
 
@@ -103,7 +103,7 @@
           .then(function() {
             var params = new URLSearchParams(window.location.search || "");
             var redirect = params.get("redirect");
-            window.location.href = redirect && /^member\//.test(redirect) ? redirect : "member/feed.html";
+            window.location.href = redirect && /^[a-z0-9/_-]+$/i.test(redirect) ? (redirect.charAt(0) === "/" ? redirect : "/" + redirect) : "/home";
           })
           .catch(function(err) {
             showError(err.message || "Log in failed.");
@@ -132,7 +132,7 @@
           .then(function() {
             var params = new URLSearchParams(window.location.search || "");
             var redirect = params.get("redirect");
-            window.location.href = redirect && /^member\//.test(redirect) ? redirect : "member/feed.html";
+            window.location.href = redirect && /^[a-z0-9/_-]+$/i.test(redirect) ? (redirect.charAt(0) === "/" ? redirect : "/" + redirect) : "/home";
           })
           .catch(function(err) {
             showError(err.message || "Sign in with Google failed.");

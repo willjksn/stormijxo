@@ -1,0 +1,23 @@
+{
+  "rewrites": [
+    { "source": "/home", "destination": "/member/feed.html" },
+    { "source": "/feed", "destination": "/member/feed.html" },
+    { "source": "/grid", "destination": "/member/grid.html" },
+    { "source": "/post", "destination": "/member/post.html" },
+    { "source": "/profile", "destination": "/member/profile.html" },
+    { "source": "/treats", "destination": "/member/treats.html" },
+    { "source": "/calendar", "destination": "/member/calendar.html" },
+    { "source": "/login", "destination": "/login.html" },
+    { "source": "/signup", "destination": "/signup.html" },
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/terms", "destination": "/terms.html" },
+    { "source": "/success", "destination": "/success.html" },
+    { "source": "/admin", "destination": "/admin/index.html" },
+    { "source": "/admin/login", "destination": "/admin/login.html" },
+    { "source": "/admin/dashboard", "destination": "/admin/dashboard.html" },
+    { "source": "/admin/posts", "destination": "/admin/posts.html" },
+    { "source": "/admin/users", "destination": "/admin/users.html" },
+    { "source": "/admin/content", "destination": "/admin/content.html" },
+    { "source": "/admin/media", "destination": "/admin/media.html" }
+  ]
+}

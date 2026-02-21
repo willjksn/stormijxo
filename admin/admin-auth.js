@@ -94,7 +94,7 @@
   window.ensureAdminAccess = function(callback) {
     auth.onAuthStateChanged(function(user) {
       if (!user) {
-        window.location.href = "login.html";
+        window.location.href = "/";
         return;
       }
       var emailNorm = (user.email || "").trim().toLowerCase();

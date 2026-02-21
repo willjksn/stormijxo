@@ -6,6 +6,11 @@
       "source": "/(.*)\\.html",
       "destination": "/$1",
       "permanent": true
+    },
+    {
+      "source": "/member/:path*",
+      "destination": "/:path*",
+      "permanent": true
     }
   ],
   "rewrites": [
@@ -14,27 +19,31 @@
       "destination": "/index.html"
     },
     {
-      "source": "/member/feed",
+      "source": "/home",
       "destination": "/member/feed.html"
     },
     {
-      "source": "/member/grid",
+      "source": "/feed",
+      "destination": "/member/feed.html"
+    },
+    {
+      "source": "/grid",
       "destination": "/member/grid.html"
     },
     {
-      "source": "/member/post",
+      "source": "/post",
       "destination": "/member/post.html"
     },
     {
-      "source": "/member/profile",
+      "source": "/profile",
       "destination": "/member/profile.html"
     },
     {
-      "source": "/member/treats",
+      "source": "/treats",
       "destination": "/member/treats.html"
     },
     {
-      "source": "/member/calendar",
+      "source": "/calendar",
       "destination": "/member/calendar.html"
     },
     {
