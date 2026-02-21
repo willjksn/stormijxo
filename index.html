@@ -242,12 +242,9 @@
   <script src="landing-media.js"></script>
   <script>
     (function() {
-      var tipUrl = typeof FIREBASE_CONFIG !== "undefined" && FIREBASE_CONFIG.projectId
-        ? "https://us-central1-" + FIREBASE_CONFIG.projectId + ".cloudfunctions.net/createTipCheckoutPublic"
-        : "";
-      if (!tipUrl) return;
+      var tipUrl = "/api/tip-checkout";
       var base = window.location.origin + window.location.pathname.replace(/[^/]+$/, "");
-      var successUrl = base + (base.endsWith("/") ? "" : "/") + "success.html?tip=1";
+      var successUrl = base + (base.endsWith("/") ? "" : "/") + "success?tip=1";
       var cancelUrl = window.location.href;
       var errEl = document.getElementById("tip-error");
       var tipHandleInput = document.getElementById("tip-instagram-handle");
