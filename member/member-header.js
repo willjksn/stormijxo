@@ -36,7 +36,14 @@ function readHeaderCache() {
 
 function writeHeaderCache(cache) {
   try {
-    localStorage.setItem(MEMBER_HEADER_CACHE_KEY, JSON.stringify(cache));
+    var prev = readHeaderCache() || {};
+    localStorage.setItem(MEMBER_HEADER_CACHE_KEY, JSON.stringify({
+      email: cache && cache.email ? cache.email : (prev.email || ""),
+      displayName: cache && cache.displayName ? cache.displayName : (prev.displayName || ""),
+      // Preserve last known photo so transient profile reads don't reintroduce initials flash
+      photoURL: cache && cache.photoURL ? cache.photoURL : (prev.photoURL || ""),
+      initials: cache && cache.initials ? cache.initials : (prev.initials || "")
+    }));
   } catch (e) {}
 }
 
@@ -90,8 +97,14 @@ function initMemberHeader(user) {
   var email = (user && (user.email || user.emailAddress)) ? (user.email || user.emailAddress).trim().toLowerCase() : "";
   setAdminLinkVisible(adminLink, ADMIN_EMAILS.indexOf(email) !== -1);
 
-  if (user && user.photoURL) {
-    showHeaderAvatar(imgEl, initEl, user.photoURL, user.displayName, computeUserInitials(user));
+  var cached = readHeaderCache() || {};
+  var cachedPhoto = cached.photoURL || "";
+  var effectivePhoto = (user && user.photoURL) ? user.photoURL : cachedPhoto;
+  var effectiveDisplayName = (user && user.displayName) ? user.displayName : (cached.displayName || "");
+  var effectiveInitials = computeUserInitials(user) || (cached.initials || "");
+
+  if (effectivePhoto) {
+    showHeaderAvatar(imgEl, initEl, effectivePhoto, effectiveDisplayName, effectiveInitials);
   } else if (initEl && user) {
     var initials = computeUserInitials(user);
     if (initials && /[A-Z0-9]/i.test(initials)) {
@@ -114,9 +127,9 @@ function initMemberHeader(user) {
 
   writeHeaderCache({
     email: email,
-    displayName: user && user.displayName ? user.displayName : "",
-    photoURL: user && user.photoURL ? user.photoURL : "",
-    initials: computeUserInitials(user)
+    displayName: effectiveDisplayName,
+    photoURL: effectivePhoto,
+    initials: effectiveInitials
   });
 }
 
