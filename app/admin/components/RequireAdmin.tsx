@@ -13,7 +13,7 @@ export function RequireAdmin({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!user) {
-      if (!authLoading) router.replace("/");
+      if (!authLoading) router.replace("/admin/login");
       return;
     }
     const db = getFirebaseDb();
@@ -26,6 +26,13 @@ export function RequireAdmin({ children }: { children: React.ReactNode }) {
       .catch(() => setAllowed(false));
   }, [user, authLoading, router]);
 
+  useEffect(() => {
+    if (authLoading || (user && allowed === null)) return;
+    if (!user || allowed === false) {
+      router.replace("/admin/login");
+    }
+  }, [authLoading, user, allowed, router]);
+
   if (authLoading || (user && allowed === null)) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "var(--text-muted)" }}>
@@ -34,7 +41,6 @@ export function RequireAdmin({ children }: { children: React.ReactNode }) {
     );
   }
   if (!user || allowed === false) {
-    router.replace("/admin/login");
     return null;
   }
   return <>{children}</>;

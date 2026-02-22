@@ -34,7 +34,8 @@
   align-items: center;
   gap: 0.4rem;
 }
-.member-nav-main a svg { width: 1.15rem; height: 1.15rem; flex-shrink: 0; }
+.member-nav-main a svg,
+.member-nav-main span[aria-current="page"] svg { width: 1.15rem; height: 1.15rem; flex-shrink: 0; }
 .member-nav-main a:hover { color: var(--accent); background: var(--accent-soft); }
 .member-nav-main a.active { color: var(--accent); font-weight: 600; }
 .member-nav-main span[aria-current="page"] {

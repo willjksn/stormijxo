@@ -2,15 +2,16 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getFirebaseAuth, getFirebaseDb } from "../../../lib/firebase";
-import { canAccessAdmin } from "../../../lib/auth-redirect";
-import { getAuthErrorMessage } from "../../../lib/auth-redirect";
+import { canAccessAdmin, getAuthErrorMessage } from "../../../lib/auth-redirect";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import { useAuth } from "../../contexts/AuthContext";
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user, loading: authLoading } = useAuth();
   const reason = searchParams.get("reason");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,6 +20,23 @@ export default function AdminLoginPage() {
     reason === "noaccess" ? "You don't have admin access." : ""
   );
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+    const db = getFirebaseDb();
+    if (!db) return;
+    canAccessAdmin(db, user.email ?? null)
+      .then((ok) => { if (ok) router.replace("/admin/dashboard"); })
+      .catch(() => {});
+  }, [authLoading, user, router]);
+
+  if (authLoading) {
+    return (
+      <main className="login-page" style={{ maxWidth: 360, margin: "4rem auto", padding: "2rem", textAlign: "center", color: "var(--text-muted)" }}>
+        Loading…
+      </main>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
