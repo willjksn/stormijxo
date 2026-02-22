@@ -7,6 +7,7 @@
       "destination": "/$1",
       "permanent": true
     },
+    { "source": "/index", "destination": "/", "permanent": true },
     { "source": "/member", "destination": "/home", "permanent": true },
     { "source": "/member/", "destination": "/home", "permanent": true },
     { "source": "/member/index", "destination": "/home", "permanent": true },

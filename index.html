@@ -38,61 +38,81 @@
         <img src="assets/hero.png" alt="Creator" class="hero-image" data-landing-default />
       </div>
       <div class="hero-text">
-        <h1 class="hero-name hero-stagger" style="--delay: 0.1s">Stormi J</h1>
+        <h1 class="hero-name hero-stagger" style="--delay: 0.1s">Not For Everyone</h1>
         <p class="hero-handle-line hero-stagger" style="--delay: 0.25s"><span class="hero-social-links" id="hero-social-links" aria-label="Social links"></span></p>
-        <p class="hero-tagline hero-stagger" style="--delay: 0.4s">Lifestyle creator · Travel · BTS</p>
-        <p class="hero-promise hero-stagger" style="--delay: 0.55s"><span class="hero-promise-line">Inner Circle</span></p>
-        <p class="hero-tagline hero-stagger" style="--delay: 0.7s">Exclusive content and more — all in one place. Subscribe and get in.</p>
+        <p class="hero-tagline hero-stagger" style="--delay: 0.4s">Just for the ones who stay.</p>
+        <p class="hero-promise hero-stagger" style="--delay: 0.55s"><span class="hero-promise-line">Same me</span></p>
+        <p class="hero-tagline hero-stagger" style="--delay: 0.7s">Closer access.</p>
       </div>
     </section>
 
-    <div class="section-wave" aria-hidden="true">
-      <svg viewBox="0 0 1200 60" preserveAspectRatio="none" class="wave-svg"><path d="M0,30 C300,60 600,0 900,30 C1050,45 1150,45 1200,30 L1200,60 L0,60 Z" fill="currentColor"/></svg>
-    </div>
+    <div class="section-divider" aria-hidden="true"></div>
+
+    <!-- Why this exists -->
+    <section class="perks reveal landing-panel">
+      <h2 class="section-title">Why This Exists</h2>
+      <div class="conversation-copy">
+        <p>Social media is fun.</p>
+        <p>But sometimes I want to talk without thousands of people watching.</p>
+        <p>I have a 9&ndash;5. And I&rsquo;m building my way out of it.</p>
+        <p>This space is part of that.</p>
+        <p>If you&rsquo;re here, you&rsquo;re early. And I don&rsquo;t forget who was early.</p>
+      </div>
+    </section>
 
     <!-- What you get -->
-    <section class="perks reveal">
-      <h2 class="section-title">What you get</h2>
-      <ul class="perks-list">
-        <li>Exclusive posts & drops</li>
-        <li>Content I don’t share anywhere else</li>
-        <li>Real, unfiltered BTS & little moments</li>
+    <section class="preview reveal landing-panel" id="preview-section">
+      <h2 class="section-title flirty">What You Get</h2>
+      <p class="preview-sub">Inside the Inner Circle:</p>
+      <ul class="perks-list flirty-list">
+        <li>3 drops every week</li>
+        <li>Car talks I don&rsquo;t post publicly</li>
+        <li>Poolside thoughts</li>
+        <li>At-home &ldquo;I just grabbed my phone&rdquo; moments</li>
+        <li>Direct-to-camera videos</li>
+        <li>Access to personal add-ons (&ldquo;Treats&rdquo;)</li>
       </ul>
-      <a href="#pricing" id="perks-get-in" class="btn btn-primary btn-shine">Get in</a>
-    </section>
-
-    <!-- Preview (blur / social proof) -->
-    <section class="preview reveal" id="preview-section">
-      <h2 class="section-title flirty">What you’ll see</h2>
-      <p class="preview-sub">A peek at the exclusive content waiting for you.</p>
-      <div class="preview-grid">
-        <div class="preview-card preview-stagger" style="--stagger: 0" data-landing-slot="preview1"><img src="assets/preview1.png" alt="Close Friends preview" class="preview-img" data-landing-default /></div>
-        <div class="preview-card preview-stagger" style="--stagger: 1" data-landing-slot="preview2"><img src="assets/preview2.png" alt="BTS preview" class="preview-img" data-landing-default /></div>
-        <div class="preview-card preview-stagger" style="--stagger: 2" data-landing-slot="preview3"><img src="assets/preview3.png" alt="Exclusive drop preview" class="preview-img" data-landing-default /></div>
+      <div class="conversation-copy preview-boundary">
+        <p>Nothing explicit.</p>
+        <p>Nothing fake.</p>
+        <p>Nothing forced.</p>
       </div>
-      <p class="member-count">Limited spots — the best ones get in first.</p>
     </section>
 
-    <!-- Testimonial -->
-    <section class="testimonial reveal" id="testimonial-section" data-landing-testimonial>
-      <blockquote class="testimonial-quote">
-        <p data-landing-testimonial-text>“Worth every penny. Feels like I’m actually in the inner circle.”</p>
-        <footer class="testimonial-attribution" data-landing-testimonial-attribution>— Inner circle member</footer>
-      </blockquote>
+    <!-- The energy -->
+    <section class="testimonial reveal landing-panel" id="testimonial-section" data-landing-testimonial>
+      <h2 class="section-title">The Energy</h2>
+      <div class="energy-copy">
+        <p class="energy-line" data-landing-testimonial-text>I&rsquo;m not performing vulnerability.</p>
+        <p class="energy-line">I&rsquo;m not escalating into something weird.</p>
+        <p class="energy-line">I&rsquo;m not going to pretend I&rsquo;m deeper than I am.</p>
+        <p class="energy-line">But I will talk to you directly.</p>
+        <p class="energy-line energy-line-accent" data-landing-testimonial-attribution>And that&rsquo;s different.</p>
+      </div>
+    </section>
+
+    <!-- Boundary -->
+    <section class="faq reveal landing-panel">
+      <h2 class="section-title">The Boundary</h2>
+      <div class="conversation-copy boundary-copy">
+        <p>Don&rsquo;t screenshot.</p>
+        <p>Don&rsquo;t make it weird.</p>
+        <p>Stay chill.</p>
+      </div>
     </section>
 
     <!-- Pricing -->
-    <section class="pricing reveal" id="pricing">
+    <section class="pricing reveal landing-panel" id="pricing">
       <div class="tiers">
         <article class="tier-card tier-featured">
-          <span class="tier-ribbon">Join the circle</span>
+          <span class="tier-ribbon">Join the Inner Circle</span>
           <h3>Monthly membership</h3>
-          <p class="price"><span class="amount">$12.00</span></p>
+          <p class="price"><span class="amount">$19.00</span></p>
           <ul>
-            <li>Access to exclusive content</li>
-            <li>Cancel anytime</li>
+            <li>Keep it small.</li>
+            <li>Cancel anytime.</li>
           </ul>
-          <a href="https://buy.stripe.com/4gM4gB2LM5m4brQgHvds400" class="btn btn-primary btn-shine">Subscribe — $12/mo</a>
+          <a href="https://buy.stripe.com/4gM4gB2LM5m4brQgHvds400" class="btn btn-primary btn-shine">Join the Inner Circle — $19/mo</a>
         </article>
       </div>
       <p class="trust-line"><span class="trust-icon" aria-hidden="true">🔒</span> Secure payment via Stripe <span class="trust-sep">·</span> <span class="trust-icon" aria-hidden="true">✓</span> Cancel anytime</p>
@@ -121,34 +141,14 @@
       </div>
     </section>
 
-    <!-- FAQ -->
-    <section class="faq reveal">
-      <h2 class="section-title">FAQ</h2>
-      <dl class="faq-list faq-accordion">
-        <div class="faq-item">
-          <dt><button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-1" id="faq-q1">How do I get access?</button></dt>
-          <dd id="faq-1" role="region" aria-labelledby="faq-q1" class="faq-answer"><div class="faq-answer-inner">Subscribe above, then create an account or log in. You’ll get access right away.</div></dd>
-        </div>
-        <div class="faq-item">
-          <dt><button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-2" id="faq-q2">What’s in the member area?</button></dt>
-          <dd id="faq-2" role="region" aria-labelledby="faq-q2" class="faq-answer"><div class="faq-answer-inner">Exclusive posts and more. Content you won’t find anywhere else.</div></dd>
-        </div>
-        <div class="faq-item">
-          <dt><button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-3" id="faq-q3">Can I cancel?</button></dt>
-          <dd id="faq-3" role="region" aria-labelledby="faq-q3" class="faq-answer"><div class="faq-answer-inner">Yes. Cancel anytime with one click — you’ll be taken to Stripe’s portal.</div></dd>
-        </div>
-        <div class="faq-item">
-          <dt><button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-4" id="faq-q4">Can I tip without subscribing?</button></dt>
-          <dd id="faq-4" role="region" aria-labelledby="faq-q4" class="faq-answer"><div class="faq-answer-inner">Yes. Use the tip section above — it’s a one-time payment, no subscription. Show love whenever you want.</div></dd>
-        </div>
-      </dl>
-    </section>
-
     <!-- Second CTA -->
-    <section class="cta reveal">
+    <section class="cta reveal landing-panel cta-panel">
       <p class="member-count-display cta-member-count" id="member-count-display" style="display: none;" data-landing-member-count></p>
       <img src="assets/logo.svg" alt="My Inner Circle" class="cta-logo" />
-      <a href="#pricing" class="btn btn-primary btn-shine">Get in</a>
+      <p class="preview-sub">Join the Inner Circle</p>
+      <p class="hero-promise"><span class="hero-promise-line">$19/month</span></p>
+      <p class="preview-sub">Keep it small.</p>
+      <a href="#pricing" class="btn btn-primary btn-shine">Join the Inner Circle</a>
     </section>
   </main>
 

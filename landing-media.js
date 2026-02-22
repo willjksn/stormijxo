@@ -23,12 +23,6 @@
     if (!doc.exists) return;
     var data = doc.data();
 
-    var previewsEnabled = data.showPreviews !== false && data.showPreviews !== "false";
-    var previewSection = document.getElementById("preview-section");
-    if (previewSection) previewSection.style.display = previewsEnabled ? "" : "none";
-    var perksGetInBtn = document.getElementById("perks-get-in");
-    if (perksGetInBtn) perksGetInBtn.style.display = previewsEnabled ? "" : "none";
-
     slots.forEach(function(slot) {
       var item = data[slot];
       if (!item || !item.url) return;
@@ -55,20 +49,6 @@
         wrap.appendChild(img);
       }
     });
-
-    var testimonialSection = document.getElementById("testimonial-section");
-    if (testimonialSection) {
-      var hideTestimonial = data.showTestimonial === false || data.showTestimonial === "false";
-      if (hideTestimonial) {
-        testimonialSection.style.display = "none";
-      } else {
-        testimonialSection.style.display = "";
-        var textEl = testimonialSection.querySelector("[data-landing-testimonial-text]");
-        var attrEl = testimonialSection.querySelector("[data-landing-testimonial-attribution]");
-        if (data.testimonialText != null && textEl) textEl.textContent = data.testimonialText;
-        if (data.testimonialAttribution != null && attrEl) attrEl.textContent = data.testimonialAttribution;
-      }
-    }
 
     var memberCountEl = document.getElementById("member-count-display");
     var showMemberCount = data.showMemberCount === true || data.showMemberCount === "true";

@@ -41,8 +41,8 @@ function showRenewal(user) {
     document.body.innerHTML =
       "<main style='max-width:480px;margin:4rem auto;padding:2rem;text-align:center'>" +
       "<h1>Subscription required</h1>" +
-      "<p>Your subscription has expired or is not active. <a href='/index.html#subscribe'>Renew here</a> to access the member area.</p>" +
-      "<p><a href='../index.html' class='btn btn-primary'>Back to home</a></p>" +
+      "<p>Your subscription has expired or is not active. <a href='/#subscribe'>Renew here</a> to access the member area.</p>" +
+      "<p><a href='/' class='btn btn-primary'>Back to home</a></p>" +
       "<p style='margin-top:1.5rem'><a href='/profile'>Go to profile</a></p></main>";
   }
 }
