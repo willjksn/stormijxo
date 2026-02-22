@@ -1,5 +1,7 @@
 # Dependencies
 node_modules/
+.next/
+out/
 
 # Local env / secrets (optional: use Vercel env vars for Firebase in production)
 .env

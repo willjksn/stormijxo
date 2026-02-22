@@ -40,8 +40,8 @@
   gap: 0.75rem;
 }
 .auth-modal-brand .auth-modal-logo {
-  width: 48px;
-  height: 48px;
+  width: 96px;
+  height: 96px;
   object-fit: contain;
 }
 .auth-modal-close {

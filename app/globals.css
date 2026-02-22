@@ -1,0 +1,10 @@
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@400;500;600&family=Great+Vibes&family=Playfair+Display:wght@600;700&display=swap");
+@import "../styles.css";
+@import "../member/member-header.css";
+@import "../member/member-feed.css";
+@import "../auth-modal.css";
+
+html,
+body {
+  max-width: 100vw;
+}

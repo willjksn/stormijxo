@@ -64,6 +64,12 @@
 
     function renderSocialInto(container, idPrefix) {
       if (!container) return;
+      var hasConfigured = order.some(function(key) {
+        var item = links[key];
+        return item && item.url && (item.show === true || item.show === "true");
+      });
+      if (!hasConfigured) return;
+      container.innerHTML = "";
       order.forEach(function(key) {
         var item = links[key];
         if (!item || !item.url || (item.show !== true && item.show !== "true")) return;

@@ -1,0 +1,423 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  padding: 1.5rem;
+}
+
+.shell {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.9rem;
+  color: var(--text);
+}
+
+.subtitle {
+  margin: 0.3rem 0 0;
+  color: var(--text-muted);
+}
+
+.headerActions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.reminderBtn {
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0.58rem 0.85rem;
+  cursor: pointer;
+}
+
+.reminderBtn:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.legend {
+  display: flex;
+  gap: 0.8rem 1.2rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.dotBlue {
+  background: var(--accent);
+}
+
+.dotGreen {
+  background: #15803d;
+}
+
+.dotGray {
+  background: var(--text-muted);
+}
+
+.dotPink {
+  background: var(--accent-hover);
+}
+
+.monthBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.monthBar h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  min-width: 220px;
+  text-align: center;
+  color: var(--text);
+}
+
+.monthNav {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.monthNav:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-card);
+}
+
+.weekday {
+  background: var(--accent-soft);
+  color: var(--text-muted);
+  padding: 0.7rem;
+  text-align: center;
+  font-size: 0.83rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+
+.cell {
+  min-height: 110px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  text-align: left;
+  padding: 0.45rem;
+  cursor: pointer;
+}
+
+.cell:nth-child(7n) {
+  border-right: 0;
+}
+
+.cell:hover {
+  background: var(--accent-soft);
+}
+
+.cellMuted {
+  opacity: 0.55;
+  color: var(--text-muted);
+}
+
+.dateNum {
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+
+.badges {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.35rem;
+}
+
+.badge {
+  font-size: 0.68rem;
+  padding: 0.22rem 0.35rem;
+  border-radius: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badgeBlue {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.badgeGreen {
+  background: rgba(34, 197, 94, 0.15);
+  color: #15803d;
+}
+
+.badgeGray {
+  background: rgba(124, 91, 104, 0.15);
+  color: var(--text-muted);
+}
+
+.badgePink {
+  background: rgba(188, 63, 116, 0.2);
+  color: var(--accent-hover);
+}
+
+.moreBadge {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.reminderList {
+  margin-top: 1.1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+}
+
+.reminderList h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.reminderList p {
+  margin: 0.3rem 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(47, 26, 36, 0.25);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 30;
+}
+
+.modal {
+  width: min(680px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.1rem;
+  box-shadow: 0 8px 32px rgba(212, 85, 139, 0.12);
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.8rem;
+}
+
+.modalHeader h3 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: var(--text);
+}
+
+.modalHeader button {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modalHeader button:hover {
+  color: var(--accent);
+}
+
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.formRow label {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.formRow input,
+.formRow textarea,
+.formRow select {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.62rem 0.72rem;
+  font: inherit;
+}
+
+.formRow textarea {
+  min-height: 96px;
+}
+
+.formRow small {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.formRowGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+}
+
+.typeRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.typeBtn,
+.typeActive {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 0.65rem 0.6rem;
+  cursor: pointer;
+}
+
+.typeActive {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.currentItems {
+  margin: 0.8rem 0;
+  padding: 0.65rem;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.currentItems h4 {
+  margin: 0 0 0.5rem;
+  color: var(--text);
+}
+
+.currentItems p {
+  margin: 0.45rem 0;
+  color: var(--text-muted);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.cancelBtn,
+.saveBtn {
+  border-radius: 9px;
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+  border: 1px solid var(--border);
+}
+
+.cancelBtn {
+  background: transparent;
+  color: var(--text);
+}
+
+.cancelBtn:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.saveBtn {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.saveBtn:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+@media (max-width: 900px) {
+  .grid {
+    font-size: 0.9rem;
+  }
+
+  .cell {
+    min-height: 95px;
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 1rem 0.6rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .typeRow,
+  .formRowGrid {
+    grid-template-columns: 1fr;
+  }
+}
