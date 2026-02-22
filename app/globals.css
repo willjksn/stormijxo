@@ -2,6 +2,7 @@
 @import "../styles.css";
 @import "../member/member-header.css";
 @import "../member/member-feed.css";
+@import "../member/member-post.css";
 @import "../auth-modal.css";
 
 html,

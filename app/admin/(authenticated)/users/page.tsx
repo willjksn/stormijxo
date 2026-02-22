@@ -210,8 +210,8 @@ export default function AdminUsersPage() {
       const spend: Record<string, SpendEntry> = {};
       const tippers: Record<string, TipperEntry> = {};
       (tipsSnap as { forEach: (fn: (d: { data: () => unknown; id: string }) => void) => void }).forEach(
-        (doc: { data: () => Record<string, unknown>; id: string }) => {
-          const d = doc.data();
+        (doc: { data: () => unknown; id: string }) => {
+          const d = doc.data() as Record<string, unknown>;
           const email = norm((d.email as string) ?? "");
           if (!email) return;
           if (!spend[email]) spend[email] = { monthlyCents: 0, storeItems: [] };
@@ -235,8 +235,8 @@ export default function AdminUsersPage() {
         }
       );
       (purchasesSnap as { forEach: (fn: (d: { data: () => unknown }) => void) => void }).forEach(
-        (doc: { data: () => Record<string, unknown> }) => {
-          const d = doc.data();
+        (doc: { data: () => unknown }) => {
+          const d = doc.data() as Record<string, unknown>;
           const email = norm(
             ((d.email as string) || (d.memberEmail as string) || (d.userEmail as string)) ?? ""
           );

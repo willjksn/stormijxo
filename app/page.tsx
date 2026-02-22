@@ -218,7 +218,7 @@ export default function LandingPage() {
           <SocialLinksFallback idPrefix="footer" />
         </div>
         <p className="footer-legal">
-          <a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a>
+          <Link href="/terms">Terms</Link> · <Link href="/privacy">Privacy</Link>
         </p>
       </footer>
 

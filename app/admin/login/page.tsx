@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { getFirebaseAuth, getFirebaseDb } from "../../../lib/firebase";
 import { canAccessAdmin, getAuthErrorMessage } from "../../../lib/auth-redirect";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useAuth } from "../../contexts/AuthContext";
 
-export default function AdminLoginPage() {
+function AdminLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
@@ -118,5 +118,17 @@ export default function AdminLoginPage() {
         </Link>
       </main>
     </>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={
+      <main className="login-page" style={{ maxWidth: 360, margin: "4rem auto", padding: "2rem", textAlign: "center", color: "var(--text-muted)" }}>
+        Loading…
+      </main>
+    }>
+      <AdminLoginForm />
+    </Suspense>
   );
 }
