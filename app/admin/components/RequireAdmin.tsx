@@ -6,7 +6,13 @@ import { useAuth } from "../../contexts/AuthContext";
 import { getFirebaseDb } from "../../../lib/firebase";
 import { canAccessAdmin } from "../../../lib/auth-redirect";
 
-export function RequireAdmin({ children }: { children: React.ReactNode }) {
+type RequireAdminProps = {
+  children: React.ReactNode;
+  /** Rendered during auth check so the shell appears immediately and only content area shows loading */
+  header?: React.ReactNode;
+};
+
+export function RequireAdmin({ children, header }: RequireAdminProps) {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [allowed, setAllowed] = useState<boolean | null>(null);
@@ -33,15 +39,27 @@ export function RequireAdmin({ children }: { children: React.ReactNode }) {
     }
   }, [authLoading, user, allowed, router]);
 
-  if (authLoading || (user && allowed === null)) {
+  const loading = authLoading || (user && allowed === null);
+  if (!user || allowed === false) {
+    return null;
+  }
+
+  if (loading && header) {
+    return (
+      <>
+        {header}
+        <main className="admin-main" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "50vh", color: "var(--text-muted)" }}>
+          Loading…
+        </main>
+      </>
+    );
+  }
+  if (loading) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "var(--text-muted)" }}>
         Loading…
       </div>
     );
-  }
-  if (!user || allowed === false) {
-    return null;
   }
   return <>{children}</>;
 }

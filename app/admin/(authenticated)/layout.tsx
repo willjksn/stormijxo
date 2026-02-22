@@ -6,7 +6,7 @@ import { AdminHeader } from "../components/AdminHeader";
 export default function AdminAuthenticatedLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="admin-page">
-      <RequireAdmin>
+      <RequireAdmin header={<AdminHeader />}>
         <AdminHeader />
         {children}
       </RequireAdmin>

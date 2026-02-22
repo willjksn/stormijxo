@@ -117,7 +117,7 @@ export function MemberHeader({ active }: MemberHeaderProps) {
       </div>
       <div className="header-right header-profile-wrap" ref={wrapRef}>
         {showAdmin && (
-          <Link href="/admin/dashboard" className="header-admin-btn" target="_blank" rel="noopener noreferrer">
+          <Link href="/admin/dashboard" className="header-admin-btn" prefetch>
             Admin
           </Link>
         )}
