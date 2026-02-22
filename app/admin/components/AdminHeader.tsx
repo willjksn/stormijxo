@@ -37,8 +37,8 @@ export function AdminHeader() {
 
   const handleLogout = async () => {
     setDropdownOpen(false);
-    await signOut();
     router.replace("/");
+    await signOut();
   };
 
   return (

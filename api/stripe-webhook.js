@@ -67,12 +67,35 @@ module.exports = async (req, res) => {
     const db = admin.firestore();
     const membersRef = db.collection("members");
     const tipsRef = db.collection("tips");
+    const purchasesRef = db.collection("purchases");
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
 
-      // One-time payments (tips) - store in tips collection.
+      // One-time payments (tips or treats)
       if (!session.subscription) {
+        const meta = session.metadata || {};
+        const isTreat = meta.type === "treat";
+
+        if (isTreat) {
+          // Treat purchase - store in purchases collection.
+          const email = session.customer_email || (session.customer_details && session.customer_details.email) || null;
+          await purchasesRef.add({
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            purchasedAt: session.created
+              ? admin.firestore.Timestamp.fromMillis(session.created * 1000)
+              : admin.firestore.FieldValue.serverTimestamp(),
+            amountCents: typeof session.amount_total === "number" ? session.amount_total : null,
+            currency: session.currency || "usd",
+            email,
+            treatId: meta.treatId || null,
+            productName: meta.treatId ? `Treat: ${meta.treatId}` : null,
+            stripeCustomerId: session.customer || null,
+            stripeSessionId: session.id,
+            paymentStatus: session.payment_status || null,
+            source: "stripe_treat",
+          });
+        } else {
         let tipInstagram = (session.metadata && session.metadata.tip_instagram_handle) || null;
         const customFields = session.custom_fields || [];
         for (const f of customFields) {
@@ -86,20 +109,21 @@ module.exports = async (req, res) => {
         }
         const tipEmail = session.customer_email || (session.customer_details && session.customer_details.email) || null;
 
-        await tipsRef.add({
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          tippedAt: session.created
-            ? admin.firestore.Timestamp.fromMillis(session.created * 1000)
-            : admin.firestore.FieldValue.serverTimestamp(),
-          amountCents: typeof session.amount_total === "number" ? session.amount_total : null,
-          currency: session.currency || "usd",
-          email: tipEmail,
-          instagram_handle: tipInstagram || null,
-          stripeCustomerId: session.customer || null,
-          stripeSessionId: session.id,
-          paymentStatus: session.payment_status || null,
-          source: "stripe_tip",
-        });
+          await tipsRef.add({
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            tippedAt: session.created
+              ? admin.firestore.Timestamp.fromMillis(session.created * 1000)
+              : admin.firestore.FieldValue.serverTimestamp(),
+            amountCents: typeof session.amount_total === "number" ? session.amount_total : null,
+            currency: session.currency || "usd",
+            email: tipEmail,
+            instagram_handle: tipInstagram || null,
+            stripeCustomerId: session.customer || null,
+            stripeSessionId: session.id,
+            paymentStatus: session.payment_status || null,
+            source: "stripe_tip",
+          });
+        }
 
         json(res, 200, { received: true });
         return;

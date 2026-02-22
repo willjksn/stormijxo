@@ -68,19 +68,19 @@ export default function LandingPage() {
             <h1 className="hero-name hero-stagger" style={{ ["--delay" as string]: "0.1s" }}>
               Not For Everyone
             </h1>
-            <p className="hero-handle-line hero-stagger" style={{ ["--delay" as string]: "0.25s" }}>
+            <p className="hero-tagline hero-stagger" style={{ ["--delay" as string]: "0.25s" }}>
+              Just for the ones who stay.
+            </p>
+            <p className="hero-promise hero-stagger" style={{ ["--delay" as string]: "0.4s" }}>
+              <span className="hero-promise-line">Same me</span>
+            </p>
+            <p className="hero-tagline hero-stagger" style={{ ["--delay" as string]: "0.55s" }}>
+              Closer access.
+            </p>
+            <p className="hero-handle-line hero-stagger" style={{ ["--delay" as string]: "0.7s" }}>
               <span className="hero-social-links" id="hero-social-links" aria-label="Social links">
                 <SocialLinksFallback idPrefix="hero" />
               </span>
-            </p>
-            <p className="hero-tagline hero-stagger" style={{ ["--delay" as string]: "0.4s" }}>
-              Just for the ones who stay.
-            </p>
-            <p className="hero-promise hero-stagger" style={{ ["--delay" as string]: "0.55s" }}>
-              <span className="hero-promise-line">Same me</span>
-            </p>
-            <p className="hero-tagline hero-stagger" style={{ ["--delay" as string]: "0.7s" }}>
-              Closer access.
             </p>
           </div>
         </section>
@@ -92,7 +92,7 @@ export default function LandingPage() {
           <div className="conversation-copy">
             <p>Social media is fun.</p>
             <p>But sometimes I want to talk without thousands of people watching.</p>
-            <p>I have a 9-5. And I am building my way out of it.</p>
+            <p>I have a 9-5 and I am building my way out.</p>
             <p>This space is part of that.</p>
             <p>If you are here, you are early. And I do not forget who was early.</p>
           </div>
@@ -139,7 +139,6 @@ export default function LandingPage() {
         <section className="pricing reveal landing-panel visible" id="pricing">
           <div className="tiers">
             <article className="tier-card tier-featured">
-              <span className="tier-ribbon">Join the Inner Circle</span>
               <h3>Monthly membership</h3>
               <p className="price">
                 <span className="amount">$19.00</span>

@@ -127,11 +127,10 @@ export function AuthModal({ isOpen, onClose, initialTab }: AuthModalProps) {
 
   const goAfterLogin = useCallback(
     async (user: { email: string | null }) => {
-      onClose();
       const path = await getPostLoginPath(db, user.email ?? null);
       router.replace(path);
     },
-    [onClose, router, db]
+    [router, db]
   );
 
   const handleSignupSubmit = async (e: React.FormEvent) => {

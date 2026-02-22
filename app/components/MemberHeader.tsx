@@ -60,8 +60,8 @@ export function MemberHeader({ active }: MemberHeaderProps) {
 
   const handleSignOut = async () => {
     setDropdownOpen(false);
-    await signOut();
     router.replace("/");
+    await signOut();
   };
 
   const handleAvatarClick = (e: React.MouseEvent) => {

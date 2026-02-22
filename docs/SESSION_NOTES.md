@@ -55,8 +55,8 @@ Use this file as a chronological log for continuity across chat windows.
 
 ### Pending / Next
 
-- Replace remaining `.html` links in the app with Next.js routes (e.g. `/signup`, `/login`, `/terms`, `/privacy`) when those pages are ported, or keep linking to existing HTML until then.
+- Add more features and UI/UX polish. Optionally add pretty URLs for posts (`/post/[id]`). Continue Stripe wiring when ready.
 - ~~Centralize auth/guards~~ Done: login at `/login`, `RequireAuth` on `/home`; config via `public/firebase-config.js` or `NEXT_PUBLIC_FIREBASE_*` (`.env.example`).
-- Continue route-by-route migration (e.g. post, grid, profile, admin) with parity checks.
-- Optionally align `vercel.json` with “Next as primary” (e.g. remove or adjust rewrites that point at `.html` for routes already in the app).
+- High-priority migration complete: post, terms, privacy, success, signup. vercel.json Next-first. Admin nav seamless.
+- ~~vercel.json Next-first~~ Done. “Next as primary” (e.g. remove or adjust rewrites that point at `.html` for routes already in the app).
 

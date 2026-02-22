@@ -24,7 +24,10 @@ Convert `Stormij_xo` from a multi-page static HTML app into a modern app experie
 - **Next.js app shell scaffolded** (Next 16, React 19, TypeScript): `app/layout.tsx`, `app/globals.css` (imports `styles.css`, member-header.css, member-feed.css), `next.config.ts`, `tsconfig.json`.
 - **Landing ported** to `app/page.tsx` (hero, perks, pricing, CTA, footer; pink-luxe preserved).
 - **Member home ported** to `app/home/page.tsx` with `MemberHeader` and demo feed; `app/components/MemberHeader.tsx`, `app/home/demo-posts.ts`.
-- Additional app routes: `app/calendar/page.tsx`, `app/treats/page.tsx`, `app/admin/schedule/page.tsx`; `app/assets/[...path]/route.ts` for assets.
+- Additional app routes: `app/calendar/page.tsx`, `app/treats/page.tsx`, `app/admin/schedule/page.tsx`; `app/assets/[...path]/route.ts` for asset proxy.
+- **Full route migration complete**: `app/post/` (member), `app/terms/`, `app/privacy/`, `app/success/`, `app/signup/`. All `.html` links replaced with Next `Link`. `vercel.json` Next-first (no rewrites to static HTML).
+- **404/build fixes**: `generate-firebase-config` writes to `public/firebase-config.js`; build script runs it before `next build`.
+- **Admin nav**: Same-tab navigation, RequireAdmin shows header during auth check for seamless transition.
 
 ## Important Context
 

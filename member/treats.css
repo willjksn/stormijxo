@@ -209,6 +209,47 @@
 .treat-card .btn:hover {
   box-shadow: 0 6px 20px rgba(201, 112, 130, 0.45);
 }
+/* Treat card as button (clickable purchase) */
+button.treat-card {
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  padding: 0;
+  width: 100%;
+}
+button.treat-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+button.treat-card .treat-card-inner {
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+.treat-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(201, 112, 130, 0.15);
+}
+.treat-card-qty {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.treat-card-qty-sold {
+  color: #c53030;
+}
+.treat-card-cta {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+button.treat-card:hover:not(:disabled) .treat-card-cta {
+  text-decoration: underline;
+}
+
 .treat-demo-badge {
   font-size: 0.65rem;
   color: var(--text-muted);

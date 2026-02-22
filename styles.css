@@ -375,12 +375,18 @@ main:not([class]) .section-title::after {
   }
 }
 
+.hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
 .hero-name {
   font-family: var(--serif);
   font-size: clamp(2.1rem, 5.2vw, 3rem);
   font-style: normal;
   font-weight: 600;
-  margin: 0 0 0.4em;
+  margin: 0;
   letter-spacing: 0.02em;
   line-height: 1.18;
   padding-bottom: 0.05em;
@@ -390,7 +396,7 @@ main:not([class]) .section-title::after {
 }
 
 .hero-handle-line {
-  margin: 0.2em 0 0.6rem;
+  margin: 0;
 }
 
 .hero-social-links {
@@ -444,7 +450,7 @@ main:not([class]) .section-title::after {
 .hero-tagline {
   color: #6f4858;
   font-size: 0.95rem;
-  margin: 0 0 0.75rem;
+  margin: 0;
 }
 
 .hero-promise {
@@ -874,7 +880,6 @@ main:not([class]) .section-title::after {
   position: relative;
   border-color: var(--accent);
   box-shadow: 0 12px 34px rgba(212, 85, 139, 0.24), 0 0 0 1px rgba(212, 85, 139, 0.08);
-  padding-top: 2.25rem;
 }
 
 .tier-card.tier-featured h3 {
