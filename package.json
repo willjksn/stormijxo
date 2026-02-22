@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run generate-firebase-config && next build",
     "start": "next start",
     "logo-transparent": "node scripts/make-logo-transparent.js",
     "generate-firebase-config": "node scripts/generate-firebase-config.js"

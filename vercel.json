@@ -1,6 +1,5 @@
 {
-  "buildCommand": "npm run generate-firebase-config",
-  "outputDirectory": ".",
+  "buildCommand": "npm run build",
   "rewrites": [
     { "source": "/signup", "destination": "/signup.html" }
   ],

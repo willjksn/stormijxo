@@ -17,7 +17,7 @@ if (missing.length > 0) {
 }
 
 const measurementId = process.env.FIREBASE_MEASUREMENT_ID || "";
-const outPath = path.join(__dirname, "..", "firebase-config.js");
+const outPath = path.join(__dirname, "..", "public", "firebase-config.js");
 
 const content =
   "/**\n" +
