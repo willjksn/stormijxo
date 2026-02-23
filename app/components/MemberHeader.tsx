@@ -137,6 +137,11 @@ export function MemberHeader({ active }: MemberHeaderProps) {
           )}
         </button>
         <div className={`profile-dropdown${dropdownOpen ? " open" : ""}`}>
+          {showAdmin && (
+            <Link href="/admin/dashboard" className="profile-dropdown-admin" onClick={() => setDropdownOpen(false)} prefetch>
+              Admin
+            </Link>
+          )}
           <Link href="/profile" onClick={() => setDropdownOpen(false)}>
             Your Profile
           </Link>

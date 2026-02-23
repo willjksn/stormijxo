@@ -52,9 +52,7 @@
     margin-left: auto;
   }
   .member-header .header-admin-btn {
-    font-size: 0.75rem;
-    padding: 0.3rem 0.4rem;
-    min-height: 32px;
+    display: none;
   }
   .member-header .profile-avatar-wrap,
   .member-header .profile-avatar-wrap .profile-avatar,
@@ -274,6 +272,21 @@
 }
 .member-header .profile-dropdown button.sign-out { color: #c53030; }
 .member-header .profile-dropdown button.sign-out:hover { background: rgba(197, 48, 48, 0.08); }
+.member-header .profile-dropdown .profile-dropdown-admin {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  text-align: left;
+  font-size: 0.9rem;
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.member-header .profile-dropdown .profile-dropdown-admin:hover { background: var(--accent-soft); color: var(--accent-hover); }
 
 @media (max-width: 768px) {
   .member-header { flex-wrap: nowrap; }
