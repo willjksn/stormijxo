@@ -261,7 +261,7 @@ export function AuthModal({ isOpen, onClose, initialTab }: AuthModalProps) {
       <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
         <div className="auth-modal-header">
           <div className="auth-modal-brand">
-            <img src="/assets/logo.svg" alt="Inner Circle" className="auth-modal-logo" />
+            <img src="/assets/logo-auth.png" alt="Stormij XO" className="auth-modal-logo" />
           </div>
           <button type="button" className="auth-modal-close" aria-label="Close" onClick={onClose}>
             &times;
