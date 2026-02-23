@@ -7,14 +7,18 @@
 }
 @media (max-width: 768px) {
   .member-header {
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-    gap: 0.35rem;
+    width: 100%;
+    box-sizing: border-box;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    gap: 0.25rem;
     flex-wrap: nowrap;
+    min-width: 0;
+    overflow: visible;
   }
   .member-header .logo-img {
-    width: min(160px, 42vw) !important;
-    height: 48px !important;
+    width: min(120px, 35vw) !important;
+    height: 42px !important;
   }
   .member-header .header-left {
     gap: 0.5rem;
@@ -48,23 +52,23 @@
     margin-left: auto;
   }
   .member-header .header-admin-btn {
-    font-size: 0.8rem;
-    padding: 0.35rem 0.5rem;
-    min-height: 34px;
+    font-size: 0.75rem;
+    padding: 0.3rem 0.4rem;
+    min-height: 32px;
   }
   .member-header .profile-avatar-wrap,
   .member-header .profile-avatar-wrap .profile-avatar,
   .member-header .profile-avatar-wrap .profile-avatar-initials {
-    width: 36px !important;
-    height: 36px !important;
-    min-width: 36px !important;
-    min-height: 36px !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
   }
 }
 @media (max-width: 420px) {
   .member-header .logo-img {
-    width: min(130px, 38vw) !important;
-    height: 44px !important;
+    width: min(100px, 30vw) !important;
+    height: 38px !important;
   }
   .member-nav-main a span,
   .member-nav-main span[aria-current="page"] span {
