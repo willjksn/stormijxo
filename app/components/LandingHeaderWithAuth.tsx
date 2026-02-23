@@ -23,7 +23,7 @@ export function LandingHeaderWithAuth() {
   return (
     <>
       <header className="site-header">
-        <Link href="/" className="logo logo-pop">
+        <Link href={user ? "/home" : "/"} className="logo logo-pop">
           <img src="/assets/logo.svg" alt="My Inner circle" className="logo-img" />
         </Link>
         <nav className="header-nav">

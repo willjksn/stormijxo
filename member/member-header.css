@@ -57,9 +57,6 @@
     margin-left: auto;
     min-width: 0;
   }
-  .member-header .header-admin-btn {
-    display: none;
-  }
   .member-header .profile-avatar-wrap,
   .member-header .profile-avatar-wrap .profile-avatar,
   .member-header .profile-avatar-wrap .profile-avatar-initials {
@@ -294,6 +291,9 @@
 }
 .member-header .profile-dropdown .profile-dropdown-admin:hover { background: var(--accent-soft); color: var(--accent-hover); }
 
+@media (max-width: 1024px) {
+  .member-header .header-admin-btn { display: none; }
+}
 @media (max-width: 768px) {
   .member-header { flex-wrap: nowrap; }
   .member-header .header-left { flex-wrap: nowrap; }

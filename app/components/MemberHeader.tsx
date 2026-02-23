@@ -87,7 +87,7 @@ export function MemberHeader({ active }: MemberHeaderProps) {
   return (
     <header className="member-header">
       <div className="header-left">
-        <Link href="/" className="logo logo-pop">
+        <Link href="/home" className="logo logo-pop">
           <img src="/assets/logo.svg" alt="My Inner circle" className="logo-img" />
         </Link>
         <nav className="member-nav-main">
