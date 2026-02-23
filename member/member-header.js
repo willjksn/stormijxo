@@ -3,7 +3,7 @@
  * Call initMemberHeader(user) after auth.
  * Admin button is shown only for allowed admin emails.
  */
-var ADMIN_EMAILS = ["will_jackson@icloud.com", "stormijxo@gmail.com"];
+var ADMIN_EMAILS = ["will_jackson@icloud.com", "stormij.xo@gmail.com"];
 var MEMBER_HEADER_CACHE_KEY = "member_header_cache_v1";
 
 function setAdminLinkVisible(adminLink, isVisible) {

@@ -14,7 +14,7 @@
   var ADMIN_HEADER_CACHE_KEY = "admin_header_avatar_cache_v1";
 
   // Temporary: these emails can always access admin (match login allowlist)
-  var ALLOWED_ADMIN_EMAILS = ["will_jackson@icloud.com", "stormijxo@gmail.com"];
+  var ALLOWED_ADMIN_EMAILS = ["will_jackson@icloud.com", "stormij.xo@gmail.com"];
 
   function checkIsAdmin(userEmail) {
     var emailNorm = (userEmail || "").trim().toLowerCase();

@@ -22,7 +22,7 @@ export function getAuthErrorMessage(err: unknown, fallback: string): string {
 }
 
 /** Same allowlist as admin-auth.js — admins go to dashboard after login. */
-export const ALLOWED_ADMIN_EMAILS = ["will_jackson@icloud.com", "stormijxo@gmail.com"];
+export const ALLOWED_ADMIN_EMAILS = ["will_jackson@icloud.com", "stormij.xo@gmail.com"];
 
 export function isAdminEmail(email: string | null): boolean {
   return ALLOWED_ADMIN_EMAILS.includes((email ?? "").trim().toLowerCase());
