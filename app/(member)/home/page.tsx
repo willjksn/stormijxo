@@ -65,7 +65,6 @@ export default function HomeFeedPage() {
   return (
     <main className="member-main member-feed-main">
       <div className="feed-header">
-        <h1 className="feed-title">Home</h1>
         <Link href="/grid" className="feed-view-toggle" title="Switch to grid view" aria-label="Switch to grid view">
           <GridIcon />
         </Link>

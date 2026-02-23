@@ -5,7 +5,6 @@ export default function GridPage() {
   return (
     <main className="member-main member-feed-main">
       <div className="feed-header">
-        <h1 className="feed-title">Grid</h1>
         <Link href="/home" className="feed-view-toggle" title="Switch to list view" aria-label="Switch to list view">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 18, height: 18 }}>
             <line x1="8" y1="6" x2="21" y2="6" />
