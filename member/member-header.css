@@ -8,13 +8,14 @@
 @media (max-width: 768px) {
   .member-header {
     width: 100%;
+    max-width: 100vw;
     box-sizing: border-box;
     padding-left: 0.5rem;
     padding-right: 0.5rem;
     gap: 0.25rem;
     flex-wrap: nowrap;
     min-width: 0;
-    overflow: visible;
+    overflow: hidden;
   }
   .member-header .logo-img {
     width: min(120px, 35vw) !important;
@@ -22,15 +23,18 @@
   }
   .member-header .header-left {
     gap: 0.5rem;
-    flex-shrink: 1;
+    flex: 1 1 0;
     min-width: 0;
     flex-wrap: nowrap;
+    overflow: hidden;
   }
   .member-header .header-left .logo {
     flex-shrink: 1;
+    min-width: 0;
   }
   .member-header .header-left .logo .logo-img {
     flex-shrink: 1;
+    max-width: 100%;
   }
   .member-nav-main {
     gap: 0.5rem;
@@ -48,8 +52,10 @@
   }
   .member-header .header-right {
     gap: 0.5rem;
+    flex: 0 0 auto;
     flex-shrink: 0;
     margin-left: auto;
+    min-width: 0;
   }
   .member-header .header-admin-btn {
     display: none;
