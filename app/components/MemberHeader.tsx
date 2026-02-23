@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { isAdminEmail } from "../../lib/auth-redirect";
@@ -45,7 +45,6 @@ function useInitials(displayName: string | null, email: string | null): string {
 }
 
 export function MemberHeader({ active }: MemberHeaderProps) {
-  const router = useRouter();
   const pathname = usePathname();
   const { user, signOut } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -60,8 +59,8 @@ export function MemberHeader({ active }: MemberHeaderProps) {
 
   const handleSignOut = async () => {
     setDropdownOpen(false);
-    router.replace("/");
     await signOut();
+    window.location.href = "/";
   };
 
   const handleAvatarClick = (e: React.MouseEvent) => {

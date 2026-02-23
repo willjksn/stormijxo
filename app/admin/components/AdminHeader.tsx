@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useRef, useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -13,7 +12,6 @@ function useInitial(displayName: string | null, email: string | null): string {
 }
 
 export function AdminHeader() {
-  const router = useRouter();
   const { user, signOut } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -37,8 +35,8 @@ export function AdminHeader() {
 
   const handleLogout = async () => {
     setDropdownOpen(false);
-    router.replace("/");
     await signOut();
+    window.location.href = "/";
   };
 
   return (

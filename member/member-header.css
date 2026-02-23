@@ -291,6 +291,9 @@
 }
 .member-header .profile-dropdown .profile-dropdown-admin:hover { background: var(--accent-soft); color: var(--accent-hover); }
 
+@media (min-width: 1025px) {
+  .member-header .profile-dropdown .profile-dropdown-admin { display: none; }
+}
 @media (max-width: 1024px) {
   .member-header .header-admin-btn { display: none; }
 }
