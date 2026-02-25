@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { collection, getDocs, query, where, doc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, deleteDoc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { getFirebaseDb } from "../../lib/firebase";
 import styles from "./calendar.module.css";
 
@@ -85,48 +85,76 @@ function statusCardClass(status: PostStatus): string {
   return styles.cardGray;
 }
 
+function formatScheduledAt(calendarDate: string, calendarTime?: string): string {
+  if (!calendarDate) return "";
+  const [y, m, d] = calendarDate.split("-").map(Number);
+  const date = new Date(y, (m ?? 1) - 1, d ?? 1);
+  let timeStr = "";
+  if (calendarTime) {
+    const [h, min] = calendarTime.split(":").map(Number);
+    date.setHours(h ?? 0, min ?? 0, 0, 0);
+    timeStr = date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+  const dateStr = date.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  return timeStr ? `${dateStr} at ${timeStr}` : dateStr;
+}
+
+function calendarDateToInputValue(calendarDate: string): string {
+  return calendarDate || "";
+}
+
+function calendarTimeToInputValue(calendarTime?: string): string {
+  if (!calendarTime) return "12:00";
+  const [h, m] = calendarTime.split(":").map(Number);
+  return `${String(h ?? 0).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")}`;
+}
+
 function CalendarPostCard({
   post,
   onDelete,
   onRefresh,
+  onOpenPreview,
 }: {
   post: CalendarPost;
   onDelete: (id: string) => void;
   onRefresh: () => void;
+  onOpenPreview: (post: CalendarPost) => void;
 }) {
   const firstUrl = post.mediaUrls?.[0];
   const isVideo = post.mediaTypes?.[0] === "video" || (firstUrl && /\.(mp4|webm|mov|ogg)(\?|$)/i.test(firstUrl));
   const captionSnippet = (post.body || "").trim().slice(0, 50) + ((post.body || "").length > 50 ? "…" : "");
 
   return (
-    <div className={`${styles.calendarPostCard} ${statusCardClass(post.status)}`}>
+    <div
+      role="button"
+      tabIndex={0}
+      className={`${styles.calendarPostCard} ${statusCardClass(post.status)} ${styles.calendarPostCardClickable}`}
+      onClick={() => onOpenPreview(post)}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenPreview(post); } }}
+    >
       <div className={styles.calendarPostCardHeader}>
         <span className={styles.calendarPostTime}>{post.calendarTime || "—"}</span>
         <span className={styles.calendarPostStatusDot} aria-hidden />
       </div>
       <div className={styles.calendarPostPreview}>
-        {firstUrl &&
-          (isVideo ? (
+        {firstUrl
+          ? (isVideo ? (
             <video src={firstUrl} muted playsInline className={styles.calendarPostMedia} />
           ) : (
             <img src={firstUrl} alt="" className={styles.calendarPostMedia} />
-          ))}
+          ))
+          : <div className={styles.calendarPostMediaPlaceholder}>No media</div>}
       </div>
       <p className={styles.calendarPostCaption}>{captionSnippet || "No caption"}</p>
       <div className={styles.calendarPostBrand}>
         <img src="/assets/sj-heart-avatar.png" alt="SJ" className={styles.calendarPostSJIcon} />
         <span className={styles.calendarPostLabel}>POST</span>
       </div>
-      <div className={styles.calendarPostActions}>
-        <Link href={`/admin/posts?edit=${post.id}`} className={styles.calendarPostBtn} aria-label="Edit post">
-          Edit
-        </Link>
+      <div className={styles.calendarPostActions} onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
           className={styles.calendarPostBtnDanger}
-          onClick={() => {
-            if (confirm("Delete this post?")) onDelete(post.id);
-          }}
+          onClick={() => { if (confirm("Delete this post?")) onDelete(post.id); }}
           aria-label="Delete post"
         >
           Delete
@@ -150,6 +178,11 @@ export function SchedulePlanner() {
     time: "",
   });
   const [loading, setLoading] = useState(true);
+  const [previewPost, setPreviewPost] = useState<CalendarPost | null>(null);
+  const [showRescheduleInPreview, setShowRescheduleInPreview] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleTime, setRescheduleTime] = useState("12:00");
+  const [previewActionLoading, setPreviewActionLoading] = useState(false);
   const db = getFirebaseDb();
 
   const monthStart = useMemo(() => toISODate(new Date(month.getFullYear(), month.getMonth(), 1)), [month]);
@@ -272,6 +305,71 @@ export function SchedulePlanner() {
     setMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1));
   }
 
+  function openPreview(post: CalendarPost) {
+    setPreviewPost(post);
+    setShowRescheduleInPreview(false);
+    setRescheduleDate(calendarDateToInputValue(post.calendarDate));
+    setRescheduleTime(calendarTimeToInputValue(post.calendarTime));
+  }
+
+  function closePreview() {
+    setPreviewPost(null);
+    setShowRescheduleInPreview(false);
+  }
+
+  async function saveReschedule() {
+    if (!db || !previewPost || !rescheduleDate) return;
+    setPreviewActionLoading(true);
+    try {
+      const [h, min] = rescheduleTime.split(":").map(Number);
+      const sched = new Date(rescheduleDate);
+      sched.setHours(h ?? 0, min ?? 0, 0, 0);
+      await updateDoc(doc(db, "posts", previewPost.id), {
+        calendarDate: rescheduleDate,
+        calendarTime: `${String(h ?? 0).padStart(2, "0")}:${String(min ?? 0).padStart(2, "0")}`,
+        scheduledAt: Timestamp.fromDate(sched),
+        status: "scheduled",
+        updatedAt: serverTimestamp(),
+      });
+      setShowRescheduleInPreview(false);
+      setPreviewPost((p) => p ? { ...p, calendarDate: rescheduleDate, calendarTime: `${String(h ?? 0).padStart(2, "0")}:${String(min ?? 0).padStart(2, "0")}` } : null);
+      fetchPosts();
+    } catch (err) {
+      console.error("Reschedule failed:", err);
+    } finally {
+      setPreviewActionLoading(false);
+    }
+  }
+
+  async function publishPostFromPreview() {
+    if (!db || !previewPost) return;
+    setPreviewActionLoading(true);
+    try {
+      const now = new Date();
+      const calendarDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      const calendarTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      await updateDoc(doc(db, "posts", previewPost.id), {
+        status: "published",
+        calendarDate,
+        calendarTime,
+        publishedAt: Timestamp.fromDate(now),
+        published: true,
+        updatedAt: serverTimestamp(),
+      });
+      closePreview();
+      fetchPosts();
+    } catch (err) {
+      console.error("Publish failed:", err);
+    } finally {
+      setPreviewActionLoading(false);
+    }
+  }
+
+  function exportCaptionFromPreview() {
+    if (!previewPost?.body) return;
+    navigator.clipboard.writeText(previewPost.body).catch(() => {});
+  }
+
   return (
     <main className={styles.page}>
       <section className={styles.shell}>
@@ -310,6 +408,9 @@ export function SchedulePlanner() {
         </div>
 
         {loading && <p className={styles.loading}>Loading calendar…</p>}
+        {!loading && posts.length === 0 && (
+          <p className={styles.loading}>No scheduled posts this month. Create a post from Post and schedule it to see it here.</p>
+        )}
         <div className={styles.grid}>
           {WEEKDAYS.map((day) => (
             <div key={day} className={styles.weekday}>
@@ -319,6 +420,8 @@ export function SchedulePlanner() {
 
           {monthDays.map((day) => {
             const iso = toISODate(day);
+            const todayIso = toISODate(new Date());
+            const isToday = iso === todayIso;
             const dayPosts = postsByDate.get(iso) || [];
             const daySchedule = scheduleByDate.get(iso) || [];
             const dayReminders = remindersByDate.get(iso) || [];
@@ -327,7 +430,7 @@ export function SchedulePlanner() {
             return (
               <div
                 key={iso}
-                className={`${styles.cell} ${inMonth ? "" : styles.cellMuted}`}
+                className={`${styles.cell} ${inMonth ? "" : styles.cellMuted} ${isToday ? styles.cellToday : ""}`}
               >
                 <span className={styles.dateNum}>{day.getDate()}</span>
                 <div className={styles.badges}>
@@ -349,6 +452,7 @@ export function SchedulePlanner() {
                       post={post}
                       onDelete={deletePost}
                       onRefresh={fetchPosts}
+                      onOpenPreview={openPreview}
                     />
                   ))}
                 </div>
@@ -433,6 +537,92 @@ export function SchedulePlanner() {
               <button type="button" onClick={saveReminder} className={styles.saveBtn} disabled={!reminderForm.title || !reminderForm.date}>
                 Save reminder
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {previewPost && (
+        <div className={styles.overlay} onClick={closePreview}>
+          <div className={styles.previewModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.previewHeader}>
+              <div>
+                <h2 className={styles.previewTitle}>Post Preview</h2>
+                <p className={styles.previewSubtitle}>X • Post</p>
+              </div>
+              <div className={styles.previewHeaderActions}>
+                <button type="button" className={styles.previewActionBtn} onClick={exportCaptionFromPreview} title="Copy caption">
+                  Export ↓
+                </button>
+                <button type="button" className={styles.previewActionBtn} onClick={() => setShowRescheduleInPreview((v) => !v)}>
+                  Edit
+                </button>
+                {previewPost.status !== "published" && (
+                  <>
+                    <button type="button" className={styles.previewActionBtnPrimary} onClick={publishPostFromPreview} disabled={previewActionLoading}>
+                      {previewActionLoading ? "…" : "Publish Now"}
+                    </button>
+                    <button type="button" className={styles.previewActionBtnPrimary} onClick={publishPostFromPreview} disabled={previewActionLoading}>
+                      {previewActionLoading ? "…" : "Mark as Posted"}
+                    </button>
+                  </>
+                )}
+                <button type="button" className={styles.previewCloseBtn} onClick={closePreview} aria-label="Close">×</button>
+              </div>
+            </div>
+
+            {(previewPost.status === "scheduled" && (previewPost.calendarDate || previewPost.calendarTime)) && (
+              <div className={styles.previewScheduledBanner}>
+                Scheduled for: {formatScheduledAt(previewPost.calendarDate, previewPost.calendarTime)}
+              </div>
+            )}
+
+            {showRescheduleInPreview && (
+              <div className={styles.previewRescheduleBox}>
+                <h3 className={styles.previewRescheduleTitle}>Scheduled Date & Time:</h3>
+                <div className={styles.previewRescheduleRow}>
+                  <div className={styles.formRow}>
+                    <label>Date</label>
+                    <input
+                      type="date"
+                      value={rescheduleDate}
+                      onChange={(e) => setRescheduleDate(e.target.value)}
+                      className={styles.previewRescheduleInput}
+                    />
+                  </div>
+                  <div className={styles.formRow}>
+                    <label>Time</label>
+                    <input
+                      type="time"
+                      value={rescheduleTime}
+                      onChange={(e) => setRescheduleTime(e.target.value)}
+                      className={styles.previewRescheduleInput}
+                    />
+                  </div>
+                </div>
+                <div className={styles.modalActions}>
+                  <button type="button" className={styles.cancelBtn} onClick={() => setShowRescheduleInPreview(false)}>Cancel</button>
+                  <button type="button" className={styles.saveBtn} onClick={saveReschedule} disabled={previewActionLoading || !rescheduleDate}>
+                    {previewActionLoading ? "Saving…" : "Save Changes"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className={styles.previewImageCard}>
+              {previewPost.mediaUrls?.[0] ? (
+                previewPost.mediaTypes?.[0] === "video" || /\.(mp4|webm|mov|ogg)(\?|$)/i.test(previewPost.mediaUrls[0]) ? (
+                  <video src={previewPost.mediaUrls[0]} controls className={styles.previewMedia} />
+                ) : (
+                  <img src={previewPost.mediaUrls[0]} alt="" className={styles.previewMedia} />
+                )
+              ) : (
+                <div className={styles.previewMediaPlaceholder}>No image</div>
+              )}
+            </div>
+            <div className={styles.previewCaptionSection}>
+              <p className={styles.previewCaptionLabel}>Caption:</p>
+              <p className={styles.previewCaptionText}>{previewPost.body?.trim() || "No caption."}</p>
             </div>
           </div>
         </div>
