@@ -590,6 +590,14 @@ export default function AdminPostsPage() {
                       + Option
                     </button>
                   )}
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => savePost("draft")}
+                    disabled={publishLoading || !(selectedMedia.length > 0 || caption.trim() || (poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2))}
+                  >
+                    Save
+                  </button>
                   <button type="button" className="btn btn-secondary admin-posts-poll-remove" onClick={() => setPoll(null)}>
                     Cancel
                   </button>
@@ -642,6 +650,14 @@ export default function AdminPostsPage() {
                   </div>
                 )}
                 <div className="admin-posts-poll-actions">
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => savePost("draft")}
+                    disabled={publishLoading || !(selectedMedia.length > 0 || caption.trim() || (poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2))}
+                  >
+                    Save
+                  </button>
                   <button type="button" className="btn btn-secondary admin-posts-poll-remove" onClick={() => { setTipGoalEnabled(false); setTipGoalDescription(""); setTipGoalTargetDollars(""); setTipGoalRaisedCents(0); }}>
                     Cancel
                   </button>
@@ -724,6 +740,14 @@ export default function AdminPostsPage() {
                   </div>
                 </div>
                 <div className="admin-posts-poll-actions">
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => savePost("draft")}
+                    disabled={publishLoading || !(selectedMedia.length > 0 || caption.trim() || (poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2))}
+                  >
+                    Save
+                  </button>
                   <button type="button" className="btn btn-secondary admin-posts-poll-remove" onClick={() => setOverlaySectionOpen(false)}>
                     Cancel
                   </button>

@@ -22,7 +22,7 @@ function slug(name: string): string {
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g) || "folder";
+    .replace(/^-|-$/g, "") || "folder";
 }
 
 export default function AdminMediaPage() {

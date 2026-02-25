@@ -1961,7 +1961,26 @@ main:not([class]) .section-title::after {
 .admin-posts-poll-option-remove { width: 28px; height: 28px; padding: 0; border: none; background: var(--bg); color: var(--text-muted); border-radius: 6px; cursor: pointer; font-size: 1.2rem; line-height: 1; }
 .admin-posts-poll-option-remove:hover { background: rgba(197, 48, 48, 0.15); color: #c53030; }
 .admin-posts-poll-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
-.admin-posts-poll-actions .btn.btn-secondary { padding: 0.5rem 1rem; font-size: 0.875rem; }
+.admin-posts-poll-actions .btn.btn-secondary {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  border-color: rgba(212, 85, 139, 0.55);
+  color: var(--text);
+}
+.admin-posts-poll-actions .btn.btn-secondary:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.admin-posts-poll-block .admin-posts-poll-question:focus,
+.admin-posts-poll-block .admin-posts-poll-option-input:focus,
+.admin-posts-tip-goal-block .admin-posts-tip-goal-amount:focus,
+.admin-posts-tip-goal-block .admin-posts-overlay-text-input:focus,
+.admin-posts-overlay-select:focus,
+.admin-posts-overlay-text-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
 .admin-posts-poll-option-add { font-size: 0.85rem; color: var(--accent); background: none; border: none; cursor: pointer; padding: 0.25rem 0; font-family: inherit; font-weight: 500; }
 .admin-posts-poll-option-add:hover { text-decoration: underline; }
 .admin-posts-poll-remove:not(.btn) { font-size: 0.85rem; color: var(--text-muted); background: none; border: none; cursor: pointer; padding: 0.25rem 0; font-family: inherit; }

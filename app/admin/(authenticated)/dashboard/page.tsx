@@ -156,11 +156,20 @@ export default function AdminDashboardPage() {
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
       let thisMonth = 0;
       let totalLikes = 0;
-      type PostRow = { id: string; imageUrl: string | null; body: string; likeCount: number; commentCount: number; tipRaisedCents: number };
+      interface PostRow {
+        id: string;
+        imageUrl: string | null;
+        body: string;
+        likeCount: number;
+        commentCount: number;
+        tipRaisedCents: number;
+      }
       let bestLikes: PostRow | null = null;
       let bestComments: PostRow | null = null;
       let bestTips: PostRow | null = null;
-      snap.forEach((docSnap) => {
+      const docs = snap.docs;
+      for (let i = 0; i < docs.length; i++) {
+        const docSnap = docs[i];
         const d = docSnap.data();
         const created = (d.createdAt as Timestamp)?.toDate?.();
         const likeCount = typeof d.likeCount === "number" ? d.likeCount : 0;
@@ -185,7 +194,7 @@ export default function AdminDashboardPage() {
           if (!bestComments || commentCount > bestComments.commentCount) bestComments = row;
           if (tipRaisedCents > 0 && (!bestTips || tipRaisedCents > bestTips.tipRaisedCents)) bestTips = row;
         }
-      });
+      }
       setStats((s) => ({ ...s, postsThisMonth: String(thisMonth), totalLikes: String(totalLikes) }));
       setTopPostLikes(bestLikes ? { id: bestLikes.id, imageUrl: bestLikes.imageUrl, body: bestLikes.body, value: bestLikes.likeCount } : null);
       setTopPostComments(bestComments ? { id: bestComments.id, imageUrl: bestComments.imageUrl, body: bestComments.body, value: bestComments.commentCount } : null);
