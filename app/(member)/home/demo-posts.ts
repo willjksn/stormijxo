@@ -6,6 +6,8 @@ export type DemoPost = {
   dateStr: string;
   likeCount: number;
   comments: { username: string; text: string }[];
+  poll?: { question: string; options: string[]; optionVotes?: number[] };
+  tipGoal?: { description: string; targetCents: number; raisedCents: number };
 };
 
 export const DEMO_POSTS: DemoPost[] = [
@@ -20,6 +22,11 @@ export const DEMO_POSTS: DemoPost[] = [
       { username: "alex_j", text: "Love this! So excited for the results ❤️" },
       { username: "jordan.k", text: "The vibes look amazing" },
     ],
+    poll: {
+      question: "What should I post next?",
+      options: ["More BTS", "Final shots", "Outtakes", "Video clip"],
+      optionVotes: [12, 8, 5, 3],
+    },
   },
   {
     id: "demo-2",
@@ -32,6 +39,11 @@ export const DEMO_POSTS: DemoPost[] = [
       { username: "sam_r", text: "Can't wait." },
       { username: "riley_v", text: "Already counting down." },
     ],
+    tipGoal: {
+      description: "If I raise $200 I'll post an exclusive behind-the-scenes video.",
+      targetCents: 20000,
+      raisedCents: 8500,
+    },
   },
   {
     id: "demo-3",
@@ -41,5 +53,15 @@ export const DEMO_POSTS: DemoPost[] = [
     dateStr: "Feb 12, 2025",
     likeCount: 89,
     comments: [{ username: "taylor_m", text: "Love this aesthetic." }],
+    poll: {
+      question: "Coffee or tea?",
+      options: ["Coffee", "Tea", "Both", "Neither"],
+      optionVotes: [45, 28, 12, 4],
+    },
+    tipGoal: {
+      description: "Tips go toward my next photo shoot!",
+      targetCents: 50000,
+      raisedCents: 12500,
+    },
   },
 ];

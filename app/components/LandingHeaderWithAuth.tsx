@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "../contexts/AuthContext";
 import { AuthModal } from "./AuthModal";
 
@@ -9,6 +10,8 @@ export function LandingHeaderWithAuth() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTab, setModalTab] = useState<"login" | "signup">("signup");
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect");
 
   const openSignup = () => {
     setModalTab("signup");
@@ -51,6 +54,7 @@ export function LandingHeaderWithAuth() {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         initialTab={modalTab}
+        redirectPath={redirect}
       />
     </>
   );

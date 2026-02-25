@@ -20,7 +20,7 @@ export default function GridPage() {
       <div className="feed-grid">
         {DEMO_POSTS.map((post) => (
           <Link key={post.id} href={`/post/${post.id}`} className="feed-grid-item">
-            <img src={post.mediaUrls[0]} alt={post.title} loading="lazy" />
+            <img src={post.mediaUrls[0]} alt="" loading="lazy" />
           </Link>
         ))}
       </div>

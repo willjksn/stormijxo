@@ -9,7 +9,7 @@ type RequireAuthProps = {
 };
 
 /**
- * Redirects to /login?redirect=currentPath if not authenticated.
+ * Redirects to / (landing page) if not authenticated.
  * Shows nothing (or a brief loading state) while auth is resolving.
  */
 export function RequireAuth({ children }: RequireAuthProps) {
@@ -20,8 +20,8 @@ export function RequireAuth({ children }: RequireAuthProps) {
   useEffect(() => {
     if (loading) return;
     if (!user) {
-      const redirect = pathname && pathname !== "/" ? pathname.replace(/^\//, "") : "home";
-      router.replace("/login?redirect=" + encodeURIComponent(redirect));
+      const redirect = pathname && pathname !== "/" ? pathname : "home";
+      router.replace("/?redirect=" + encodeURIComponent(redirect));
     }
   }, [user, loading, router, pathname]);
 

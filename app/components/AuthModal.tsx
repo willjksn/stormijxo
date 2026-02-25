@@ -36,6 +36,8 @@ type AuthModalProps = {
   isOpen: boolean;
   onClose: () => void;
   initialTab: "login" | "signup";
+  /** After login, redirect here (e.g. from landing ?redirect=/home). */
+  redirectPath?: string | null;
 };
 
 async function checkUsernameAvailable(db: ReturnType<typeof getFirebaseDb>, username: string): Promise<boolean> {
@@ -69,7 +71,7 @@ async function createUserProfile(
   });
 }
 
-export function AuthModal({ isOpen, onClose, initialTab }: AuthModalProps) {
+export function AuthModal({ isOpen, onClose, initialTab, redirectPath }: AuthModalProps) {
   const router = useRouter();
   const [tab, setTab] = useState<"login" | "signup">(initialTab);
   const [error, setError] = useState("");
@@ -127,10 +129,11 @@ export function AuthModal({ isOpen, onClose, initialTab }: AuthModalProps) {
 
   const goAfterLogin = useCallback(
     async (user: { email: string | null }) => {
-      const path = await getPostLoginPath(db, user.email ?? null);
+      const defaultPath = redirectPath && /^\/[a-z0-9/_-]*$/i.test(redirectPath) ? redirectPath : "/home";
+      const path = await getPostLoginPath(db, user.email ?? null, defaultPath);
       router.replace(path);
     },
-    [router, db]
+    [router, db, redirectPath]
   );
 
   const handleSignupSubmit = async (e: React.FormEvent) => {

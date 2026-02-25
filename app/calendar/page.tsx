@@ -109,6 +109,19 @@ function calendarTimeToInputValue(calendarTime?: string): string {
   return `${String(h ?? 0).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")}`;
 }
 
+/** Format "14:00" as "2:00 PM" for card display */
+function formatTime12h(calendarTime?: string): string {
+  if (!calendarTime || !calendarTime.trim()) return "—";
+  const [h, min] = calendarTime.split(":").map(Number);
+  const hour = h ?? 0;
+  const minute = min ?? 0;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  if (hour === 0) return `12:${pad(minute)} AM`;
+  if (hour < 12) return `${hour}:${pad(minute)} AM`;
+  if (hour === 12) return `12:${pad(minute)} PM`;
+  return `${hour - 12}:${pad(minute)} PM`;
+}
+
 function CalendarPostCard({
   post,
   onDelete,
@@ -124,22 +137,29 @@ function CalendarPostCard({
   const isVideo = post.mediaTypes?.[0] === "video" || (firstUrl && /\.(mp4|webm|mov|ogg)(\?|$)/i.test(firstUrl));
   const captionSnippet = (post.body || "").trim().slice(0, 50) + ((post.body || "").length > 50 ? "…" : "");
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-calendar-card-action]")) return;
+    onOpenPreview(post);
+  };
+
   return (
     <div
       role="button"
       tabIndex={0}
       className={`${styles.calendarPostCard} ${statusCardClass(post.status)} ${styles.calendarPostCardClickable}`}
-      onClick={() => onOpenPreview(post)}
+      onClick={handleCardClick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenPreview(post); } }}
+      data-calendar-post-card
     >
       <div className={styles.calendarPostCardHeader}>
-        <span className={styles.calendarPostTime}>{post.calendarTime || "—"}</span>
+        <span className={styles.calendarPostTime}>{formatTime12h(post.calendarTime)}</span>
         <span className={styles.calendarPostStatusDot} aria-hidden />
       </div>
       <div className={styles.calendarPostPreview}>
         {firstUrl
           ? (isVideo ? (
-            <video src={firstUrl} muted playsInline className={styles.calendarPostMedia} />
+            <video src={firstUrl} muted playsInline className={styles.calendarPostMedia} aria-hidden />
           ) : (
             <img src={firstUrl} alt="" className={styles.calendarPostMedia} />
           ))
@@ -147,14 +167,14 @@ function CalendarPostCard({
       </div>
       <p className={styles.calendarPostCaption}>{captionSnippet || "No caption"}</p>
       <div className={styles.calendarPostBrand}>
-        <img src="/assets/sj-heart-avatar.png" alt="SJ" className={styles.calendarPostSJIcon} />
+        <img src="/assets/sj-heart-avatar.png" alt="" className={styles.calendarPostSJIcon} aria-hidden />
         <span className={styles.calendarPostLabel}>POST</span>
       </div>
-      <div className={styles.calendarPostActions} onClick={(e) => e.stopPropagation()}>
+      <div className={styles.calendarPostActions} data-calendar-card-action>
         <button
           type="button"
           className={styles.calendarPostBtnDanger}
-          onClick={() => { if (confirm("Delete this post?")) onDelete(post.id); }}
+          onClick={(e) => { e.stopPropagation(); if (confirm("Delete this post?")) onDelete(post.id); }}
           aria-label="Delete post"
         >
           Delete
@@ -209,11 +229,21 @@ export function SchedulePlanner() {
           const d = docSnap.data();
           const calendarDate = (d.calendarDate as string) || "";
           if (!calendarDate) return;
+          let mediaUrls = (d.mediaUrls as string[]) ?? [];
+          let mediaTypes = (d.mediaTypes as ("image" | "video")[]) ?? [];
+          if (mediaUrls.length === 0 && Array.isArray(d.media)) {
+            mediaUrls = (d.media as { url?: string; isVideo?: boolean }[])
+              .map((m) => m?.url)
+              .filter(Boolean) as string[];
+            mediaTypes = (d.media as { url?: string; isVideo?: boolean }[]).map((m) =>
+              m?.isVideo ? "video" : "image"
+            );
+          }
           list.push({
             id: docSnap.id,
             body: (d.body as string) ?? "",
-            mediaUrls: (d.mediaUrls as string[]) ?? [],
-            mediaTypes: (d.mediaTypes as ("image" | "video")[]) ?? [],
+            mediaUrls,
+            mediaTypes,
             status: (d.status as PostStatus) ?? "draft",
             calendarDate,
             calendarTime: (d.calendarTime as string) ?? "",
@@ -612,7 +642,7 @@ export function SchedulePlanner() {
             <div className={styles.previewImageCard}>
               {previewPost.mediaUrls?.[0] ? (
                 previewPost.mediaTypes?.[0] === "video" || /\.(mp4|webm|mov|ogg)(\?|$)/i.test(previewPost.mediaUrls[0]) ? (
-                  <video src={previewPost.mediaUrls[0]} controls className={styles.previewMedia} />
+                  <video src={previewPost.mediaUrls[0]} controls className={styles.previewMedia} aria-hidden />
                 ) : (
                   <img src={previewPost.mediaUrls[0]} alt="" className={styles.previewMedia} />
                 )

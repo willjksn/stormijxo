@@ -167,7 +167,9 @@
   color: #fff; font-size: 0.9rem; line-height: 1.4;
   pointer-events: none; overflow: hidden;
 }
-.feed-card-caption-overlay-text { display: block; white-space: nowrap; }
+.feed-card-caption-overlay-text { display: block; white-space: nowrap; font-size: 0.9rem; }
+.feed-card-caption-overlay-text-small { font-size: 0.75rem; }
+.feed-card-caption-overlay-text-large { font-size: 1.15rem; }
 .feed-card-caption-overlay-scroll-up .feed-card-caption-overlay-text {
   white-space: normal; animation: feed-caption-scroll-up 12s linear infinite;
 }
@@ -191,6 +193,43 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
+
+/* Poll & tip goal on card */
+.feed-card-poll { margin-top: 0.75rem; padding: 0.75rem; background: rgba(124, 91, 104, 0.08); border-radius: 12px; border: 1px solid var(--border); }
+.feed-card-poll-question { font-weight: 600; font-size: 0.9rem; margin: 0 0 0.5rem; color: var(--text); }
+.feed-card-poll-options { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.feed-card-poll-option {
+  position: relative;
+  font-size: 0.875rem;
+  color: var(--text);
+  padding: 0.4rem 0.5rem;
+  background: var(--bg-card);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.feed-card-poll-option-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, rgba(212, 85, 139, 0.4) 0%, rgba(201, 112, 130, 0.35) 100%);
+  border-radius: 6px;
+  min-width: 2px;
+  transition: width 0.3s ease;
+}
+.feed-card-poll-option-label { position: relative; z-index: 1; font-weight: 500; flex: 1; min-width: 0; }
+.feed-card-poll-option-meta { position: relative; z-index: 1; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; flex-shrink: 0; }
+.feed-card-poll-option-votes { font-weight: 400; color: var(--text-muted); opacity: 0.9; }
+.feed-card-tip-goal { margin-top: 0.75rem; padding: 0.75rem; background: rgba(212, 85, 139, 0.08); border-radius: 12px; border: 1px solid rgba(212, 85, 139, 0.22); }
+.feed-card-tip-goal-desc { font-size: 0.875rem; margin: 0 0 0.5rem; color: var(--text); }
+.feed-card-tip-goal-bar-wrap { height: 8px; background: rgba(212, 85, 139, 0.12); border-radius: 4px; overflow: hidden; margin-bottom: 0.35rem; }
+.feed-card-tip-goal-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent) 0%, rgba(201, 112, 130, 0.9) 100%); border-radius: 4px; transition: width 0.3s; }
+.feed-card-tip-goal-raised { font-size: 0.8rem; margin: 0; color: var(--text-muted); font-weight: 500; }
 
 /* Grid view - polished thumbnails */
 .feed-grid {

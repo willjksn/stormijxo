@@ -18,6 +18,8 @@ export type PostDoc = {
   overlayHighlight?: boolean;
   overlayUnderline?: boolean;
   overlayItalic?: boolean;
+  /** Font size for overlay text: small, medium, large */
+  overlayTextSize?: "small" | "medium" | "large";
   hideComments?: boolean;
   hideLikes?: boolean;
   /** Optional poll: question + options (members can vote) */

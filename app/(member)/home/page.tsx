@@ -88,15 +88,19 @@ export type FeedPost = {
   likeCount: number;
   comments: { username?: string; author?: string; text: string }[];
   captionStyle?: "static" | "scroll-up" | "scroll-across" | "dissolve";
+  overlayTextSize?: "small" | "medium" | "large";
   hideComments?: boolean;
   hideLikes?: boolean;
+  poll?: { question: string; options: string[]; optionVotes?: number[] };
+  tipGoal?: { description: string; targetCents: number; raisedCents: number };
 };
 
-function FeedCardCaptionOverlay({ caption, style: captionStyle }: { caption: string; style?: string }) {
+function FeedCardCaptionOverlay({ caption, style: captionStyle, size }: { caption: string; style?: string; size?: "small" | "medium" | "large" }) {
   if (!caption?.trim()) return null;
+  const sizeClass = size === "small" || size === "large" ? ` feed-card-caption-overlay-text-${size}` : "";
   return (
     <div className={`feed-card-caption-overlay feed-card-caption-overlay-${captionStyle || "static"}`} aria-hidden>
-      <span className="feed-card-caption-overlay-text">{caption}</span>
+      <span className={`feed-card-caption-overlay-text${sizeClass}`}>{caption}</span>
     </div>
   );
 }
@@ -141,7 +145,7 @@ function FeedCard({
             <img src={firstUrl} alt="" className="feed-card-media" loading="lazy" />
           ))}
         {showCaptionOnMedia && (
-          <FeedCardCaptionOverlay caption={post.body} style={captionStyle} />
+          <FeedCardCaptionOverlay caption={post.body} style={captionStyle} size={post.overlayTextSize} />
         )}
         {post.mediaUrls?.length > 1 && (
           <span className="feed-card-count">+{post.mediaUrls.length - 1}</span>
@@ -175,6 +179,49 @@ function FeedCard({
           <span className="caption-username">stormij</span>
           {post.body}
         </p>
+        {post.poll && post.poll.question && post.poll.options?.length >= 2 && (
+          <div className="feed-card-poll">
+            <p className="feed-card-poll-question">{post.poll.question}</p>
+            <ul className="feed-card-poll-options">
+              {(() => {
+                const votes = post.poll.optionVotes ?? post.poll.options.map(() => 0);
+                const total = votes.reduce((a, b) => a + b, 0);
+                return post.poll.options.map((opt, i) => {
+                  const v = votes[i] ?? 0;
+                  const pct = total > 0 ? Math.round((v / total) * 100) : 0;
+                  return (
+                    <li key={i} className="feed-card-poll-option">
+                      <span className="feed-card-poll-option-label">{opt}</span>
+                      <span className="feed-card-poll-option-meta">
+                        {total > 0 ? `${pct}%` : "0%"}
+                        {total > 0 && <span className="feed-card-poll-option-votes"> ({v} vote{v !== 1 ? "s" : ""})</span>}
+                      </span>
+                      {total > 0 && (
+                        <div className="feed-card-poll-option-bar" style={{ width: `${pct}%` }} aria-hidden />
+                      )}
+                    </li>
+                  );
+                });
+              })()}
+            </ul>
+          </div>
+        )}
+        {post.tipGoal && post.tipGoal.targetCents > 0 && (
+          <div className="feed-card-tip-goal">
+            <p className="feed-card-tip-goal-desc">{post.tipGoal.description}</p>
+            <div className="feed-card-tip-goal-bar-wrap">
+              <div
+                className="feed-card-tip-goal-bar-fill"
+                style={{
+                  width: `${Math.min(100, (post.tipGoal.raisedCents / post.tipGoal.targetCents) * 100)}%`,
+                }}
+              />
+            </div>
+            <p className="feed-card-tip-goal-raised">
+              ${(post.tipGoal.raisedCents / 100).toFixed(2)} of ${(post.tipGoal.targetCents / 100).toFixed(2)}
+            </p>
+          </div>
+        )}
         {!post.hideComments && post.comments?.length > 0 && (
           <>
             <Link href={`/post/${post.id}#comments`} className="feed-card-view-comments">
@@ -226,8 +273,11 @@ export default function HomeFeedPage() {
             likeCount: typeof d.likeCount === "number" ? d.likeCount : 0,
             comments: (d.comments as FeedPost["comments"]) ?? [],
             captionStyle: (d.captionStyle as FeedPost["captionStyle"]) ?? "static",
+            overlayTextSize: (d.overlayTextSize as FeedPost["overlayTextSize"]) ?? "medium",
             hideComments: !!d.hideComments,
             hideLikes: !!d.hideLikes,
+            poll: d.poll as FeedPost["poll"] | undefined,
+            tipGoal: d.tipGoal as FeedPost["tipGoal"] | undefined,
           });
         });
         setFirestorePosts(list);
@@ -246,8 +296,11 @@ export default function HomeFeedPage() {
       likeCount: p.likeCount,
       comments: p.comments,
       captionStyle: "static" as const,
+      overlayTextSize: "medium" as const,
       hideComments: false,
       hideLikes: false,
+      poll: p.poll,
+      tipGoal: p.tipGoal,
     }));
   }, [firestorePosts]);
 

@@ -16,6 +16,7 @@ type PostData = {
   dateStr: string;
   comments: { username?: string; author?: string; text: string }[];
   captionStyle?: "static" | "scroll-up" | "scroll-across" | "dissolve";
+  overlayTextSize?: "small" | "medium" | "large";
   hideComments?: boolean;
   hideLikes?: boolean;
 };
@@ -72,6 +73,7 @@ export default function PostByIdPage() {
         dateStr: demoPost.dateStr,
         comments: demoPost.comments,
         captionStyle: "static",
+        overlayTextSize: "medium",
         hideComments: false,
         hideLikes: false,
       });
@@ -106,6 +108,7 @@ export default function PostByIdPage() {
           dateStr,
           comments: (d.comments as PostData["comments"]) || [],
           captionStyle: (d.captionStyle as PostData["captionStyle"]) ?? "static",
+          overlayTextSize: (d.overlayTextSize as PostData["overlayTextSize"]) ?? "medium",
           hideComments: !!d.hideComments,
           hideLikes: !!d.hideLikes,
         });
@@ -173,7 +176,7 @@ export default function PostByIdPage() {
                 )}
                 {showCaptionOnMedia && (
                   <div className={`post-caption-overlay post-caption-overlay-${captionStyle}`}>
-                    <span className="post-caption-overlay-text">{post.body}</span>
+                    <span className={`post-caption-overlay-text${post.overlayTextSize === "small" ? " post-caption-overlay-text-small" : post.overlayTextSize === "large" ? " post-caption-overlay-text-large" : ""}`}>{post.body}</span>
                   </div>
                 )}
               </div>

@@ -44,6 +44,8 @@ const AI_LENGTHS = [
 
 const EMOJIS = "😀 😊 😍 🥰 😘 😎 🤗 👍 ❤️ 🔥 ✨ 💕 🌸 💖 😂 🎉 🙏 💜 😭 🤔 💋 🌟 💫 🌙 ⭐ 🌺 💗".split(" ");
 
+const DRAFT_STORAGE_KEY = "admin-posts-draft";
+
 function EmojiPicker({ onPick, onClose }: { onPick: (emoji: string) => void; onClose: () => void }) {
   return (
     <div className="admin-emoji-picker-wrap" role="dialog" aria-label="Pick emoji">
@@ -83,6 +85,7 @@ export default function AdminPostsPage() {
   const [overlayHighlight, setOverlayHighlight] = useState(false);
   const [overlayUnderline, setOverlayUnderline] = useState(false);
   const [overlayItalic, setOverlayItalic] = useState(false);
+  const [overlayTextSize, setOverlayTextSize] = useState<"small" | "medium" | "large">("medium");
   const [hideComments, setHideComments] = useState(false);
   const [hideLikes, setHideLikes] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -120,6 +123,36 @@ export default function AdminPostsPage() {
   }, [loadLibrary]);
 
   useEffect(() => {
+    if (editId) return;
+    try {
+      const raw = typeof window !== "undefined" ? sessionStorage.getItem(DRAFT_STORAGE_KEY) : null;
+      if (raw) {
+        const d = JSON.parse(raw) as { media?: { url: string; isVideo: boolean; alt?: string }[]; caption?: string };
+        if (Array.isArray(d.media) && d.media.length > 0) setSelectedMedia(d.media);
+        if (typeof d.caption === "string") setCaption(d.caption);
+      }
+    } catch {
+      // ignore invalid draft
+    }
+  }, [editId]);
+
+  useEffect(() => {
+    if (editId) return;
+    try {
+      if (selectedMedia.length === 0 && !caption.trim()) {
+        sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+      } else {
+        sessionStorage.setItem(
+          DRAFT_STORAGE_KEY,
+          JSON.stringify({ media: selectedMedia, caption: caption || "" })
+        );
+      }
+    } catch {
+      // ignore quota or private mode
+    }
+  }, [editId, selectedMedia, caption]);
+
+  useEffect(() => {
     if (!editId || !db) {
       if (editId) setEditLoading(false);
       return;
@@ -138,6 +171,8 @@ export default function AdminPostsPage() {
         setOverlayHighlight(!!d.overlayHighlight);
         setOverlayUnderline(!!d.overlayUnderline);
         setOverlayItalic(!!d.overlayItalic);
+        const size = (d.overlayTextSize as "small" | "medium" | "large") ?? "medium";
+        setOverlayTextSize(size === "small" || size === "large" ? size : "medium");
         const hasOverlay = !!((d.overlayText as string)?.trim()) || (d.captionStyle as string) !== "static";
         setOverlaySectionOpen(hasOverlay);
         setHideComments(!!d.hideComments);
@@ -321,36 +356,17 @@ export default function AdminPostsPage() {
     setPublishLoading(true);
     setMessage(null);
     try {
-      const payload = {
+      const altTextsArr = selectedMedia.map((m) => (m.alt ?? "").trim()).filter(Boolean);
+      const payload: Record<string, unknown> = {
         title: caption.slice(0, 80) || "Untitled",
         body: caption,
         mediaUrls: selectedMedia.map((m) => m.url),
         mediaTypes: selectedMedia.map((m) => (m.isVideo ? "video" : "image")),
-        altTexts: selectedMedia.map((m) => (m.alt ?? "").trim()).filter(Boolean).length ? selectedMedia.map((m) => (m.alt ?? "").trim()) : undefined,
         captionStyle: overlayAnimation,
-        overlayText: overlayText.trim() || undefined,
-        overlayTextColor: overlayText.trim() ? overlayTextColor : undefined,
-        overlayHighlight: overlayText.trim() ? overlayHighlight : undefined,
-        overlayUnderline: overlayText.trim() ? overlayUnderline : undefined,
-        overlayItalic: overlayText.trim() ? overlayItalic : undefined,
         hideComments,
         hideLikes,
-        poll:
-          poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2
-            ? { question: poll.question.trim(), options: poll.options.map((o) => o.trim()).filter(Boolean) }
-            : undefined,
-        tipGoal:
-          tipGoalEnabled && tipGoalDescription.trim() && tipGoalTargetDollars
-            ? {
-                enabled: true,
-                description: tipGoalDescription.trim(),
-                targetCents: Math.round(parseFloat(tipGoalTargetDollars) * 100) || 0,
-                raisedCents: tipGoalRaisedCents,
-              }
-            : undefined,
         status,
         calendarDate,
-        calendarTime: calendarTime || undefined,
         scheduledAt: scheduledAt ?? null,
         publishedAt: publishedAt ?? null,
         published: status === "published",
@@ -358,6 +374,28 @@ export default function AdminPostsPage() {
         comments: [],
         viewCount: 0,
       };
+      if (altTextsArr.length > 0) payload.altTexts = selectedMedia.map((m) => (m.alt ?? "").trim() || "");
+      if (overlayText.trim()) {
+        payload.overlayText = overlayText.trim();
+        payload.overlayTextColor = overlayTextColor;
+        payload.overlayHighlight = overlayHighlight;
+        payload.overlayUnderline = overlayUnderline;
+        payload.overlayItalic = overlayItalic;
+        payload.overlayTextSize = overlayTextSize;
+      }
+      if (poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2) {
+        payload.poll = { question: poll.question.trim(), options: poll.options.map((o) => o.trim()).filter(Boolean) };
+      }
+      if (tipGoalEnabled && tipGoalDescription.trim() && tipGoalTargetDollars) {
+        payload.tipGoal = {
+          enabled: true,
+          description: tipGoalDescription.trim(),
+          targetCents: Math.round(parseFloat(tipGoalTargetDollars) * 100) || 0,
+          raisedCents: tipGoalRaisedCents,
+        };
+      }
+      if (calendarTime) payload.calendarTime = calendarTime;
+
       if (editId) {
         await updateDoc(doc(db, "posts", editId), { ...payload, updatedAt: serverTimestamp() });
       } else {
@@ -374,6 +412,9 @@ export default function AdminPostsPage() {
               : "Draft saved and added to calendar (grey).",
       });
       if (!editId) {
+        try {
+          sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+        } catch {}
         setCaption("");
         setSelectedMedia([]);
         setOverlayAnimation("static");
@@ -382,6 +423,7 @@ export default function AdminPostsPage() {
         setOverlayHighlight(false);
         setOverlayUnderline(false);
         setOverlayItalic(false);
+        setOverlayTextSize("medium");
         setHideComments(false);
         setHideLikes(false);
         setPoll(null);
@@ -708,6 +750,21 @@ export default function AdminPostsPage() {
                     className="admin-posts-color-picker"
                     aria-label="Overlay text color"
                   />
+                  <span className="admin-posts-overlay-label">Text size</span>
+                  <div className="admin-posts-format-buttons">
+                    {(["small", "medium", "large"] as const).map((size) => (
+                      <button
+                        key={size}
+                        type="button"
+                        className={`admin-posts-format-btn${overlayTextSize === size ? " active" : ""}`}
+                        onClick={() => setOverlayTextSize(size)}
+                        aria-pressed={overlayTextSize === size}
+                        title={size.charAt(0).toUpperCase() + size.slice(1)}
+                      >
+                        {size.charAt(0).toUpperCase() + size.slice(1)}
+                      </button>
+                    ))}
+                  </div>
                   <span className="admin-posts-overlay-label">Format</span>
                   <div className="admin-posts-format-buttons">
                     <button
@@ -830,10 +887,15 @@ export default function AdminPostsPage() {
 
       {showScheduleModal && (
         <div className="admin-posts-overlay" onClick={() => setShowScheduleModal(false)}>
-          <div className="admin-posts-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="admin-posts-modal" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
             <h3>Schedule post</h3>
             <p className="admin-posts-hint">Choose date and time. Post will appear on the calendar in pink until it’s published.</p>
-            <form onSubmit={handleScheduleConfirm}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (scheduleDate && scheduleTime && !publishLoading) savePost("schedule");
+              }}
+            >
               <div className="admin-posts-form-row">
                 <label>Date</label>
                 <input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} required />
@@ -844,7 +906,11 @@ export default function AdminPostsPage() {
               </div>
               <div className="admin-posts-modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowScheduleModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={!scheduleDate || !scheduleTime || publishLoading}>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={!scheduleDate || !scheduleTime || publishLoading}
+                >
                   {publishLoading ? "Saving…" : "Schedule post"}
                 </button>
               </div>

@@ -77,7 +77,9 @@
   padding: 1rem 1rem 1.5rem; background: linear-gradient(transparent 0%, rgba(0,0,0,0.75) 100%);
   color: #fff; font-size: 0.95rem; line-height: 1.4; overflow: hidden;
 }
-.post-caption-overlay-text { display: block; }
+.post-caption-overlay-text { display: block; font-size: 0.95rem; }
+.post-caption-overlay-text-small { font-size: 0.8rem; }
+.post-caption-overlay-text-large { font-size: 1.2rem; }
 .post-caption-overlay-scroll-up .post-caption-overlay-text {
   animation: post-caption-scroll-up 12s linear infinite;
 }
