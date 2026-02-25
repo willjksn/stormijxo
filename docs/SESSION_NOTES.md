@@ -144,9 +144,16 @@ Use this file as a chronological log for continuity across chat windows.
 
 ### Next Steps
 
-1. **Member-facing tip goal**: Show tip goal (description, progress bar) on feed/post detail and allow “Tip for this post” with attribution to `tipGoal.raisedCents`.
+1. **Tip attribution**: When Stripe webhook receives a tip, attribute to post when `postId` present and increment that post's `tipGoal.raisedCents`. Show tip goal (description, progress bar) on feed/post detail and allow “Tip for this post” with attribution to `tipGoal.raisedCents`.
 2. **Tip page hero image**: Optional configurable image (e.g. Firestore + admin upload).
-3. **Stripe / webhooks**: Finish tip-checkout and any post-specific tip attribution when desired.
+3. **Stripe / webhooks**: Finish tip-checkout and success/cancel URLs when desired.
+
+### 2026-02-25 (continuation)
+
+- Logged-out redirect to landing (`/`) with `?redirect=...`; auth modal uses it after login.
+- Calendar post image: SchedulePlanner normalizes `media` from Firestore; post card preview shows image.
+- Poll/tip colors: pink gradient and pink/rose tip card.
+- Tip goal on post detail: block + "Tip for this post" → `/tip?postId=<id>`; same link on feed cards with tip goal.
 
 ### What to Tell a New Agent
 

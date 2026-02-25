@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { doc, getDoc } from "firebase/firestore";
+import { getFirebaseDb } from "../../../lib/firebase";
+import { SITE_CONFIG_CONTENT_ID } from "../../../lib/site-config";
 
 const PRESET_AMOUNTS = [5, 10, 25, 50, 100, 250];
 
@@ -9,6 +12,25 @@ export default function TipPage() {
   const [customAmount, setCustomAmount] = useState("");
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
   const [logoError, setLogoError] = useState(false);
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
+  const [heroTitle, setHeroTitle] = useState<string>("Show Your Love");
+  const [heroSubtext, setHeroSubtext] = useState<string>("No minimum — send what you like.");
+  const db = getFirebaseDb();
+
+  useEffect(() => {
+    if (!db) return;
+    getDoc(doc(db, "site_config", SITE_CONFIG_CONTENT_ID))
+      .then((snap) => {
+        if (snap.exists()) {
+          const d = snap.data() as { tipPageHeroImageUrl?: string; tipPageHeroTitle?: string; tipPageHeroSubtext?: string };
+          const url = d.tipPageHeroImageUrl?.trim();
+          if (url) setHeroImageUrl(url);
+          if (d.tipPageHeroTitle?.trim()) setHeroTitle(d.tipPageHeroTitle.trim());
+          if (d.tipPageHeroSubtext?.trim()) setHeroSubtext(d.tipPageHeroSubtext.trim());
+        }
+      })
+      .catch(() => {});
+  }, [db]);
 
   const amountCents =
     selectedPreset != null
@@ -49,10 +71,18 @@ export default function TipPage() {
     <main className="member-main tip-page">
       <section className="tip-hero">
         <div className="tip-hero-bg" />
+        {heroImageUrl && (
+          <img
+            src={heroImageUrl}
+            alt=""
+            className="tip-hero-image"
+            aria-hidden
+          />
+        )}
         <div className="tip-hero-content">
-          <h1 className="tip-title">Show Your Love</h1>
+          <h1 className="tip-title">{heroTitle}</h1>
           <p className="tip-subhead">
-            No minimum — send what you like.
+            {heroSubtext}
           </p>
         </div>
       </section>

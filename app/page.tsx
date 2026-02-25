@@ -1,6 +1,8 @@
 import Link from "next/link";
 import Script from "next/script";
+import { Suspense } from "react";
 import { LandingHeaderWithAuth } from "./components/LandingHeaderWithAuth";
+import { LandingCtaCount } from "./components/LandingContent";
 
 function SocialLinksFallback({ idPrefix = "social" }: { idPrefix?: string }) {
   const igGradId = idPrefix + "-ig-grad";
@@ -52,7 +54,17 @@ function SocialLinksFallback({ idPrefix = "social" }: { idPrefix?: string }) {
 export default function LandingPage() {
   return (
     <>
-      <LandingHeaderWithAuth />
+      <Suspense fallback={
+        <header className="site-header">
+          <Link href="/" className="logo logo-pop">Inner Circle</Link>
+          <nav className="header-nav">
+            <button type="button" className="header-link">Sign up</button>
+            <button type="button" className="header-login">Log in</button>
+          </nav>
+        </header>
+      }>
+        <LandingHeaderWithAuth />
+      </Suspense>
 
       <main>
         <section className="hero reveal visible">
@@ -201,6 +213,7 @@ export default function LandingPage() {
         </section>
 
         <section className="cta reveal landing-panel cta-panel visible">
+          <LandingCtaCount />
           <p className="preview-sub">Join the Inner Circle</p>
           <p className="hero-promise">
             <span className="hero-promise-line">$19/month</span>

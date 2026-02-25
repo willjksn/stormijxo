@@ -34,11 +34,6 @@ export default function PrivacyPage() {
       </main>
 
       <footer className="site-footer">
-        <p>
-          <a href="https://instagram.com/stormij_xo" target="_blank" rel="noopener" className="footer-ig">
-            Follow on Instagram
-          </a>
-        </p>
         <p className="footer-legal">
           <Link href="/terms">Terms</Link> · <Link href="/privacy">Privacy</Link>
         </p>

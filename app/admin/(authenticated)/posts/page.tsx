@@ -517,20 +517,6 @@ export default function AdminPostsPage() {
                   )}
                   <button type="button" className="admin-posts-thumb-remove" onClick={() => removeSelected(i)} aria-label="Remove">×</button>
                 </div>
-                <div className="admin-posts-thumb-meta">
-                  <input
-                    type="text"
-                    placeholder="Alt text"
-                    value={m.alt ?? ""}
-                    onChange={(e) => setAltAt(i, e.target.value)}
-                    className="admin-posts-alt-input"
-                    title="For screen readers and when image can’t load"
-                  />
-                  <div className="admin-posts-thumb-reorder">
-                    <button type="button" onClick={() => moveMedia(i, -1)} disabled={i === 0} aria-label="Move left">←</button>
-                    <button type="button" onClick={() => moveMedia(i, 1)} disabled={i === selectedMedia.length - 1} aria-label="Move right">→</button>
-                  </div>
-                </div>
               </div>
             ))}
             <div className="admin-posts-media-buttons">

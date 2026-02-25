@@ -220,6 +220,9 @@ function FeedCard({
             <p className="feed-card-tip-goal-raised">
               ${(post.tipGoal.raisedCents / 100).toFixed(2)} of ${(post.tipGoal.targetCents / 100).toFixed(2)}
             </p>
+            <Link href={`/tip?postId=${encodeURIComponent(post.id)}`} className="feed-card-tip-for-post">
+              Tip for this post
+            </Link>
           </div>
         )}
         {!post.hideComments && post.comments?.length > 0 && (

@@ -19,6 +19,7 @@ type PostData = {
   overlayTextSize?: "small" | "medium" | "large";
   hideComments?: boolean;
   hideLikes?: boolean;
+  tipGoal?: { description: string; targetCents: number; raisedCents: number };
 };
 
 function escapeHtml(text: string): string {
@@ -76,6 +77,7 @@ export default function PostByIdPage() {
         overlayTextSize: "medium",
         hideComments: false,
         hideLikes: false,
+        tipGoal: demoPost.tipGoal,
       });
       setStatus("ok");
       return;
@@ -111,6 +113,7 @@ export default function PostByIdPage() {
           overlayTextSize: (d.overlayTextSize as PostData["overlayTextSize"]) ?? "medium",
           hideComments: !!d.hideComments,
           hideLikes: !!d.hideLikes,
+          tipGoal: d.tipGoal as PostData["tipGoal"] | undefined,
         });
         setStatus("ok");
       })
@@ -218,6 +221,29 @@ export default function PostByIdPage() {
           className="post-body"
           dangerouslySetInnerHTML={{ __html: postBodyWithHashtags(post.body) }}
         />
+        {post.tipGoal && post.tipGoal.targetCents > 0 && (
+          <div className="feed-card-tip-goal post-detail-tip-goal">
+            <p className="feed-card-tip-goal-desc">{post.tipGoal.description}</p>
+            <div className="feed-card-tip-goal-bar-wrap">
+              <div
+                className="feed-card-tip-goal-bar-fill"
+                style={{
+                  width: `${Math.min(100, (post.tipGoal.raisedCents / post.tipGoal.targetCents) * 100)}%`,
+                }}
+                aria-hidden
+              />
+            </div>
+            <p className="feed-card-tip-goal-raised">
+              ${(post.tipGoal.raisedCents / 100).toFixed(2)} of ${(post.tipGoal.targetCents / 100).toFixed(2)} raised
+            </p>
+            <Link
+              href={`/tip?postId=${encodeURIComponent(id)}`}
+              className="post-tip-for-post-btn"
+            >
+              Tip for this post
+            </Link>
+          </div>
+        )}
         {!post.hideComments && post.comments && post.comments.length > 0 && (
           <div className="post-comments" id="comments">
             <h3>Comments</h3>

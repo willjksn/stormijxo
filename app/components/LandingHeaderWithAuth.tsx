@@ -27,7 +27,18 @@ export function LandingHeaderWithAuth() {
     <>
       <header className="site-header">
         <Link href={user ? "/home" : "/"} className="logo logo-pop">
-          <img src="/assets/logo.svg" alt="My Inner circle" className="logo-img" />
+          <img
+            src="/assets/logo.svg"
+            alt="Inner Circle"
+            className="logo-img"
+            onError={(e) => {
+              const target = e.currentTarget;
+              target.style.display = "none";
+              const fallback = target.nextElementSibling;
+              if (fallback) (fallback as HTMLElement).style.display = "inline";
+            }}
+          />
+          <span className="logo-fallback" style={{ display: "none", fontWeight: 600, fontSize: "1.1rem", color: "var(--text)" }} aria-hidden>Inner Circle</span>
         </Link>
         <nav className="header-nav">
           {user ? (

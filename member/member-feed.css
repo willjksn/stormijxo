@@ -230,6 +230,15 @@
 .feed-card-tip-goal-bar-wrap { height: 8px; background: rgba(212, 85, 139, 0.12); border-radius: 4px; overflow: hidden; margin-bottom: 0.35rem; }
 .feed-card-tip-goal-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent) 0%, rgba(201, 112, 130, 0.9) 100%); border-radius: 4px; transition: width 0.3s; }
 .feed-card-tip-goal-raised { font-size: 0.8rem; margin: 0; color: var(--text-muted); font-weight: 500; }
+.feed-card-tip-for-post {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--accent);
+  text-decoration: none;
+}
+.feed-card-tip-for-post:hover { text-decoration: underline; }
 
 /* Grid view - polished thumbnails */
 .feed-grid {
@@ -248,8 +257,10 @@
   transform: scale(1.04);
   box-shadow: 0 8px 20px rgba(201, 112, 130, 0.18);
 }
-.feed-grid-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
-.feed-grid-item:hover img { transform: scale(1.06); }
+.feed-grid-item img,
+.feed-grid-item video { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
+.feed-grid-item:hover img,
+.feed-grid-item:hover video { transform: scale(1.06); }
 
 .member-renewal-wrap { max-width: 480px; margin: 2rem auto; padding: 2rem 1.5rem; text-align: center; }
 .member-renewal-main h1 { font-size: 1.5rem; margin: 0 0 1rem; }
