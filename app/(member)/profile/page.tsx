@@ -11,7 +11,9 @@ import {
   runTransaction,
   serverTimestamp,
 } from "firebase/firestore";
-import { updateProfile } from "firebase/auth";
+import { updateProfile, updatePassword, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
+import { getFirebaseAuth } from "../../../lib/firebase";
+import { getAuthErrorMessage } from "../../../lib/auth-redirect";
 import { httpsCallable } from "firebase/functions";
 
 export default function ProfilePage() {
@@ -31,6 +33,11 @@ export default function ProfilePage() {
   const [saveLoading, setSaveLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [passwordForm, setPasswordForm] = useState({ current: "", new: "", confirm: "" });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [emailForm, setEmailForm] = useState({ password: "", newEmail: "" });
+  const [emailLoading, setEmailLoading] = useState(false);
+  const auth = getFirebaseAuth();
 
   const loadProfile = useCallback(() => {
     if (!user || !db) return;
@@ -161,6 +168,71 @@ export default function ProfilePage() {
     }
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.email || !auth) return;
+    const { current, new: newPass, confirm } = passwordForm;
+    if (!current.trim()) {
+      setMessage({ type: "error", text: "Enter your current password." });
+      return;
+    }
+    if (newPass.length < 8) {
+      setMessage({ type: "error", text: "New password must be at least 8 characters." });
+      return;
+    }
+    if (newPass !== confirm) {
+      setMessage({ type: "error", text: "New passwords do not match." });
+      return;
+    }
+    setPasswordLoading(true);
+    setMessage(null);
+    try {
+      const cred = EmailAuthProvider.credential(user.email, current);
+      await reauthenticateWithCredential(user, cred);
+      await updatePassword(user, newPass);
+      setMessage({ type: "success", text: "Password updated." });
+      setPasswordForm({ current: "", new: "", confirm: "" });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (err) {
+      setMessage({ type: "error", text: getAuthErrorMessage(err, "Could not update password.") });
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const handleChangeEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.email || !auth) return;
+    const { password, newEmail } = emailForm;
+    const trimmed = newEmail.trim().toLowerCase();
+    if (!password) {
+      setMessage({ type: "error", text: "Enter your current password." });
+      return;
+    }
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setMessage({ type: "error", text: "Enter a valid new email address." });
+      return;
+    }
+    if (trimmed === user.email) {
+      setMessage({ type: "error", text: "New email is the same as current." });
+      return;
+    }
+    setEmailLoading(true);
+    setMessage(null);
+    try {
+      const cred = EmailAuthProvider.credential(user.email, password);
+      await reauthenticateWithCredential(user, cred);
+      await updateEmail(user, trimmed);
+      setMessage({ type: "success", text: "Email updated. Check your inbox to verify." });
+      setEmailForm({ password: "", newEmail: "" });
+      setTimeout(() => setMessage(null), 4000);
+    } catch (err) {
+      setMessage({ type: "error", text: getAuthErrorMessage(err, "Could not update email.") });
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
   if (!user) {
     return (
       <main className="member-main profile-page">
@@ -280,6 +352,75 @@ export default function ProfilePage() {
           >
             {portalLoading ? "…" : "Manage subscription"}
           </button>
+        </section>
+
+        <section className="profile-card profile-account-card">
+          <h2>Account</h2>
+          <p className="profile-account-desc">Change your password or email. You must enter your current password to confirm.</p>
+
+          <form className="profile-form profile-password-form" onSubmit={handleChangePassword}>
+            <h3 className="profile-account-subtitle">Change password</h3>
+            <label htmlFor="profile-current-password">Current password</label>
+            <input
+              id="profile-current-password"
+              type="password"
+              value={passwordForm.current}
+              onChange={(e) => setPasswordForm((f) => ({ ...f, current: e.target.value }))}
+              placeholder="Current password"
+              className="profile-input"
+              autoComplete="current-password"
+            />
+            <label htmlFor="profile-new-password">New password</label>
+            <input
+              id="profile-new-password"
+              type="password"
+              value={passwordForm.new}
+              onChange={(e) => setPasswordForm((f) => ({ ...f, new: e.target.value }))}
+              placeholder="New password (min 8 characters)"
+              className="profile-input"
+              autoComplete="new-password"
+            />
+            <label htmlFor="profile-confirm-password">Confirm new password</label>
+            <input
+              id="profile-confirm-password"
+              type="password"
+              value={passwordForm.confirm}
+              onChange={(e) => setPasswordForm((f) => ({ ...f, confirm: e.target.value }))}
+              placeholder="Confirm new password"
+              className="profile-input"
+              autoComplete="new-password"
+            />
+            <button type="submit" className="btn btn-secondary" disabled={passwordLoading}>
+              {passwordLoading ? "Updating…" : "Update password"}
+            </button>
+          </form>
+
+          <form className="profile-form profile-email-form" onSubmit={handleChangeEmail}>
+            <h3 className="profile-account-subtitle">Change email</h3>
+            <label htmlFor="profile-email-password">Current password</label>
+            <input
+              id="profile-email-password"
+              type="password"
+              value={emailForm.password}
+              onChange={(e) => setEmailForm((f) => ({ ...f, password: e.target.value }))}
+              placeholder="Current password"
+              className="profile-input"
+              autoComplete="current-password"
+            />
+            <label htmlFor="profile-new-email">New email</label>
+            <input
+              id="profile-new-email"
+              type="email"
+              value={emailForm.newEmail}
+              onChange={(e) => setEmailForm((f) => ({ ...f, newEmail: e.target.value }))}
+              placeholder="New email address"
+              className="profile-input"
+              autoComplete="email"
+            />
+            <button type="submit" className="btn btn-secondary" disabled={emailLoading}>
+              {emailLoading ? "Updating…" : "Update email"}
+            </button>
+          </form>
         </section>
       </div>
     </main>

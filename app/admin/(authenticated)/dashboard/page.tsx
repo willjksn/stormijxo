@@ -13,17 +13,6 @@ type Timestamp = { toDate: () => Date };
 function ToolsPanel({ currentTool }: { currentTool: string }) {
   return (
     <section className="panel active panel-tools" id="panel-tools">
-      <nav className="tools-sub-nav" aria-label="Tools">
-        {TOOLS_QUICK_LINKS.map((item) => (
-          <Link
-            key={item.id}
-            href={`/admin/dashboard?panel=tools&tool=${item.id}`}
-            className={`tools-sub-tab${currentTool === item.id ? " active" : ""}`}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
       <div className="tools-content">
         {currentTool === "calendar" && <SchedulePlanner />}
         {currentTool === "media" && (
@@ -38,7 +27,7 @@ function ToolsPanel({ currentTool }: { currentTool: string }) {
         )}
         {currentTool === "posts" && (
           <p className="tools-placeholder-text">
-            <Link href="/admin/posts" className="tools-outbound-link">Open Posts</Link> to manage posts.
+            <Link href="/admin/posts" className="tools-outbound-link">Open Post</Link> to manage posts.
           </p>
         )}
       </div>
@@ -47,10 +36,10 @@ function ToolsPanel({ currentTool }: { currentTool: string }) {
 }
 
 const TOOLS_QUICK_LINKS = [
-  { id: "calendar", label: "Calendar", href: "/admin/schedule" },
-  { id: "media", label: "Media", href: "/admin/media" },
-  { id: "content", label: "Content", href: "/admin/content" },
-  { id: "posts", label: "Posts", href: "/admin/posts" },
+  { id: "calendar", label: "Calendar" },
+  { id: "posts", label: "Post" },
+  { id: "media", label: "Media" },
+  { id: "content", label: "Content" },
 ] as const;
 
 export default function AdminDashboardPage() {
@@ -59,10 +48,13 @@ export default function AdminDashboardPage() {
   const toolParam = searchParams.get("tool") || "calendar";
   const currentTool = TOOLS_QUICK_LINKS.find((t) => t.id === toolParam)?.id ?? "calendar";
   const [overviewLoading, setOverviewLoading] = useState(true);
-  const [stats, setStats] = useState({ totalUsers: "—", newUsers: "—", totalRevenue: "—", revenue30d: "—", avgOrder: "—", repeatBuyers: "—", tipsTotal: "—", tips30d: "—", tipsCount: "—" });
+  const [stats, setStats] = useState({ totalUsers: "—", newUsers: "—", totalRevenue: "—", revenue30d: "—", avgOrder: "—", repeatBuyers: "—", tipsTotal: "—", tips30d: "—", tipsCount: "—", postsThisMonth: "—", totalLikes: "—" });
   const [activity, setActivity] = useState<{ name: string; dateStr: string; photoUrl: string | null; initial: string }[]>([]);
   const [topSpenders, setTopSpenders] = useState<{ email: string; name: string; totalCents: number }[]>([]);
   const [topPurchases, setTopPurchases] = useState<{ name: string; count: number; cents: number }[]>([]);
+  const [topPostLikes, setTopPostLikes] = useState<{ id: string; imageUrl: string | null; body: string; value: number } | null>(null);
+  const [topPostComments, setTopPostComments] = useState<{ id: string; imageUrl: string | null; body: string; value: number } | null>(null);
+  const [topPostTips, setTopPostTips] = useState<{ id: string; imageUrl: string | null; body: string; value: number } | null>(null);
   const [spendersExpanded, setSpendersExpanded] = useState(false);
 
   const db = getFirebaseDb();
@@ -158,6 +150,47 @@ export default function AdminDashboardPage() {
         tipsCount: String(tipsCount),
       }));
     }).catch(() => {}).finally(() => setOverviewLoading(false));
+
+    getDocs(collection(db, "posts")).then((snap) => {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      let thisMonth = 0;
+      let totalLikes = 0;
+      type PostRow = { id: string; imageUrl: string | null; body: string; likeCount: number; commentCount: number; tipRaisedCents: number };
+      let bestLikes: PostRow | null = null;
+      let bestComments: PostRow | null = null;
+      let bestTips: PostRow | null = null;
+      snap.forEach((docSnap) => {
+        const d = docSnap.data();
+        const created = (d.createdAt as Timestamp)?.toDate?.();
+        const likeCount = typeof d.likeCount === "number" ? d.likeCount : 0;
+        const comments = (d.comments as unknown[]) ?? [];
+        const commentCount = comments.length;
+        const tipGoal = d.tipGoal as { raisedCents?: number } | undefined;
+        const tipRaisedCents = typeof tipGoal?.raisedCents === "number" ? tipGoal.raisedCents : 0;
+        if (created && created >= monthStart) thisMonth++;
+        totalLikes += likeCount;
+        if (created && created >= monthStart) {
+          const mediaUrls = (d.mediaUrls as string[]) ?? [];
+          const firstImage = mediaUrls.find((u: string) => !/\.(mp4|webm|mov|ogg)(\?|$)/i.test(u)) ?? mediaUrls[0] ?? null;
+          const row: PostRow = {
+            id: docSnap.id,
+            imageUrl: firstImage,
+            body: (d.body as string) ?? "",
+            likeCount,
+            commentCount,
+            tipRaisedCents,
+          };
+          if (!bestLikes || likeCount > bestLikes.likeCount) bestLikes = row;
+          if (!bestComments || commentCount > bestComments.commentCount) bestComments = row;
+          if (tipRaisedCents > 0 && (!bestTips || tipRaisedCents > bestTips.tipRaisedCents)) bestTips = row;
+        }
+      });
+      setStats((s) => ({ ...s, postsThisMonth: String(thisMonth), totalLikes: String(totalLikes) }));
+      setTopPostLikes(bestLikes ? { id: bestLikes.id, imageUrl: bestLikes.imageUrl, body: bestLikes.body, value: bestLikes.likeCount } : null);
+      setTopPostComments(bestComments ? { id: bestComments.id, imageUrl: bestComments.imageUrl, body: bestComments.body, value: bestComments.commentCount } : null);
+      setTopPostTips(bestTips ? { id: bestTips.id, imageUrl: bestTips.imageUrl, body: bestTips.body, value: bestTips.tipRaisedCents } : null);
+    }).catch(() => {});
   }, [db]);
 
   return (
@@ -221,6 +254,107 @@ export default function AdminDashboardPage() {
                         <div className="value">{stats.tipsTotal}</div>
                         <div className="sublabel">30d: {stats.tips30d} · Tips: {stats.tipsCount}</div>
                       </div>
+                    </div>
+                  </div>
+                  <div className="overview-section">
+                    <h2 className="overview-section-title">Content & engagement</h2>
+                    <div className="overview-cards metrics-grid">
+                      <div className="stat-card">
+                        <div className="label">Posts this month</div>
+                        <div className="value">{stats.postsThisMonth}</div>
+                        <div className="sublabel">Feed posts</div>
+                      </div>
+                      <div className="stat-card">
+                        <div className="label">Total likes</div>
+                        <div className="value">{stats.totalLikes}</div>
+                        <div className="sublabel">Across all posts</div>
+                      </div>
+                    </div>
+                    <div className="best-posts-grid">
+                      {topPostLikes ? (
+                        <div className="best-post-card best-post-card-sm">
+                          <h3 className="best-post-card-title">Most likes</h3>
+                          <p className="best-post-card-sublabel">This month</p>
+                          <div className="best-post-card-inner">
+                            {topPostLikes.imageUrl && (
+                              <div className="best-post-card-preview">
+                                <img src={topPostLikes.imageUrl} alt="" />
+                              </div>
+                            )}
+                            <div className="best-post-card-meta">
+                              <p className="best-post-card-caption">{topPostLikes.body || "No caption"}</p>
+                              <div className="best-post-card-stats"><span>{topPostLikes.value} likes</span></div>
+                              <Link href={`/admin/posts?edit=${topPostLikes.id}`} className="best-post-card-link">Edit post</Link>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="best-post-card best-post-card-sm best-post-card-demo">
+                          <h3 className="best-post-card-title">Most likes</h3>
+                          <p className="best-post-card-sublabel">This month</p>
+                          <div className="best-post-card-inner">
+                            <div className="best-post-card-preview">
+                              <img src="/assets/preview1.png" alt="" />
+                            </div>
+                            <div className="best-post-card-meta">
+                              <p className="best-post-card-caption">Top post by likes will appear here.</p>
+                              <div className="best-post-card-stats"><span>—</span></div>
+                              <Link href="/admin/posts" className="best-post-card-link">Create a post</Link>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {topPostComments ? (
+                        <div className="best-post-card best-post-card-sm">
+                          <h3 className="best-post-card-title">Most comments</h3>
+                          <p className="best-post-card-sublabel">This month</p>
+                          <div className="best-post-card-inner">
+                            {topPostComments.imageUrl && (
+                              <div className="best-post-card-preview">
+                                <img src={topPostComments.imageUrl} alt="" />
+                              </div>
+                            )}
+                            <div className="best-post-card-meta">
+                              <p className="best-post-card-caption">{topPostComments.body || "No caption"}</p>
+                              <div className="best-post-card-stats"><span>{topPostComments.value} comments</span></div>
+                              <Link href={`/admin/posts?edit=${topPostComments.id}`} className="best-post-card-link">Edit post</Link>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="best-post-card best-post-card-sm best-post-card-demo">
+                          <h3 className="best-post-card-title">Most comments</h3>
+                          <p className="best-post-card-sublabel">This month</p>
+                          <div className="best-post-card-inner">
+                            <div className="best-post-card-preview">
+                              <img src="/assets/preview1.png" alt="" />
+                            </div>
+                            <div className="best-post-card-meta">
+                              <p className="best-post-card-caption">Top post by comments will appear here.</p>
+                              <div className="best-post-card-stats"><span>—</span></div>
+                              <Link href="/admin/posts" className="best-post-card-link">Create a post</Link>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {topPostTips !== null && (
+                        <div className="best-post-card best-post-card-sm">
+                          <h3 className="best-post-card-title">Most tips</h3>
+                          <p className="best-post-card-sublabel">This month</p>
+                          <div className="best-post-card-inner">
+                            {topPostTips.imageUrl && (
+                              <div className="best-post-card-preview">
+                                <img src={topPostTips.imageUrl} alt="" />
+                              </div>
+                            )}
+                            <div className="best-post-card-meta">
+                              <p className="best-post-card-caption">{topPostTips.body || "No caption"}</p>
+                              <div className="best-post-card-stats"><span>${(topPostTips.value / 100).toFixed(2)} tips</span></div>
+                              <Link href={`/admin/posts?edit=${topPostTips.id}`} className="best-post-card-link">Edit post</Link>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="overview-section">

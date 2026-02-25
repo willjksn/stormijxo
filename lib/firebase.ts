@@ -6,7 +6,8 @@
 import { getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
-import { getFunctions, httpsCallable, type Functions } from "firebase/functions";
+import { getFunctions, type Functions } from "firebase/functions";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 export type FirebaseConfig = {
   apiKey: string;
@@ -39,6 +40,7 @@ let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
 let fbFunctions: Functions | null = null;
+let storage: FirebaseStorage | null = null;
 
 function getApp(): FirebaseApp | null {
   if (typeof window === "undefined") return null;
@@ -74,6 +76,15 @@ export function getFirebaseFunctions(): Functions | null {
   if (!a) return null;
   fbFunctions = getFunctions(a);
   return fbFunctions;
+}
+
+export function getFirebaseStorage(): FirebaseStorage | null {
+  if (typeof window === "undefined") return null;
+  if (storage) return storage;
+  const a = getApp();
+  if (!a) return null;
+  storage = getStorage(a);
+  return storage;
 }
 
 export function isFirebaseConfigured(): boolean {

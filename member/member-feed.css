@@ -66,6 +66,14 @@
 .feed-card-creator { flex: 1; min-width: 0; }
 .feed-card-username { font-weight: 600; font-size: 0.95rem; color: var(--accent); letter-spacing: 0.01em; }
 .feed-card-time { font-size: 0.8rem; color: #9a8a92; font-weight: 400; }
+.feed-card-edit {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; padding: 0; border: none; background: transparent;
+  color: var(--text-muted); border-radius: 10px; text-decoration: none;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+.feed-card-edit:hover { color: var(--accent); background: var(--accent-soft); }
+.feed-card-edit svg { width: 18px; height: 18px; }
 
 /* Image - framed with subtle glow */
 .feed-card-media-wrap {
@@ -150,6 +158,39 @@
   text-decoration: none; font-weight: 500; transition: color 0.2s ease;
 }
 .feed-card-link:hover { color: var(--accent); }
+
+/* Caption overlay on media (Instagram-style) */
+.feed-card-media-wrap { position: relative; }
+.feed-card-caption-overlay {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 1rem 1rem 1.5rem; background: linear-gradient(transparent 0%, rgba(0,0,0,0.75) 100%);
+  color: #fff; font-size: 0.9rem; line-height: 1.4;
+  pointer-events: none; overflow: hidden;
+}
+.feed-card-caption-overlay-text { display: block; white-space: nowrap; }
+.feed-card-caption-overlay-scroll-up .feed-card-caption-overlay-text {
+  white-space: normal; animation: feed-caption-scroll-up 12s linear infinite;
+}
+.feed-card-caption-overlay-scroll-across .feed-card-caption-overlay-text {
+  animation: feed-caption-scroll-across 15s linear infinite;
+}
+.feed-card-caption-overlay-dissolve .feed-card-caption-overlay-text {
+  white-space: normal; animation: feed-caption-dissolve 8s ease-in-out infinite;
+}
+@keyframes feed-caption-scroll-up {
+  0% { transform: translateY(100%); opacity: 0; }
+  8% { opacity: 1; }
+  92% { opacity: 1; }
+  100% { transform: translateY(-100%); opacity: 0; }
+}
+@keyframes feed-caption-scroll-across {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+@keyframes feed-caption-dissolve {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
 
 /* Grid view - polished thumbnails */
 .feed-grid {

@@ -6,7 +6,7 @@ import { RequireAuth } from "../components/RequireAuth";
 
 export default function MemberLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const active = pathname === "/treats" ? "treats" : "home";
+  const active = pathname === "/treats" ? "treats" : pathname === "/tip" ? "tip" : "home";
 
   return (
     <RequireAuth>

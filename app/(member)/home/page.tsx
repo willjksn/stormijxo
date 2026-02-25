@@ -1,4 +1,11 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState, useMemo } from "react";
+import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { getFirebaseDb } from "../../../lib/firebase";
+import { useAuth } from "../../contexts/AuthContext";
+import { isAdminEmail } from "../../../lib/auth-redirect";
 import { DEMO_POSTS } from "./demo-posts";
 
 const GridIcon = () => (
@@ -40,9 +47,19 @@ const BookmarkFilled = () => (
   </svg>
 );
 
-/** Format post date as relative time: "37 mins", "2 days", "1 week", "Jan 22, 2026", etc. */
-function formatRelativeDate(dateInput: Date | string | null | undefined): string {
-  const date = dateInput instanceof Date ? dateInput : dateInput ? new Date(dateInput) : null;
+const PencilIcon = () => (
+  <svg className="feed-card-edit-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+  </svg>
+);
+
+/** Format post date as relative time */
+function formatRelativeDate(dateInput: Date | string | { toDate?: () => Date } | null | undefined): string {
+  let date: Date | null = null;
+  if (dateInput instanceof Date) date = dateInput;
+  else if (typeof dateInput === "string") date = new Date(dateInput);
+  else if (dateInput && typeof (dateInput as { toDate?: () => Date }).toDate === "function") date = (dateInput as { toDate: () => Date }).toDate();
   if (!date || Number.isNaN(date.getTime())) return "";
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -61,7 +78,179 @@ function formatRelativeDate(dateInput: Date | string | null | undefined): string
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
+export type FeedPost = {
+  id: string;
+  body: string;
+  mediaUrls: string[];
+  mediaTypes?: ("image" | "video")[];
+  dateStr?: string;
+  createdAt?: { toDate: () => Date };
+  likeCount: number;
+  comments: { username?: string; author?: string; text: string }[];
+  captionStyle?: "static" | "scroll-up" | "scroll-across" | "dissolve";
+  hideComments?: boolean;
+  hideLikes?: boolean;
+};
+
+function FeedCardCaptionOverlay({ caption, style: captionStyle }: { caption: string; style?: string }) {
+  if (!caption?.trim()) return null;
+  return (
+    <div className={`feed-card-caption-overlay feed-card-caption-overlay-${captionStyle || "static"}`} aria-hidden>
+      <span className="feed-card-caption-overlay-text">{caption}</span>
+    </div>
+  );
+}
+
+function FeedCard({
+  post,
+  isDemo,
+  showAdminEdit,
+}: {
+  post: FeedPost;
+  isDemo: boolean;
+  showAdminEdit?: boolean;
+}) {
+  const firstUrl = post.mediaUrls?.[0];
+  const isVideo = post.mediaTypes?.[0] === "video" || (firstUrl && /\.(mp4|webm|mov|ogg)(\?|$)/i.test(firstUrl));
+  const dateStr = post.dateStr ?? (post.createdAt?.toDate ? formatRelativeDate(post.createdAt) : "");
+  const captionStyle = post.captionStyle ?? "static";
+  const showCaptionOnMedia = captionStyle !== "static" && post.body?.trim();
+
+  return (
+    <article className="feed-card" key={post.id}>
+      <div className="feed-card-header">
+        <div className="feed-card-avatar">
+          <img src="/assets/sj-heart-avatar.png" alt="stormij" className="feed-card-avatar-img" />
+        </div>
+        <div className="feed-card-creator">
+          <span className="feed-card-username">stormij</span>
+        </div>
+        <span className="feed-card-time">{dateStr}</span>
+        {showAdminEdit && (
+          <Link href={`/admin/posts?edit=${post.id}`} className="feed-card-edit" title="Edit post" aria-label="Edit post">
+            <PencilIcon />
+          </Link>
+        )}
+      </div>
+
+      <Link href={`/post/${post.id}`} className="feed-card-media-wrap">
+        {firstUrl &&
+          (isVideo ? (
+            <video src={firstUrl} muted playsInline className="feed-card-media" />
+          ) : (
+            <img src={firstUrl} alt="" className="feed-card-media" loading="lazy" />
+          ))}
+        {showCaptionOnMedia && (
+          <FeedCardCaptionOverlay caption={post.body} style={captionStyle} />
+        )}
+        {post.mediaUrls?.length > 1 && (
+          <span className="feed-card-count">+{post.mediaUrls.length - 1}</span>
+        )}
+      </Link>
+
+      {!post.hideLikes && (
+        <div className="feed-card-actions">
+          <span className="feed-card-action-group">
+            <button type="button" className="feed-card-action-btn" aria-label="Like">
+              <HeartOutline />
+              <HeartFilled />
+            </button>
+            <span className="feed-card-action-count">{post.likeCount ?? 0}</span>
+          </span>
+          {!post.hideComments && (
+            <Link href={`/post/${post.id}#comments`} className="feed-card-action-group feed-card-action-link" aria-label="Comments">
+              <CommentIcon />
+              <span className="feed-card-action-count">{post.comments?.length ?? 0}</span>
+            </Link>
+          )}
+          <button type="button" className="feed-card-action-btn bookmark-btn" aria-label="Save">
+            <BookmarkOutline />
+            <BookmarkFilled />
+          </button>
+        </div>
+      )}
+
+      <div className="feed-card-body">
+        <p className="feed-card-caption">
+          <span className="caption-username">stormij</span>
+          {post.body}
+        </p>
+        {!post.hideComments && post.comments?.length > 0 && (
+          <>
+            <Link href={`/post/${post.id}#comments`} className="feed-card-view-comments">
+              View all {post.comments.length} comments
+            </Link>
+            <div className="feed-card-comments-list">
+              {post.comments.slice(0, 2).map((c, i) => (
+                <div key={i} className="feed-card-comment">
+                  <span className="comment-username">{c.username ?? c.author ?? "user"}</span>
+                  {c.text}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        <Link href={`/post/${post.id}`} className="feed-card-link">
+          View post
+        </Link>
+      </div>
+    </article>
+  );
+}
+
 export default function HomeFeedPage() {
+  const [firestorePosts, setFirestorePosts] = useState<FeedPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const db = getFirebaseDb();
+  const { user } = useAuth();
+  const showAdminEdit = !!user && isAdminEmail(user.email ?? null);
+
+  useEffect(() => {
+    if (!db) {
+      setLoading(false);
+      return;
+    }
+    getDocs(query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(50)))
+      .then((snap) => {
+        const list: FeedPost[] = [];
+        snap.forEach((docSnap) => {
+          const d = docSnap.data();
+          const status = (d.status as "published" | "scheduled" | "draft") ?? "published";
+          if (status !== "published") return;
+          list.push({
+            id: docSnap.id,
+            body: (d.body as string) ?? "",
+            mediaUrls: (d.mediaUrls as string[]) ?? [],
+            mediaTypes: (d.mediaTypes as ("image" | "video")[]) ?? [],
+            createdAt: d.createdAt as { toDate: () => Date },
+            likeCount: typeof d.likeCount === "number" ? d.likeCount : 0,
+            comments: (d.comments as FeedPost["comments"]) ?? [],
+            captionStyle: (d.captionStyle as FeedPost["captionStyle"]) ?? "static",
+            hideComments: !!d.hideComments,
+            hideLikes: !!d.hideLikes,
+          });
+        });
+        setFirestorePosts(list);
+      })
+      .catch(() => setFirestorePosts([]))
+      .finally(() => setLoading(false));
+  }, [db]);
+
+  const posts: FeedPost[] = useMemo(() => {
+    if (firestorePosts.length > 0) return firestorePosts;
+    return DEMO_POSTS.map((p) => ({
+      id: p.id,
+      body: p.body,
+      mediaUrls: p.mediaUrls,
+      dateStr: p.dateStr,
+      likeCount: p.likeCount,
+      comments: p.comments,
+      captionStyle: "static" as const,
+      hideComments: false,
+      hideLikes: false,
+    }));
+  }, [firestorePosts]);
+
   return (
     <main className="member-main member-feed-main">
       <div className="feed-header">
@@ -70,69 +259,10 @@ export default function HomeFeedPage() {
         </Link>
       </div>
 
+      {loading && <p className="feed-loading">Loading…</p>}
       <div className="feed-list">
-        {DEMO_POSTS.map((post) => (
-          <article className="feed-card" key={post.id}>
-            <div className="feed-card-header">
-              <div className="feed-card-avatar">
-                <img src="/assets/sj-heart-avatar.png" alt="stormij" className="feed-card-avatar-img" />
-              </div>
-              <div className="feed-card-creator">
-                <span className="feed-card-username">stormij</span>
-              </div>
-              <span className="feed-card-time">{formatRelativeDate(post.dateStr)}</span>
-            </div>
-
-            <Link href={`/post?id=${post.id}`} className="feed-card-media-wrap">
-              <img src={post.mediaUrls[0]} alt={post.title} className="feed-card-media" loading="lazy" />
-              {post.mediaUrls.length > 1 && (
-                <span className="feed-card-count">+{post.mediaUrls.length - 1}</span>
-              )}
-            </Link>
-
-            <div className="feed-card-actions">
-              <span className="feed-card-action-group">
-                <button type="button" className="feed-card-action-btn" aria-label="Like">
-                  <HeartOutline />
-                  <HeartFilled />
-                </button>
-                <span className="feed-card-action-count">{post.likeCount}</span>
-              </span>
-              <Link href={`/post?id=${post.id}#comments`} className="feed-card-action-group feed-card-action-link" aria-label="Comments">
-                <CommentIcon />
-                <span className="feed-card-action-count">{post.comments.length}</span>
-              </Link>
-              <button type="button" className="feed-card-action-btn bookmark-btn" aria-label="Save">
-                <BookmarkOutline />
-                <BookmarkFilled />
-              </button>
-            </div>
-
-            <div className="feed-card-body">
-              <p className="feed-card-caption">
-                <span className="caption-username">stormij</span>
-                {post.body}
-              </p>
-              {post.comments.length > 0 && (
-                <>
-                  <Link href={`/post?id=${post.id}#comments`} className="feed-card-view-comments">
-                    View all {post.comments.length} comments
-                  </Link>
-                  <div className="feed-card-comments-list">
-                    {post.comments.slice(0, 2).map((c, i) => (
-                      <div key={i} className="feed-card-comment">
-                        <span className="comment-username">{c.username}</span>
-                        {c.text}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-              <Link href={`/post?id=${post.id}`} className="feed-card-link">
-                View post
-              </Link>
-            </div>
-          </article>
+        {!loading && posts.map((post) => (
+          <FeedCard key={post.id} post={post} isDemo={post.id.startsWith("demo-")} showAdminEdit={showAdminEdit} />
         ))}
       </div>
     </main>

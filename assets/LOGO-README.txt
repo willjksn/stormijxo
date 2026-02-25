@@ -11,3 +11,7 @@ To use a new logo (e.g. with transparent background):
 
 This makes any black/dark background transparent so only the pink
 "Inner Circle" text shows on your site.
+
+Tip page: To show your SJ xo logo at the bottom of the tip page, save
+your logo image in this folder as logo-sj-xo.png (e.g. the pink heart
+with "SJ" and "_xo"). It will be served at /assets/logo-sj-xo.png.

@@ -13,6 +13,52 @@
   gap: 0.75rem;
   margin-bottom: 1.5rem;
 }
+.post-media-carousel { position: relative; }
+.post-carousel-prev,
+.post-carousel-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.9);
+  color: var(--text);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.post-carousel-prev { left: 0.5rem; }
+.post-carousel-next { right: 0.5rem; }
+.post-carousel-prev:hover,
+.post-carousel-next:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.post-carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+.post-carousel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: var(--border);
+  cursor: pointer;
+  padding: 0;
+}
+.post-carousel-dot.active { background: var(--accent); }
+.post-media-item { position: relative; border-radius: 12px; overflow: hidden; }
 .post-media-img {
   width: 100%;
   border-radius: 12px;
@@ -26,7 +72,38 @@
   word-wrap: break-word;
 }
 .post-body br { display: block; content: ""; margin-top: 0.5em; }
+.post-caption-overlay {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 1rem 1rem 1.5rem; background: linear-gradient(transparent 0%, rgba(0,0,0,0.75) 100%);
+  color: #fff; font-size: 0.95rem; line-height: 1.4; overflow: hidden;
+}
+.post-caption-overlay-text { display: block; }
+.post-caption-overlay-scroll-up .post-caption-overlay-text {
+  animation: post-caption-scroll-up 12s linear infinite;
+}
+.post-caption-overlay-scroll-across .post-caption-overlay-text {
+  white-space: nowrap; animation: post-caption-scroll-across 15s linear infinite;
+}
+.post-caption-overlay-dissolve .post-caption-overlay-text {
+  animation: post-caption-dissolve 8s ease-in-out infinite;
+}
+@keyframes post-caption-scroll-up {
+  0% { transform: translateY(100%); opacity: 0; }
+  8% { opacity: 1; }
+  92% { opacity: 1; }
+  100% { transform: translateY(-100%); opacity: 0; }
+}
+@keyframes post-caption-scroll-across {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+@keyframes post-caption-dissolve {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
 .post-comments { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
 .post-comments h3 { font-size: 1rem; font-weight: 600; margin: 0 0 1rem; }
 .post-comment { font-size: 0.95rem; line-height: 1.5; margin-bottom: 0.75rem; color: var(--text); }
 .post-comment-username { font-weight: 600; margin-right: 0.35rem; }
+.post-hashtag { color: var(--accent); text-decoration: none; }
+.post-hashtag:hover { text-decoration: underline; }
