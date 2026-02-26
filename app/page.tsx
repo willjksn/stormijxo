@@ -149,7 +149,7 @@ export default function LandingPage() {
               <label htmlFor="tip-custom-amount" className="tip-custom-label">Or enter an amount (USD)</label>
               <div className="tip-custom-row">
                 <div className="tip-input-wrap">
-                  <span className="tip-custom-prefix">$</span>
+                  <span className="tip-custom-prefix-static" aria-hidden>$</span>
                   <input
                     type="number"
                     id="tip-custom-amount"
