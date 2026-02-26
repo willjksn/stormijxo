@@ -381,7 +381,7 @@ export default function AdminMediaPage() {
                     </button>
                     <div className="admin-media-card-preview">
                       {item.isVideo ? (
-                        <video src={item.url} muted playsInline className="admin-media-card-media" loading="lazy" />
+                        <video src={item.url} muted playsInline className="admin-media-card-media" />
                       ) : (
                         <LazyMediaImage src={item.url} alt="" className="admin-media-card-media" loading="lazy" />
                       )}

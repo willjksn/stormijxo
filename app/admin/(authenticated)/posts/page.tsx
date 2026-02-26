@@ -854,7 +854,7 @@ export default function AdminPostsPage() {
                       title={item.name}
                     >
                       {item.isVideo ? (
-                        <video src={item.url} muted playsInline className="admin-posts-library-media" loading="lazy" />
+                        <video src={item.url} muted playsInline className="admin-posts-library-media" />
                       ) : (
                         <LazyMediaImage src={item.url} alt="" className="admin-posts-library-media" loading="lazy" />
                       )}
