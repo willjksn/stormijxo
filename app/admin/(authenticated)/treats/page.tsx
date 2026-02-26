@@ -103,7 +103,6 @@ export default function AdminTreatsPage() {
     setSaving(true);
     setMessage(null);
     try {
-      await auth.currentUser.getIdToken(true);
       await setDoc(doc(db, TREATS_COLLECTION, editForm.id), {
         name: editForm.name,
         price: editForm.price,
@@ -139,7 +138,6 @@ export default function AdminTreatsPage() {
     setSaving(true);
     setMessage(null);
     try {
-      await auth.currentUser.getIdToken(true);
       await deleteDoc(doc(db, TREATS_COLLECTION, id));
       setTreats((prev) => prev.filter((t) => t.id !== id));
       if (editingId === id) {
@@ -179,7 +177,6 @@ export default function AdminTreatsPage() {
     setSaving(true);
     setMessage(null);
     try {
-      await auth.currentUser.getIdToken(true);
       const treat: TreatDoc = {
         id,
         name: newTreat.name.trim(),

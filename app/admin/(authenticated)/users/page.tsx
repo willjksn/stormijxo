@@ -8,10 +8,13 @@ import {
   getDocs,
   orderBy,
   query,
+  where,
+  limit,
   serverTimestamp,
   doc,
   deleteDoc,
   writeBatch,
+  updateDoc,
 } from "firebase/firestore";
 import { getFirebaseDb } from "../../../../lib/firebase";
 import { ALLOWED_ADMIN_EMAILS } from "../../../../lib/auth-redirect";
@@ -87,6 +90,9 @@ export default function AdminUsersPage() {
   const [modalDisplayName, setModalDisplayName] = useState("");
   const [modalStatus, setModalStatus] = useState("");
   const [modalSubmitting, setModalSubmitting] = useState(false);
+  const [recoverEmail, setRecoverEmail] = useState("");
+  const [recovering, setRecovering] = useState(false);
+  const [recoverStatus, setRecoverStatus] = useState("");
 
   useEffect(() => {
     if (!db) {
@@ -407,6 +413,44 @@ export default function AdminUsersPage() {
       deleteDoc(doc(db, "members", id)).catch((err: Error) => alert("Could not remove: " + (err?.message ?? "unknown")));
   };
 
+  const handleRecoverMember = async () => {
+    const email = recoverEmail.trim().toLowerCase();
+    if (!email) {
+      setRecoverStatus("Enter an email first.");
+      return;
+    }
+    if (!db) {
+      setRecoverStatus("Firebase is not connected.");
+      return;
+    }
+    setRecovering(true);
+    setRecoverStatus("Recovering…");
+    try {
+      const existing = await getDocs(query(collection(db, "members"), where("email", "==", email), limit(1)));
+      if (!existing.empty) {
+        await updateDoc(existing.docs[0].ref, {
+          status: "active",
+          reactivatedAt: serverTimestamp(),
+          source: "admin_recover",
+        });
+        setRecoverStatus("Member recovered and marked active.");
+      } else {
+        await addDoc(collection(db, "members"), {
+          email,
+          status: "active",
+          joinedAt: serverTimestamp(),
+          source: "admin_recover",
+        });
+        setRecoverStatus("Member created from recovery.");
+      }
+      setRecoverEmail("");
+    } catch (err) {
+      setRecoverStatus("Could not recover: " + ((err as Error)?.message || "unknown error"));
+    } finally {
+      setRecovering(false);
+    }
+  };
+
   return (
     <>
       <main className="admin-main">
@@ -422,6 +466,25 @@ export default function AdminUsersPage() {
                   </svg>
                   Add User
                 </button>
+                <div className="um-search-wrap" style={{ minWidth: 280 }}>
+                  <input
+                    type="email"
+                    className="um-search"
+                    placeholder="Recover paid member by email…"
+                    aria-label="Recover paid member by email"
+                    value={recoverEmail}
+                    onChange={(e) => setRecoverEmail(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="um-btn-add"
+                  onClick={handleRecoverMember}
+                  disabled={recovering}
+                  title="Create/reactivate a member row so they appear in-app immediately"
+                >
+                  {recovering ? "Recovering…" : "Recover Member"}
+                </button>
                 <div className="um-search-wrap">
                   <span className="um-search-icon" aria-hidden="true">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
@@ -436,6 +499,17 @@ export default function AdminUsersPage() {
                   />
                 </div>
               </div>
+              {recoverStatus && (
+                <p
+                  className={
+                    "um-modal-status" +
+                    (recoverStatus.startsWith("Could not") || recoverStatus.startsWith("Enter") ? " error" : " success")
+                  }
+                  style={{ margin: "0.5rem 0 0" }}
+                >
+                  {recoverStatus}
+                </p>
+              )}
             </div>
             {loading && <div id="users-loading" className="loading">Loading…</div>}
             {!loading && !showTable && (
