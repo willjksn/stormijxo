@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { doc, getDoc } from "firebase/firestore";
 import { getFirebaseDb } from "../../../../lib/firebase";
-import { DEMO_POSTS } from "../../home/demo-posts";
 
 type PostData = {
   title: string;
@@ -54,11 +53,6 @@ export default function PostByIdPage({
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const db = getFirebaseDb();
 
-  const demoPost = useMemo(() => {
-    if (!id || !id.startsWith("demo-")) return null;
-    return DEMO_POSTS.find((p) => p.id === id) ?? null;
-  }, [id]);
-
   useEffect(() => {
     if (post) {
       document.title = `${post.title} — Inner Circle`;
@@ -68,22 +62,6 @@ export default function PostByIdPage({
   useEffect(() => {
     if (!id) {
       setStatus("error");
-      return;
-    }
-    if (demoPost) {
-      setPost({
-        title: demoPost.title,
-        body: demoPost.body,
-        mediaUrls: demoPost.mediaUrls,
-        dateStr: demoPost.dateStr,
-        comments: demoPost.comments,
-        captionStyle: "static",
-        overlayTextSize: 18,
-        hideComments: false,
-        hideLikes: false,
-        tipGoal: demoPost.tipGoal,
-      });
-      setStatus("ok");
       return;
     }
     if (!db) {
@@ -122,7 +100,7 @@ export default function PostByIdPage({
         setStatus("ok");
       })
       .catch(() => setStatus("error"));
-  }, [id, demoPost, db]);
+  }, [id, db]);
 
   if (!id) {
     return (

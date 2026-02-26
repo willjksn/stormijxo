@@ -65,12 +65,7 @@ function buildMonthGrid(monthDate: Date): Date[] {
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-const SEED_SCHEDULE_ITEMS: ScheduleItem[] = [
-  { id: "seed-1", title: "Post carousel", notes: "Travel BTS set", date: "2026-02-09", time: "10:00", status: "scheduled", type: "content" },
-  { id: "seed-2", title: "Reel already posted", notes: "Poolside clip", date: "2026-02-12", time: "13:30", status: "published", type: "content" },
-  { id: "seed-3", title: "Draft script", notes: "Q&A concept", date: "2026-02-15", time: "15:00", status: "draft", type: "content" },
-  { id: "seed-4", title: "1:1 fan meeting", notes: "Private chat session", date: "2026-02-21", time: "18:00", status: "scheduled", type: "fanMeeting" },
-];
+const SEED_SCHEDULE_ITEMS: ScheduleItem[] = [];
 
 function scheduleBadgeClass(item: ScheduleItem): string {
   if (item.type === "fanMeeting" && item.status === "scheduled") return styles.badgePink;

@@ -6,7 +6,6 @@ import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
 import { getFirebaseDb } from "../../../lib/firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { isAdminEmail } from "../../../lib/auth-redirect";
-import { DEMO_POSTS } from "./demo-posts";
 
 const GridIcon = () => (
   <svg className="icon-grid" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -106,11 +105,9 @@ function FeedCardCaptionOverlay({ caption, style: captionStyle, size }: { captio
 
 function FeedCard({
   post,
-  isDemo,
   showAdminEdit,
 }: {
   post: FeedPost;
-  isDemo: boolean;
   showAdminEdit?: boolean;
 }) {
   const firstUrl = post.mediaUrls?.[0];
@@ -288,23 +285,7 @@ export default function HomeFeedPage() {
       .finally(() => setLoading(false));
   }, [db]);
 
-  const posts: FeedPost[] = useMemo(() => {
-    if (firestorePosts.length > 0) return firestorePosts;
-    return DEMO_POSTS.map((p) => ({
-      id: p.id,
-      body: p.body,
-      mediaUrls: p.mediaUrls,
-      dateStr: p.dateStr,
-      likeCount: p.likeCount,
-      comments: p.comments,
-      captionStyle: "static" as const,
-      overlayTextSize: 18,
-      hideComments: false,
-      hideLikes: false,
-      poll: p.poll,
-      tipGoal: p.tipGoal,
-    }));
-  }, [firestorePosts]);
+  const posts: FeedPost[] = useMemo(() => firestorePosts, [firestorePosts]);
 
   return (
     <main className="member-main member-feed-main">
@@ -316,8 +297,11 @@ export default function HomeFeedPage() {
 
       {loading && <p className="feed-loading">Loading…</p>}
       <div className="feed-list">
+        {!loading && posts.length === 0 && (
+          <p className="feed-empty">No posts yet.</p>
+        )}
         {!loading && posts.map((post) => (
-          <FeedCard key={post.id} post={post} isDemo={post.id.startsWith("demo-")} showAdminEdit={showAdminEdit} />
+          <FeedCard key={post.id} post={post} showAdminEdit={showAdminEdit} />
         ))}
       </div>
     </main>

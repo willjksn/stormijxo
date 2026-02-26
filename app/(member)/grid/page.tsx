@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
 import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
 import { getFirebaseDb } from "../../../lib/firebase";
-import { DEMO_POSTS } from "../home/demo-posts";
 
 type GridPost = { id: string; mediaUrls: string[]; mediaTypes?: ("image" | "video")[] };
 
@@ -44,14 +43,7 @@ export default function GridPage() {
       .finally(() => setLoading(false));
   }, [db]);
 
-  const posts: GridPost[] = useMemo(() => {
-    if (firestorePosts.length > 0) return firestorePosts;
-    return DEMO_POSTS.map((p) => ({
-      id: p.id,
-      mediaUrls: p.mediaUrls,
-      mediaTypes: undefined as ("image" | "video")[] | undefined,
-    }));
-  }, [firestorePosts]);
+  const posts: GridPost[] = useMemo(() => firestorePosts, [firestorePosts]);
 
   return (
     <main className="member-main member-feed-main">
@@ -70,6 +62,9 @@ export default function GridPage() {
 
       {loading && <p className="feed-loading">Loading…</p>}
       <div className="feed-grid">
+        {!loading && posts.length === 0 && (
+          <p className="feed-empty" style={{ gridColumn: "1 / -1" }}>No posts yet.</p>
+        )}
         {!loading && posts.map((post) => {
           const firstUrl = post.mediaUrls[0];
           const isVideo = post.mediaTypes?.[0] === "video" || (firstUrl && /\.(mp4|webm|mov|ogg)(\?|$)/i.test(firstUrl));

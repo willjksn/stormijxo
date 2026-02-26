@@ -1916,7 +1916,7 @@ main:not([class]) .section-title::after {
 .profile-page .profile-bio-emoji-btn:hover { background: var(--accent-soft); }
 .profile-page .profile-bio-emoji-category-bar {
   display: grid;
-  grid-template-columns: repeat(9, minmax(0, 1fr));
+  grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 4px;
   padding: 0.35rem;
   border: 1px solid var(--border);
@@ -2132,7 +2132,7 @@ main:not([class]) .section-title::after {
 .admin-emoji-btn:hover { background: var(--accent-soft); }
 .admin-emoji-category-bar {
   display: grid;
-  grid-template-columns: repeat(9, minmax(0, 1fr));
+  grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 4px;
   padding: 0.35rem;
   border: 1px solid var(--border);
