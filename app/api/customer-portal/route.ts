@@ -67,24 +67,56 @@ export async function POST(req: NextRequest) {
 
     const app = getAdminApp();
     const decoded = await getAuth(app).verifyIdToken(token);
-    const email = (decoded.email || "").trim().toLowerCase();
+    const rawEmail = (decoded.email || "").trim();
+    const email = rawEmail.toLowerCase();
     if (!email) {
       return NextResponse.json({ error: "No email on signed-in account." }, { status: 400 });
     }
 
     const db = getFirestore(app);
-    const membersSnap = await db.collection("members").where("email", "==", email).limit(1).get();
+    const membersRef = db.collection("members");
+    let membersSnap = await membersRef.where("email", "==", rawEmail).limit(1).get();
+    if (membersSnap.empty && rawEmail !== email) {
+      membersSnap = await membersRef.where("email", "==", email).limit(1).get();
+    }
     if (membersSnap.empty) {
       return NextResponse.json({ error: "No subscription found for this account." }, { status: 404 });
     }
 
-    const member = membersSnap.docs[0]?.data() as { stripeCustomerId?: string } | undefined;
-    const customerId = (member?.stripeCustomerId || "").trim();
+    const memberDoc = membersSnap.docs[0]!;
+    const member = memberDoc.data() as {
+      stripeCustomerId?: string;
+      stripe_customer_id?: string;
+      stripeSubscriptionId?: string;
+      stripe_subscription_id?: string;
+    };
+    const stripe = new Stripe(stripeSecret);
+    let customerId = (member?.stripeCustomerId || member?.stripe_customer_id || "").trim();
+    const subscriptionId = (member?.stripeSubscriptionId || member?.stripe_subscription_id || "").trim();
+    if (!customerId && subscriptionId) {
+      try {
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        if (typeof subscription.customer === "string" && subscription.customer.trim()) {
+          customerId = subscription.customer.trim();
+          await memberDoc.ref.set(
+            {
+              stripeCustomerId: customerId,
+              stripe_customer_id: customerId,
+            },
+            { merge: true }
+          );
+        }
+      } catch {
+        // Keep graceful fallback error below.
+      }
+    }
     if (!customerId) {
-      return NextResponse.json({ error: "No Stripe customer linked to this account yet." }, { status: 409 });
+      return NextResponse.json(
+        { error: "No Stripe customer linked to this account yet. Please contact support and we can reconnect it." },
+        { status: 409 }
+      );
     }
 
-    const stripe = new Stripe(stripeSecret);
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: returnUrl,
