@@ -719,7 +719,7 @@ export default function HomeFeedPage() {
         </Link>
         {!!user && !showAdminEdit && (
           <Link href="/saved" className="feed-saved-link" title="Saved posts" aria-label="Saved posts">
-            Saved
+            Saved Posts ({savedPostIds.length})
           </Link>
         )}
       </div>

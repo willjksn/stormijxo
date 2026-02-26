@@ -139,6 +139,12 @@
   background: var(--bg-card);
   color: var(--text);
 }
+.post-comment-input:focus,
+.post-reply-input:focus {
+  outline: none;
+  border-color: rgba(212, 85, 139, 0.7);
+  box-shadow: 0 0 0 3px rgba(212, 85, 139, 0.16);
+}
 .post-comment-input-wrap,
 .post-reply-input-wrap {
   position: relative;

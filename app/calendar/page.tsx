@@ -119,13 +119,9 @@ function formatTime12h(calendarTime?: string): string {
 
 function CalendarPostCard({
   post,
-  onDelete,
-  onRefresh,
   onOpenPreview,
 }: {
   post: CalendarPost;
-  onDelete: (id: string) => void;
-  onRefresh: () => void;
   onOpenPreview: (post: CalendarPost) => void;
 }) {
   const firstUrl = post.mediaUrls?.[0];
@@ -164,16 +160,6 @@ function CalendarPostCard({
       <div className={styles.calendarPostBrand}>
         <img src="/assets/sj-heart-avatar.png" alt="" className={styles.calendarPostSJIcon} aria-hidden />
         <span className={styles.calendarPostLabel}>POST</span>
-      </div>
-      <div className={styles.calendarPostActions} data-calendar-card-action>
-        <button
-          type="button"
-          className={styles.calendarPostBtnDanger}
-          onClick={(e) => { e.stopPropagation(); if (confirm("Delete this post?")) onDelete(post.id); }}
-          aria-label="Delete post"
-        >
-          Delete
-        </button>
       </div>
     </div>
   );
@@ -390,9 +376,19 @@ export function SchedulePlanner() {
     }
   }
 
-  function exportCaptionFromPreview() {
-    if (!previewPost?.body) return;
-    navigator.clipboard.writeText(previewPost.body).catch(() => {});
+  async function deleteFromPreview() {
+    if (!db || !previewPost) return;
+    if (!confirm("Delete this post?")) return;
+    setPreviewActionLoading(true);
+    try {
+      await deleteDoc(doc(db, "posts", previewPost.id));
+      closePreview();
+      fetchPosts();
+    } catch (err) {
+      console.error("Delete failed:", err);
+    } finally {
+      setPreviewActionLoading(false);
+    }
   }
 
   return (
@@ -475,8 +471,6 @@ export function SchedulePlanner() {
                     <CalendarPostCard
                       key={post.id}
                       post={post}
-                      onDelete={deletePost}
-                      onRefresh={fetchPosts}
                       onOpenPreview={openPreview}
                     />
                   ))}
@@ -573,12 +567,8 @@ export function SchedulePlanner() {
             <div className={styles.previewHeader}>
               <div>
                 <h2 className={styles.previewTitle}>Post Preview</h2>
-                <p className={styles.previewSubtitle}>X • Post</p>
               </div>
               <div className={styles.previewHeaderActions}>
-                <button type="button" className={styles.previewActionBtn} onClick={exportCaptionFromPreview} title="Copy caption">
-                  Export ↓
-                </button>
                 <button type="button" className={styles.previewActionBtn} onClick={() => setShowRescheduleInPreview((v) => !v)}>
                   Edit
                 </button>
@@ -626,6 +616,14 @@ export function SchedulePlanner() {
                   </div>
                 </div>
                 <div className={styles.modalActions}>
+                  <button
+                    type="button"
+                    className={styles.previewDeleteBtn}
+                    onClick={deleteFromPreview}
+                    disabled={previewActionLoading}
+                  >
+                    {previewActionLoading ? "Deleting…" : "Delete"}
+                  </button>
                   <button type="button" className={styles.cancelBtn} onClick={() => setShowRescheduleInPreview(false)}>Cancel</button>
                   <button type="button" className={styles.saveBtn} onClick={saveReschedule} disabled={previewActionLoading || !rescheduleDate}>
                     {previewActionLoading ? "Saving…" : "Save Changes"}

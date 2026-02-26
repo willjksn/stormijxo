@@ -66,14 +66,49 @@ function formatMonthYear(): string {
   return new Date().toLocaleString(undefined, { month: "long", year: "numeric" });
 }
 
+function parseDateLike(value: unknown): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  if (typeof value === "number") {
+    const ms = value < 1e12 ? value * 1000 : value;
+    const d = new Date(ms);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof value === "string") {
+    const asNum = Number(value);
+    if (!Number.isNaN(asNum)) {
+      const ms = asNum < 1e12 ? asNum * 1000 : asNum;
+      const d = new Date(ms);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof value === "object") {
+    const maybeToDate = value as { toDate?: () => Date; _seconds?: number };
+    if (typeof maybeToDate.toDate === "function") {
+      const d = maybeToDate.toDate();
+      return d instanceof Date && !Number.isNaN(d.getTime()) ? d : null;
+    }
+    if (typeof maybeToDate._seconds === "number") {
+      const d = new Date(maybeToDate._seconds * 1000);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+  }
+  return null;
+}
+
 function remainingAccessText(accessEndsAt: Date | null, status: string): string {
-  if (status !== "cancelled" || !accessEndsAt) return "—";
+  if (!accessEndsAt) return status === "active" ? "Active" : "—";
   const now = new Date();
   const end = accessEndsAt instanceof Date ? accessEndsAt : new Date(accessEndsAt);
   if (end <= now) return "Expired";
   const days = Math.ceil((end.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
-  if (days <= 1) return "1 day left";
-  if (days < 30) return `${days} days left`;
+  if (status === "cancelled") {
+    if (days <= 1) return "1 day left";
+    if (days < 30) return `${days} days left`;
+    return "Until " + end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  }
   return "Until " + end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
@@ -180,7 +215,9 @@ export default function AdminUsersPage() {
             .toString()
             .trim();
           const joined = (d.joinedAt as { toDate?: () => Date })?.toDate?.();
-          const accessEndsAt = (d.access_ends_at as { toDate?: () => Date })?.toDate?.() ?? null;
+          const accessEndsAt = parseDateLike(
+            d.access_ends_at ?? d.accessEndsAt ?? d.current_period_end ?? d.currentPeriodEnd ?? null
+          );
           list.push({
             id: doc.id,
             type: "member",

@@ -310,8 +310,8 @@
 }
 .feed-comments-modal-compose-input:focus {
   outline: none;
-  border-color: rgba(212, 85, 139, 0.55);
-  box-shadow: 0 0 0 3px rgba(212, 85, 139, 0.14);
+  border-color: rgba(212, 85, 139, 0.72);
+  box-shadow: 0 0 0 3px rgba(212, 85, 139, 0.2);
 }
 .feed-comments-modal-emoji-trigger {
   position: absolute;
