@@ -52,7 +52,7 @@ export async function GET(
   const requestedPath = resolved.path.join("/");
   const result = await readAsset(requestedPath);
   if (!result) return new Response("Not found", { status: 404 });
-  return new Response(result.data, {
+  return new Response(new Uint8Array(result.data), {
     status: 200,
     headers: {
       "Content-Type": result.contentType,
