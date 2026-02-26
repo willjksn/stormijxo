@@ -88,6 +88,7 @@ export function MemberHeader({ active }: MemberHeaderProps) {
 
   const displayAvatar = avatarStableRef.current;
   const showAdmin = user ? isAdminEmail(user.email ?? null) : false;
+  const treatsStoreEnabled = false;
 
   return (
     <header className="member-header">
@@ -118,7 +119,16 @@ export function MemberHeader({ active }: MemberHeaderProps) {
               <span>Home</span>
             </Link>
           )}
-          {pathname === "/treats" ? (
+          {!treatsStoreEnabled ? (
+            <span
+              className="member-nav-disabled"
+              title="Treats store coming soon"
+              aria-disabled="true"
+            >
+              <TreatsIcon />
+              <span>Treats</span>
+            </span>
+          ) : pathname === "/treats" ? (
             <span className="active" title="Treats" aria-current="page">
               <TreatsIcon />
               <span>Treats</span>

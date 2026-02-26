@@ -109,14 +109,14 @@ export default function LandingPage() {
             <article className="tier-card tier-featured">
               <h3>Monthly membership</h3>
               <p className="price">
-                <span className="amount">$19.00</span>
+                <span className="amount">$12.00</span>
               </p>
               <ul>
                 <li>Keep it small.</li>
                 <li>Cancel anytime.</li>
               </ul>
               <a href="https://buy.stripe.com/4gM4gB2LM5m4brQgHvds400" className="btn btn-primary btn-shine">
-                Join the Inner Circle - $19/mo
+                Join the Inner Circle - $12/mo
               </a>
             </article>
           </div>
@@ -140,10 +140,10 @@ export default function LandingPage() {
               />
             </div>
             <div className="tip-buttons">
-              <button type="button" className="btn btn-tip">$3</button>
-              <button type="button" className="btn btn-tip">$5</button>
-              <button type="button" className="btn btn-tip">$10</button>
-              <button type="button" className="btn btn-tip">$20</button>
+              <button type="button" className="btn btn-tip" data-amount="300">$3</button>
+              <button type="button" className="btn btn-tip" data-amount="500">$5</button>
+              <button type="button" className="btn btn-tip" data-amount="1000">$10</button>
+              <button type="button" className="btn btn-tip" data-amount="2000">$20</button>
             </div>
             <div className="tip-custom">
               <label htmlFor="tip-custom-amount" className="tip-custom-label">Or enter an amount</label>
@@ -165,6 +165,7 @@ export default function LandingPage() {
                 <button type="button" className="btn btn-tip btn-tip-custom" id="tip-custom-btn">Tip</button>
               </div>
             </div>
+            <p id="tip-error" className="tip-error" style={{ display: "none" }} />
           </div>
         </section>
 
@@ -172,7 +173,7 @@ export default function LandingPage() {
           <LandingCtaCount />
           <p className="preview-sub">Join the Inner Circle</p>
           <p className="hero-promise">
-            <span className="hero-promise-line">$19/month</span>
+            <span className="hero-promise-line">$12/month</span>
           </p>
           <p className="preview-sub">Keep it small.</p>
           <a href="#pricing" className="btn btn-primary btn-shine">
@@ -194,6 +195,86 @@ export default function LandingPage() {
       <Script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js" strategy="afterInteractive" />
       <Script src="/firebase-config.js" strategy="afterInteractive" />
       <Script src="/landing-media.js" strategy="afterInteractive" />
+      <Script id="landing-tip-checkout" strategy="afterInteractive">{`
+        (function() {
+          var tipUrl = "/api/tip-checkout";
+          var cancelUrl = window.location.href;
+          var base = window.location.origin;
+          var successUrl = base + "/success?tip=1";
+          var errEl = document.getElementById("tip-error");
+          var tipHandleInput = document.getElementById("tip-instagram-handle");
+          var customInput = document.getElementById("tip-custom-amount");
+          var customBtn = document.getElementById("tip-custom-btn");
+          function setError(msg) {
+            if (!errEl) return;
+            errEl.textContent = msg || "";
+            errEl.style.display = msg ? "block" : "none";
+          }
+          function setLoading(isLoading) {
+            document.querySelectorAll(".btn-tip").forEach(function(b) {
+              b.disabled = isLoading;
+              if (b.getAttribute("data-amount")) {
+                var cents = Number(b.getAttribute("data-amount") || "0");
+                b.textContent = isLoading ? "…" : "$" + Math.round(cents / 100);
+              } else if (b.id === "tip-custom-btn") {
+                b.textContent = isLoading ? "…" : "Tip";
+              }
+            });
+          }
+          function startTip(amountCents) {
+            if (!amountCents || amountCents < 100 || amountCents > 100000) return;
+            setError("");
+            setLoading(true);
+            var instagramHandle = tipHandleInput ? String(tipHandleInput.value || "").trim() : "";
+            fetch(tipUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                amountCents: amountCents,
+                success_url: successUrl,
+                cancel_url: cancelUrl,
+                instagram_handle: instagramHandle
+              })
+            }).then(function(r) {
+              return r.json().catch(function(){ return {}; }).then(function(d){ return { ok: r.ok, data: d }; });
+            }).then(function(result) {
+              if (result.ok && result.data && result.data.url) {
+                window.location.href = result.data.url;
+                return;
+              }
+              setLoading(false);
+              setError((result.data && result.data.error) || "Could not start checkout.");
+            }).catch(function() {
+              setLoading(false);
+              setError("Could not start checkout. Try again.");
+            });
+          }
+          document.querySelectorAll(".btn-tip[data-amount]").forEach(function(btn) {
+            btn.addEventListener("click", function() {
+              var amount = parseInt(this.getAttribute("data-amount"), 10);
+              if (!amount) return;
+              startTip(amount);
+            });
+          });
+          if (customBtn && customInput) {
+            var customClick = function() {
+              var val = parseFloat(customInput.value || "");
+              if (isNaN(val) || val < 1 || val > 1000) {
+                setError("Enter an amount between $1 and $1000.");
+                return;
+              }
+              startTip(Math.round(val * 100));
+            };
+            customBtn.addEventListener("click", customClick);
+            customInput.addEventListener("keydown", function(e) {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                customClick();
+              }
+            });
+          }
+        })();
+      `}</Script>
     </>
   );
 }

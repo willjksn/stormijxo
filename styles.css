@@ -1322,6 +1322,20 @@ main:not([class]) .section-title::after {
   border-color: var(--border);
   transition: color 0.2s, background 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
+.member-nav-main .member-nav-disabled {
+  min-height: 38px;
+  padding: 0.5rem 0.85rem;
+  line-height: 1.15;
+  border-radius: 10px;
+  border: 1px dashed rgba(212, 85, 139, 0.35);
+  color: var(--text-muted);
+  opacity: 0.75;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: not-allowed;
+  user-select: none;
+}
 
 .admin-tabs-bar .tab.active,
 .member-nav-main a.active {
@@ -1502,6 +1516,9 @@ main:not([class]) .section-title::after {
 .admin-tabs-bar .tab:hover,
 .member-nav-main a:hover {
   transform: translateY(-1px);
+}
+.member-nav-main .member-nav-disabled:hover {
+  transform: none;
 }
 
 /* Auth page (login/signup standalone) */

@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { amountCents?: number; base_url?: string; success_url?: string; cancel_url?: string };
+  let body: { amountCents?: number; postId?: string; instagram_handle?: string; base_url?: string; success_url?: string; cancel_url?: string };
   try {
     body = await req.json();
   } catch {
@@ -33,6 +33,9 @@ export async function POST(req: NextRequest) {
   const normalizedBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
   const successUrl = body.success_url || `${normalizedBase}/success`;
   const cancelUrl = body.cancel_url || `${normalizedBase}/tip`;
+  const postId = typeof body.postId === "string" ? body.postId.trim() : "";
+  const instagramHandle =
+    typeof body.instagram_handle === "string" ? body.instagram_handle.trim().slice(0, 64) : "";
 
   try {
     const stripe = new Stripe(stripeSecret);
@@ -54,7 +57,19 @@ export async function POST(req: NextRequest) {
       ],
       success_url: successUrl,
       cancel_url: cancelUrl,
-      metadata: { type: "tip" },
+      metadata: {
+        type: "tip",
+        tip_post_id: postId || "",
+        tip_instagram_handle: instagramHandle || "",
+      },
+      custom_fields: [
+        {
+          key: "instagram_handle",
+          label: { type: "custom", custom: "(optional) Who's showing love?" },
+          type: "text",
+          optional: true,
+        },
+      ],
     });
 
     return NextResponse.json({ url: session.url });

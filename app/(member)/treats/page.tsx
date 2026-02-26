@@ -6,6 +6,7 @@ import { getFirebaseDb } from "../../../lib/firebase";
 import { TREATS_COLLECTION, DEFAULT_TREATS, type TreatDoc } from "../../../lib/treats";
 
 export default function TreatsPage() {
+  const STORE_ENABLED = false;
   const [treats, setTreats] = useState<TreatDoc[]>([]);
   const [loading, setLoading] = useState<string | null>(null);
   const [listLoading, setListLoading] = useState(true);
@@ -37,6 +38,20 @@ export default function TreatsPage() {
       .catch(() => setTreats(DEFAULT_TREATS))
       .finally(() => setListLoading(false));
   }, [db]);
+
+  if (!STORE_ENABLED) {
+    return (
+      <main className="member-main treats-main">
+        <section className="treats-store-header">
+          <h1 className="treats-title">Treats</h1>
+          <p className="treats-subhead">Store is temporarily unavailable while updates are in progress.</p>
+        </section>
+        <p style={{ color: "var(--text-muted)", padding: "1.5rem 2rem" }}>
+          Coming soon. Purchases are currently disabled.
+        </p>
+      </main>
+    );
+  }
 
   const handlePurchase = async (treatId: string) => {
     const treat = treats.find((t) => t.id === treatId);

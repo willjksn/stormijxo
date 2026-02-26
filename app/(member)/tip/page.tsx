@@ -4,10 +4,12 @@ import { useState, useEffect } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { getFirebaseDb } from "../../../lib/firebase";
 import { SITE_CONFIG_CONTENT_ID } from "../../../lib/site-config";
+import { useSearchParams } from "next/navigation";
 
 const PRESET_AMOUNTS = [5, 10, 25, 50, 100, 250];
 
 export default function TipPage() {
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [customAmount, setCustomAmount] = useState("");
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
@@ -20,6 +22,7 @@ export default function TipPage() {
   const [heroTitleFontSize, setHeroTitleFontSize] = useState<number | undefined>(undefined);
   const [heroSubtextFontSize, setHeroSubtextFontSize] = useState<number | undefined>(undefined);
   const db = getFirebaseDb();
+  const postId = (searchParams.get("postId") || "").trim();
 
   useEffect(() => {
     if (!db) return;
@@ -65,6 +68,7 @@ export default function TipPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amountCents,
+          postId: postId || undefined,
           base_url: base,
           success_url: `${base}/success`,
           cancel_url: `${base}/tip`,

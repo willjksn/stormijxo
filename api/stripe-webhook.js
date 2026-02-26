@@ -111,6 +111,10 @@ module.exports = async (req, res) => {
           }
         } else {
         let tipInstagram = (session.metadata && session.metadata.tip_instagram_handle) || null;
+        const tipPostId =
+          (session.metadata && typeof session.metadata.tip_post_id === "string"
+            ? session.metadata.tip_post_id.trim()
+            : "") || "";
         const customFields = session.custom_fields || [];
         for (const f of customFields) {
           const key = (f.key || "").toLowerCase();
@@ -137,6 +141,25 @@ module.exports = async (req, res) => {
             paymentStatus: session.payment_status || null,
             source: "stripe_tip",
           });
+          if (tipPostId && typeof session.amount_total === "number" && session.amount_total > 0) {
+            const postRef = db.collection("posts").doc(tipPostId);
+            await db.runTransaction(async (tx) => {
+              const snap = await tx.get(postRef);
+              if (!snap.exists) return;
+              const data = snap.data() || {};
+              const currentGoal = (data.tipGoal && typeof data.tipGoal === "object") ? data.tipGoal : null;
+              if (!currentGoal) return;
+              const currentRaised =
+                typeof currentGoal.raisedCents === "number" ? currentGoal.raisedCents : 0;
+              tx.update(postRef, {
+                tipGoal: {
+                  ...currentGoal,
+                  raisedCents: currentRaised + session.amount_total,
+                },
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              });
+            });
+          }
         }
 
         json(res, 200, { received: true });
