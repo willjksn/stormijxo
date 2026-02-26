@@ -41,14 +41,14 @@
   margin-bottom: -0.75rem;
 }
 .auth-modal-brand .auth-modal-logo {
-  width: 150px;
-  height: 150px;
+  width: 220px;
+  height: 220px;
   object-fit: contain;
 }
 @media (max-width: 480px) {
   .auth-modal-brand .auth-modal-logo {
-    width: 130px;
-    height: 130px;
+    width: 180px;
+    height: 180px;
   }
 }
 .auth-modal-close {
