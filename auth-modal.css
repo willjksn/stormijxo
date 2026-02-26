@@ -37,28 +37,27 @@
 .auth-modal-brand {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 100%;
-  max-width: 280px;
-  height: 112px;
-  overflow: hidden;
+  justify-content: flex-start;
+  flex: 1;
+  min-width: 0;
+  height: 100px;
+  overflow: visible;
   flex-shrink: 0;
 }
 .auth-modal-brand .auth-modal-logo {
   width: auto;
-  height: 112px;
-  max-width: 280px;
+  height: 100px;
+  max-width: 110px;
   object-fit: contain;
-  object-position: center center;
+  object-position: left center;
 }
 @media (max-width: 480px) {
   .auth-modal-brand {
-    height: 96px;
-    max-width: 240px;
+    height: 84px;
   }
   .auth-modal-brand .auth-modal-logo {
-    height: 96px;
-    max-width: 240px;
+    height: 84px;
+    max-width: 96px;
   }
 }
 .auth-modal-close {
