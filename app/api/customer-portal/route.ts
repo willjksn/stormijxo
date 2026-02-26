@@ -62,22 +62,62 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing auth token." }, { status: 401 });
     }
 
-    const body = (await req.json().catch(() => ({}))) as { returnUrl?: string };
+    const body = (await req.json().catch(() => ({}))) as { returnUrl?: string; email?: string; uid?: string };
     const returnUrl = body.returnUrl && body.returnUrl.trim() ? body.returnUrl.trim() : "https://stormijxo.com/profile";
 
     const app = getAdminApp();
     const decoded = await getAuth(app).verifyIdToken(token);
-    const rawEmail = (decoded.email || "").trim();
-    const email = rawEmail.toLowerCase();
-    if (!email) {
-      return NextResponse.json({ error: "No email on signed-in account." }, { status: 400 });
-    }
+    const uid = (decoded.uid || body.uid || "").trim();
+    const rawEmailFromToken = (decoded.email || "").trim();
+    const rawEmailFromBody = (body.email || "").trim();
+    let rawEmail = rawEmailFromToken || rawEmailFromBody;
+    let email = rawEmail.toLowerCase();
 
     const db = getFirestore(app);
     const membersRef = db.collection("members");
-    let membersSnap = await membersRef.where("email", "==", rawEmail).limit(1).get();
-    if (membersSnap.empty && rawEmail !== email) {
+    let membersSnap = await membersRef.limit(0).get();
+
+    // Some records are keyed by auth uid instead of email; try uid fields first.
+    if (uid) {
+      const uidFields = ["uid", "userId", "user_id", "firebaseUid", "firebase_uid"];
+      for (const field of uidFields) {
+        // eslint-disable-next-line no-await-in-loop
+        const byUid = await membersRef.where(field, "==", uid).limit(1).get();
+        if (!byUid.empty) {
+          membersSnap = byUid;
+          break;
+        }
+      }
+    }
+
+    // If token/body had no email claim, attempt to recover it from users/{uid}.
+    if (membersSnap.empty && !email && uid) {
+      const userDoc = await db.collection("users").doc(uid).get();
+      const userEmail = ((userDoc.data()?.email as string) || "").trim();
+      if (userEmail) {
+        rawEmail = userEmail;
+        email = userEmail.toLowerCase();
+      }
+    }
+
+    if (membersSnap.empty && rawEmail) {
+      membersSnap = await membersRef.where("email", "==", rawEmail).limit(1).get();
+    }
+    if (membersSnap.empty && rawEmailFromToken) {
+      membersSnap = await membersRef.where("email", "==", rawEmailFromToken).limit(1).get();
+    }
+    if (membersSnap.empty && rawEmailFromBody) {
+      membersSnap = await membersRef.where("email", "==", rawEmailFromBody).limit(1).get();
+    }
+    if (membersSnap.empty && email && rawEmail !== email) {
       membersSnap = await membersRef.where("email", "==", email).limit(1).get();
+    }
+
+    if (membersSnap.empty && !email) {
+      return NextResponse.json(
+        { error: "No email found on your account. Please sign in again and retry." },
+        { status: 400 }
+      );
     }
     if (membersSnap.empty) {
       return NextResponse.json({ error: "No subscription found for this account." }, { status: 404 });

@@ -352,3 +352,147 @@
 .admin-content-media-pick img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
 .admin-content-media-pick .lazy-media-image-wrap { aspect-ratio: 1; width: 100%; }
 .admin-content-media-pick .lazy-media-image-wrap img { aspect-ratio: 1; }
+
+.admin-media-vault,
+.admin-media-main,
+.admin-media-card {
+  min-width: 0;
+}
+
+.admin-media-card-title {
+  overflow-wrap: anywhere;
+}
+
+.admin-content-member-count-text {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.admin-content-member-count-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.admin-content-member-count-actions .btn {
+  margin: 0 !important;
+}
+
+@media (max-width: 900px) {
+  .admin-media-body {
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .admin-media-sidebar {
+    width: 100%;
+    position: static;
+    top: auto;
+  }
+
+  .admin-media-main {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .admin-media-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+
+  .admin-media-toolbar-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-main {
+    padding: 1.25rem 0.75rem;
+  }
+
+  .admin-media-page {
+    padding: 1rem 0.75rem 1.25rem;
+  }
+
+  .admin-media-main {
+    padding: 0.75rem;
+  }
+
+  .admin-media-toolbar {
+    align-items: flex-start;
+  }
+
+  .admin-media-tabs {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 0.15rem;
+  }
+
+  .content-block {
+    padding: 1rem;
+  }
+
+  .admin-content-member-count-actions .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 360px) {
+  .admin-main {
+    padding: 0.85rem 0.45rem;
+  }
+
+  .admin-media-page {
+    padding: 0.75rem 0.45rem 1rem;
+  }
+
+  .admin-media-main {
+    padding: 0.6rem;
+  }
+
+  .admin-media-toolbar {
+    gap: 0.5rem;
+    margin-bottom: 0.65rem;
+    padding-bottom: 0.6rem;
+  }
+
+  .admin-media-toolbar-right {
+    gap: 0.45rem;
+  }
+
+  .admin-media-grid {
+    gap: 0.65rem;
+    grid-template-columns: repeat(auto-fill, minmax(98px, 1fr));
+  }
+
+  .admin-media-card-preview {
+    border-radius: 8px;
+  }
+
+  .admin-media-tabs button,
+  .admin-media-view-toggle-btn,
+  .admin-media-select-all,
+  .admin-media-count {
+    font-size: 0.8rem;
+  }
+
+  .content-block {
+    padding: 0.8rem;
+    margin-bottom: 1rem;
+  }
+
+  .content-block h2 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .admin-content-member-count-actions {
+    gap: 0.4rem;
+  }
+
+  .admin-content-member-count-actions .btn {
+    min-height: 38px;
+    font-size: 0.88rem;
+  }
+}

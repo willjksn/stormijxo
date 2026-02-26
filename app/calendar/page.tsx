@@ -432,52 +432,54 @@ export function SchedulePlanner() {
         {!loading && posts.length === 0 && (
           <p className={styles.loading}>No scheduled posts this month. Create a post from Post and schedule it to see it here.</p>
         )}
-        <div className={styles.grid}>
-          {WEEKDAYS.map((day) => (
-            <div key={day} className={styles.weekday}>
-              {day}
-            </div>
-          ))}
-
-          {monthDays.map((day) => {
-            const iso = toISODate(day);
-            const todayIso = toISODate(new Date());
-            const isToday = iso === todayIso;
-            const dayPosts = postsByDate.get(iso) || [];
-            const daySchedule = scheduleByDate.get(iso) || [];
-            const dayReminders = remindersByDate.get(iso) || [];
-            const inMonth = day.getMonth() === month.getMonth();
-
-            return (
-              <div
-                key={iso}
-                className={`${styles.cell} ${inMonth ? "" : styles.cellMuted} ${isToday ? styles.cellToday : ""}`}
-              >
-                <span className={styles.dateNum}>{day.getDate()}</span>
-                <div className={styles.badges}>
-                  {daySchedule.map((item) => (
-                    <span key={item.id} className={`${styles.badge} ${scheduleBadgeClass(item)}`}>
-                      {item.title}
-                    </span>
-                  ))}
-                  {dayReminders.map((r) => (
-                    <span key={r.id} className={`${styles.badge} ${styles.badgeGray}`}>
-                      {r.reminderType === "post" ? "Post" : "Shoot"}: {r.title}
-                    </span>
-                  ))}
-                </div>
-                <div className={styles.cellPosts}>
-                  {dayPosts.map((post) => (
-                    <CalendarPostCard
-                      key={post.id}
-                      post={post}
-                      onOpenPreview={openPreview}
-                    />
-                  ))}
-                </div>
+        <div className={styles.gridScroll}>
+          <div className={styles.grid}>
+            {WEEKDAYS.map((day) => (
+              <div key={day} className={styles.weekday}>
+                {day}
               </div>
-            );
-          })}
+            ))}
+
+            {monthDays.map((day) => {
+              const iso = toISODate(day);
+              const todayIso = toISODate(new Date());
+              const isToday = iso === todayIso;
+              const dayPosts = postsByDate.get(iso) || [];
+              const daySchedule = scheduleByDate.get(iso) || [];
+              const dayReminders = remindersByDate.get(iso) || [];
+              const inMonth = day.getMonth() === month.getMonth();
+
+              return (
+                <div
+                  key={iso}
+                  className={`${styles.cell} ${inMonth ? "" : styles.cellMuted} ${isToday ? styles.cellToday : ""}`}
+                >
+                  <span className={styles.dateNum}>{day.getDate()}</span>
+                  <div className={styles.badges}>
+                    {daySchedule.map((item) => (
+                      <span key={item.id} className={`${styles.badge} ${scheduleBadgeClass(item)}`}>
+                        {item.title}
+                      </span>
+                    ))}
+                    {dayReminders.map((r) => (
+                      <span key={r.id} className={`${styles.badge} ${styles.badgeGray}`}>
+                        {r.reminderType === "post" ? "Post" : "Shoot"}: {r.title}
+                      </span>
+                    ))}
+                  </div>
+                  <div className={styles.cellPosts}>
+                    {dayPosts.map((post) => (
+                      <CalendarPostCard
+                        key={post.id}
+                        post={post}
+                        onOpenPreview={openPreview}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {reminders.length > 0 && (

@@ -240,7 +240,7 @@ export default function ProfilePage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ returnUrl }),
+        body: JSON.stringify({ returnUrl, email: user.email || "", uid: user.uid || "" }),
       });
       const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
       if (res.ok && data.url) {

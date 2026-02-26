@@ -139,6 +139,13 @@
   min-height: 400px;
 }
 
+.gridScroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+}
+
 .weekday {
   background: var(--accent-soft);
   color: var(--text-muted);
@@ -814,6 +821,10 @@
     padding: 1rem 0.6rem;
   }
 
+  .grid {
+    min-width: 760px;
+  }
+
   .title {
     font-size: 1.5rem;
   }
@@ -830,5 +841,42 @@
   .typeRow,
   .formRowGrid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 360px) {
+  .page {
+    padding: 0.75rem 0.35rem;
+  }
+
+  .shell {
+    width: calc(100% - 0.1rem);
+  }
+
+  .title {
+    font-size: 1.3rem;
+  }
+
+  .subtitle {
+    font-size: 0.9rem;
+  }
+
+  .monthBar {
+    gap: 0.45rem;
+  }
+
+  .monthBar h2 {
+    font-size: 1rem;
+    min-width: 150px;
+  }
+
+  .monthNav {
+    width: 30px;
+    height: 30px;
+  }
+
+  .legend {
+    gap: 0.5rem 0.75rem;
+    font-size: 0.82rem;
   }
 }

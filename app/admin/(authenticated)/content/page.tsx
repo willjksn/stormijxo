@@ -359,7 +359,7 @@ export default function AdminContentPage() {
 
       <div className="content-block">
         <h2>Member count</h2>
-        <p style={{ margin: "0 0 0.5rem", fontSize: "0.95rem", color: "var(--text-muted)" }}>
+        <p className="admin-content-member-count-text" style={{ margin: "0 0 0.5rem", fontSize: "0.95rem", color: "var(--text-muted)" }}>
           Display &quot;Join <strong>{content.memberCount}</strong> in the circle&quot; in the CTA when enabled. Count comes from the members collection.
         </p>
         <label className="admin-content-checkbox" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
@@ -370,24 +370,24 @@ export default function AdminContentPage() {
           />
           <span>Show member count on landing page</span>
         </label>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={handleRefreshCount}
-          disabled={saving}
-          style={{ marginRight: "0.5rem" }}
-        >
-          Refresh count from members
-        </button>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={handleSaveLanding}
-          disabled={saving}
-          style={{ marginLeft: "0.25rem" }}
-        >
-          {savingSection === "landing" ? "Saving…" : "Save section"}
-        </button>
+        <div className="admin-content-member-count-actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={handleRefreshCount}
+            disabled={saving}
+          >
+            Refresh count from members
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleSaveLanding}
+            disabled={saving}
+          >
+            {savingSection === "landing" ? "Saving…" : "Save section"}
+          </button>
+        </div>
       </div>
 
       <div className="content-block">
