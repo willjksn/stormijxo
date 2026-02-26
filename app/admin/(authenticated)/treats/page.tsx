@@ -102,6 +102,7 @@ export default function AdminTreatsPage() {
     setSaving(true);
     setMessage(null);
     try {
+      await auth.currentUser.getIdToken(true);
       await setDoc(doc(db, TREATS_COLLECTION, editForm.id), {
         name: editForm.name,
         price: editForm.price,
@@ -137,6 +138,7 @@ export default function AdminTreatsPage() {
     setSaving(true);
     setMessage(null);
     try {
+      await auth.currentUser.getIdToken(true);
       await deleteDoc(doc(db, TREATS_COLLECTION, id));
       setTreats((prev) => prev.filter((t) => t.id !== id));
       if (editingId === id) {
@@ -145,7 +147,13 @@ export default function AdminTreatsPage() {
       }
       showMsg("ok", "Treat removed.");
     } catch (err) {
-      showMsg("error", err instanceof Error ? err.message : "Failed to delete.");
+      const e = err as { message?: string; code?: string };
+      const msg = e?.message ?? "Failed to delete.";
+      const hint =
+        msg.includes("permission") || e?.code === "permission-denied"
+          ? " You are signed in but Firestore denied access. Sign out/in and recheck rules in this Firebase project."
+          : "";
+      showMsg("error", msg + hint);
     } finally {
       setSaving(false);
     }
@@ -170,6 +178,7 @@ export default function AdminTreatsPage() {
     setSaving(true);
     setMessage(null);
     try {
+      await auth.currentUser.getIdToken(true);
       const treat: TreatDoc = {
         id,
         name: newTreat.name.trim(),
@@ -184,7 +193,13 @@ export default function AdminTreatsPage() {
       setShowAddForm(false);
       showMsg("ok", "Treat added.");
     } catch (err) {
-      showMsg("error", err instanceof Error ? err.message : "Failed to add.");
+      const e = err as { message?: string; code?: string };
+      const msg = e?.message ?? "Failed to add.";
+      const hint =
+        msg.includes("permission") || e?.code === "permission-denied"
+          ? " You are signed in but Firestore denied access. Sign out/in and recheck rules in this Firebase project."
+          : "";
+      showMsg("error", msg + hint);
     } finally {
       setSaving(false);
     }

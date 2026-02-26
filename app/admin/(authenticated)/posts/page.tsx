@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -43,27 +43,97 @@ const AI_LENGTHS = [
   { id: "long", label: "Long" },
 ];
 
-const EMOJIS = "😀 😊 😍 🥰 😘 😎 🤗 👍 ❤️ 🔥 ✨ 💕 🌸 💖 😂 🎉 🙏 💜 😭 🤔 💋 🌟 💫 🌙 ⭐ 🌺 💗".split(" ");
+const EMOJI_CATEGORIES = {
+  faces: "😀 😃 😄 😁 😆 😅 🤣 😂 🙂 🙃 😉 😊 😇 🥰 😍 🤩 😘 😎 🥳 😏 😒 😞 😔 😟 😕 🙁 😣 😖 😫 😩 🥺 😭 😤 😠 😡 🤬 😳 😱 😨 😰 😥 😓 🤗 🤔 😴 🤤 😪 🤒 🤕 🤠 🤡 💩 👻 💀 🎃".split(" "),
+  animals: "🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐵 🦄 🦋 🐝 🐢 🐙 🐬 🐳 🦈 🐊 🐘 🦒 🦘 🐎 🐕 🐓 🦅 🦆 🦢 🦉 🦚 🦜 🐸".split(" "),
+  plants: "🌹 🥀 🌺 🌻 🌼 🌷 🌱 🌲 🌳 🌴 🌵 🌿 🍀 🍁 🍄 🔥 ✨ ⭐ ☀️ 🌙 ☁️ 🌊 🌎".split(" "),
+  food: "🍇 🍉 🍊 🍋 🍌 🍍 🍎 🍏 🍐 🍑 🍒 🍓 🥝 🍅 🥥 🥑 🍆 🥔 🥕 🌽 🌶️ 🥒 🥬 🥦 🍞 🥐 🥖 🧀 🍖 🍔 🍟 🍕 🌮 🍣 🍤 🍦 🍩 🍪 🎂 🍰 🧁 🍫 🍬 ☕ 🍵 🍾 🍷 🍸 🍹 🍺 🍻 🥂".split(" "),
+  sports: "⚽ 🏀 🏈 ⚾ 🎾 🏐 🏉 🎱 🏓 🏸 🏒 ⛳ 🏹 🥊 🥋 ⛸️ 🎿 🏂 🏋️ 🤸 🏇 🏊 🏄 🎯 🎳 🎮 🎲 🧩 ♟️".split(" "),
+  travel: "🎨 🎬 🎤 🎧 🎹 🥁 🎉 🎊 🎄 🎆 🚀 ✈️ 🚁 🛰️ ⛵ 🚢 🚗 🚕 🚌 🚓 🚑 🚒 🚚 🚂 🚲 🚦 🗽 🗼 🏰 🎡 🎢 🎪 ⛺ 🏠 🏡 🏢 🏨 🏦 🏥 🏫 🏛️ 🏝️ 🏞️ ⛰️".split(" "),
+  objects: "💡 💻 🖥️ 🖱️ 📱 ☎️ 📺 📷 📹 🎥 💿 💾 💰 💵 💎 🔧 🔨 🛠️ 🔑 🚪 🪑 🛏️ 🛁 🚽 🎁 🎈 📚 📖 📄 📰 🔗 📎 ✂️ 🗑️ 🔒 🔓 🔔".split(" "),
+  symbols: "❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 💟 ☮️ ✝️ ☪️ ☯️ ♈ ♉ ♊ ♋ ♌ ♍ ♎ ♏ ♐ ♑ ♒ ♓ 💯 ✅ ❌ ❓ ❕ ©️ ®️ ™️".split(" "),
+} as const;
+const EMOJI_CATEGORY_ORDER = ["all", "faces", "animals", "plants", "food", "sports", "travel", "objects", "symbols"] as const;
+type EmojiCategory = (typeof EMOJI_CATEGORY_ORDER)[number];
+const EMOJI_CATEGORY_ICONS: Record<EmojiCategory, string> = {
+  all: "😀",
+  faces: "😀",
+  animals: "🐶",
+  plants: "🌹",
+  food: "🍎",
+  sports: "⚽",
+  travel: "✈️",
+  objects: "💡",
+  symbols: "❤️",
+};
 
 const DRAFT_STORAGE_KEY = "admin-posts-draft";
 
-function EmojiPicker({ onPick, onClose }: { onPick: (emoji: string) => void; onClose: () => void }) {
+function EmojiPicker({
+  onPick,
+  onClose,
+  query,
+  setQuery,
+}: {
+  onPick: (emoji: string) => void;
+  onClose: () => void;
+  query: string;
+  setQuery: (v: string) => void;
+}) {
+  const [category, setCategory] = useState<EmojiCategory>("all");
+  const normalized = query.trim().toLowerCase();
+  const visibleEmojis = useMemo(() => {
+    const source =
+      category === "all"
+        ? EMOJI_CATEGORY_ORDER.filter((c) => c !== "all").flatMap((c) => EMOJI_CATEGORIES[c])
+        : EMOJI_CATEGORIES[category];
+    if (!normalized) return source;
+    return source.filter((e) => e.includes(normalized));
+  }, [category, normalized]);
+
   return (
     <div className="admin-emoji-picker-wrap" role="dialog" aria-label="Pick emoji">
-      <div className="admin-emoji-picker">
-        {EMOJIS.map((e) => (
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search emoji..."
+        className="admin-emoji-search"
+      />
+      <div className="admin-emoji-grid">
+        {visibleEmojis.length === 0 ? (
+          <p className="admin-emoji-empty">No emoji found.</p>
+        ) : (
+          visibleEmojis.map((e, i) => (
+            <button
+              key={`${category}-${i}-${e}`}
+              type="button"
+              className="admin-emoji-btn"
+              onClick={() => {
+                onPick(e);
+                onClose();
+              }}
+              aria-label={`Emoji ${e}`}
+            >
+              {e}
+            </button>
+          ))
+        )}
+      </div>
+      <div className="admin-emoji-category-bar" role="tablist" aria-label="Emoji categories">
+        {EMOJI_CATEGORY_ORDER.map((c) => (
           <button
-            key={e}
+            key={c}
             type="button"
-            className="admin-emoji-btn"
-            onClick={() => { onPick(e); onClose(); }}
-            aria-label={`Emoji ${e}`}
+            className={`admin-emoji-category-btn${category === c ? " active" : ""}`}
+            onClick={() => setCategory(c)}
+            aria-label={`Show ${c} emoji`}
+            title={c}
           >
-            {e}
+            {EMOJI_CATEGORY_ICONS[c]}
           </button>
         ))}
       </div>
-      <button type="button" className="admin-emoji-close" onClick={onClose}>Close</button>
     </div>
   );
 }
@@ -89,7 +159,8 @@ export default function AdminPostsPage() {
   const [overlayTextSize, setOverlayTextSize] = useState<number>(18);
   const [hideComments, setHideComments] = useState(false);
   const [hideLikes, setHideLikes] = useState(false);
-  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [emojiOpenFor, setEmojiOpenFor] = useState<"caption" | "pollQuestion" | "tipGoal" | "overlayText" | null>(null);
+  const [emojiQuery, setEmojiQuery] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [publishLoading, setPublishLoading] = useState(false);
@@ -109,6 +180,70 @@ export default function AdminPostsPage() {
   const [tipGoalTargetDollars, setTipGoalTargetDollars] = useState("");
   const [tipGoalRaisedCents, setTipGoalRaisedCents] = useState(0);
   const [overlaySectionOpen, setOverlaySectionOpen] = useState(false);
+  const captionRef = useRef<HTMLTextAreaElement | null>(null);
+  const pollQuestionRef = useRef<HTMLInputElement | null>(null);
+  const tipGoalRef = useRef<HTMLInputElement | null>(null);
+  const overlayTextRef = useRef<HTMLInputElement | null>(null);
+  const captionEmojiWrapRef = useRef<HTMLDivElement | null>(null);
+  const pollEmojiWrapRef = useRef<HTMLDivElement | null>(null);
+  const tipEmojiWrapRef = useRef<HTMLDivElement | null>(null);
+  const overlayEmojiWrapRef = useRef<HTMLDivElement | null>(null);
+
+  const insertEmojiAtCursor = (field: "caption" | "pollQuestion" | "tipGoal" | "overlayText", emoji: string) => {
+    if (field === "caption") {
+      const el = captionRef.current;
+      if (!el) return setCaption((c) => c + emoji);
+      const start = el.selectionStart ?? caption.length;
+      const end = el.selectionEnd ?? caption.length;
+      const next = `${caption.slice(0, start)}${emoji}${caption.slice(end)}`;
+      setCaption(next);
+      return requestAnimationFrame(() => {
+        el.focus();
+        const pos = start + emoji.length;
+        el.setSelectionRange(pos, pos);
+      });
+    }
+    if (field === "pollQuestion") {
+      const current = poll?.question ?? "";
+      const el = pollQuestionRef.current;
+      const start = el?.selectionStart ?? current.length;
+      const end = el?.selectionEnd ?? current.length;
+      const next = `${current.slice(0, start)}${emoji}${current.slice(end)}`;
+      setPoll((p) => (p ? { ...p, question: next } : p));
+      return requestAnimationFrame(() => {
+        if (!el) return;
+        el.focus();
+        const pos = start + emoji.length;
+        el.setSelectionRange(pos, pos);
+      });
+    }
+    if (field === "tipGoal") {
+      const current = tipGoalDescription;
+      const el = tipGoalRef.current;
+      const start = el?.selectionStart ?? current.length;
+      const end = el?.selectionEnd ?? current.length;
+      const next = `${current.slice(0, start)}${emoji}${current.slice(end)}`;
+      setTipGoalDescription(next);
+      return requestAnimationFrame(() => {
+        if (!el) return;
+        el.focus();
+        const pos = start + emoji.length;
+        el.setSelectionRange(pos, pos);
+      });
+    }
+    const current = overlayText;
+    const el = overlayTextRef.current;
+    const start = el?.selectionStart ?? current.length;
+    const end = el?.selectionEnd ?? current.length;
+    const next = `${current.slice(0, start)}${emoji}${current.slice(end)}`;
+    setOverlayText(next);
+    requestAnimationFrame(() => {
+      if (!el) return;
+      el.focus();
+      const pos = start + emoji.length;
+      el.setSelectionRange(pos, pos);
+    });
+  };
 
   const loadLibrary = useCallback(() => {
     if (!storage) return;
@@ -240,6 +375,30 @@ export default function AdminPostsPage() {
       })
       .catch(() => {});
   }, [db]);
+
+  useEffect(() => {
+    if (!emojiOpenFor) return;
+    const activeContainer =
+      emojiOpenFor === "caption"
+        ? captionEmojiWrapRef.current
+        : emojiOpenFor === "pollQuestion"
+          ? pollEmojiWrapRef.current
+          : emojiOpenFor === "tipGoal"
+            ? tipEmojiWrapRef.current
+            : overlayEmojiWrapRef.current;
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (activeContainer?.contains(target)) return;
+      setEmojiOpenFor(null);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+    };
+  }, [emojiOpenFor]);
 
   function getCalendarDateAndTime(): { calendarDate: string; calendarTime: string; scheduledAt?: Timestamp; publishedAt?: Timestamp } {
     const now = new Date();
@@ -535,24 +694,39 @@ export default function AdminPostsPage() {
 
           <section className="admin-posts-card-section">
             <h2 className="admin-posts-card-heading">Caption</h2>
-            <textarea
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              placeholder="Write a caption…"
-              className="admin-posts-caption-input"
-              rows={4}
-              maxLength={2200}
-            />
-            <div className="admin-posts-caption-toolbar">
-              <button type="button" className="admin-posts-emoji-trigger" onClick={() => setEmojiOpen((o) => !o)} aria-label="Add emoji">
+            <div className="admin-posts-caption-wrap" ref={captionEmojiWrapRef}>
+              <textarea
+                ref={captionRef}
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                placeholder="Write a caption…"
+                className="admin-posts-caption-input"
+                rows={4}
+                maxLength={2200}
+              />
+              <button
+                type="button"
+                className="admin-posts-emoji-trigger admin-posts-emoji-trigger-inline"
+                onClick={() => {
+                  setEmojiOpenFor((o) => (o === "caption" ? null : "caption"));
+                  setEmojiQuery("");
+                }}
+                aria-label="Add emoji"
+              >
                 😀
               </button>
-              {emojiOpen && (
-                <EmojiPicker
-                  onPick={(emoji) => setCaption((c) => c + emoji)}
-                  onClose={() => setEmojiOpen(false)}
-                />
+              {emojiOpenFor === "caption" && (
+                <div className="admin-emoji-picker-inline">
+                  <EmojiPicker
+                    onPick={(emoji) => insertEmojiAtCursor("caption", emoji)}
+                    onClose={() => setEmojiOpenFor(null)}
+                    query={emojiQuery}
+                    setQuery={setEmojiQuery}
+                  />
+                </div>
               )}
+            </div>
+            <div className="admin-posts-caption-toolbar">
               <select value={aiTone} onChange={(e) => setAiTone(e.target.value)} className="admin-posts-ai-select" aria-label="AI tone">
                 {AI_TONES.map((t) => (
                   <option key={t.id || "default"} value={t.id}>{t.label}</option>
@@ -582,13 +756,37 @@ export default function AdminPostsPage() {
               </button>
             ) : (
               <div className="admin-posts-poll-block">
-                <input
-                  type="text"
-                  value={poll.question}
-                  onChange={(e) => setPoll((p) => (p ? { ...p, question: e.target.value } : null))}
-                  placeholder="Poll question"
-                  className="admin-posts-poll-question"
-                />
+                <div className="admin-posts-input-emoji-wrap" ref={pollEmojiWrapRef}>
+                  <input
+                    ref={pollQuestionRef}
+                    type="text"
+                    value={poll.question}
+                    onChange={(e) => setPoll((p) => (p ? { ...p, question: e.target.value } : null))}
+                    placeholder="Poll question"
+                    className="admin-posts-poll-question admin-posts-input-with-emoji"
+                  />
+                  <button
+                    type="button"
+                    className="admin-posts-emoji-trigger admin-posts-emoji-trigger-field"
+                    onClick={() => {
+                      setEmojiOpenFor((o) => (o === "pollQuestion" ? null : "pollQuestion"));
+                      setEmojiQuery("");
+                    }}
+                    aria-label="Add emoji to poll question"
+                  >
+                    😀
+                  </button>
+                  {emojiOpenFor === "pollQuestion" && (
+                    <div className="admin-emoji-picker-inline admin-emoji-picker-inline-field">
+                      <EmojiPicker
+                        onPick={(emoji) => insertEmojiAtCursor("pollQuestion", emoji)}
+                        onClose={() => setEmojiOpenFor(null)}
+                        query={emojiQuery}
+                        setQuery={setEmojiQuery}
+                      />
+                    </div>
+                  )}
+                </div>
                 <div className="admin-posts-poll-options">
                   {poll.options.map((opt, i) => (
                     <div key={i} className="admin-posts-poll-option-row">
@@ -644,14 +842,38 @@ export default function AdminPostsPage() {
               </button>
             ) : (
               <div className="admin-posts-tip-goal-block">
-                <input
-                  type="text"
-                  value={tipGoalDescription}
-                  onChange={(e) => setTipGoalDescription(e.target.value)}
-                  placeholder="What are tips for? e.g. If I raise $500 I’ll take my top off and show my bra"
-                  className="admin-posts-overlay-text-input"
-                  maxLength={300}
-                />
+                <div className="admin-posts-input-emoji-wrap" ref={tipEmojiWrapRef}>
+                  <input
+                    ref={tipGoalRef}
+                    type="text"
+                    value={tipGoalDescription}
+                    onChange={(e) => setTipGoalDescription(e.target.value)}
+                    placeholder="What are tips for? e.g. If I raise $500 I’ll take my top off and show my bra"
+                    className="admin-posts-overlay-text-input admin-posts-input-with-emoji"
+                    maxLength={300}
+                  />
+                  <button
+                    type="button"
+                    className="admin-posts-emoji-trigger admin-posts-emoji-trigger-field"
+                    onClick={() => {
+                      setEmojiOpenFor((o) => (o === "tipGoal" ? null : "tipGoal"));
+                      setEmojiQuery("");
+                    }}
+                    aria-label="Add emoji to tip goal"
+                  >
+                    😀
+                  </button>
+                  {emojiOpenFor === "tipGoal" && (
+                    <div className="admin-emoji-picker-inline admin-emoji-picker-inline-field">
+                      <EmojiPicker
+                        onPick={(emoji) => insertEmojiAtCursor("tipGoal", emoji)}
+                        onClose={() => setEmojiOpenFor(null)}
+                        query={emojiQuery}
+                        setQuery={setEmojiQuery}
+                      />
+                    </div>
+                  )}
+                </div>
                 <div className="admin-posts-tip-goal-row">
                   <label className="admin-posts-overlay-label">Target ($)</label>
                   <input
@@ -720,14 +942,38 @@ export default function AdminPostsPage() {
                 </div>
                 <div className="admin-posts-overlay-row">
                   <label className="admin-posts-overlay-label">Overlay text</label>
-                  <input
-                    type="text"
-                    value={overlayText}
-                    onChange={(e) => setOverlayText(e.target.value)}
-                    placeholder="Quote or line to show on the image…"
-                    className="admin-posts-overlay-text-input"
-                    maxLength={500}
-                  />
+                  <div className="admin-posts-input-emoji-wrap" ref={overlayEmojiWrapRef}>
+                    <input
+                      ref={overlayTextRef}
+                      type="text"
+                      value={overlayText}
+                      onChange={(e) => setOverlayText(e.target.value)}
+                      placeholder="Quote or line to show on the image…"
+                      className="admin-posts-overlay-text-input admin-posts-input-with-emoji"
+                      maxLength={500}
+                    />
+                    <button
+                      type="button"
+                      className="admin-posts-emoji-trigger admin-posts-emoji-trigger-field"
+                      onClick={() => {
+                        setEmojiOpenFor((o) => (o === "overlayText" ? null : "overlayText"));
+                        setEmojiQuery("");
+                      }}
+                      aria-label="Add emoji to overlay text"
+                    >
+                      😀
+                    </button>
+                    {emojiOpenFor === "overlayText" && (
+                      <div className="admin-emoji-picker-inline admin-emoji-picker-inline-field">
+                        <EmojiPicker
+                          onPick={(emoji) => insertEmojiAtCursor("overlayText", emoji)}
+                          onClose={() => setEmojiOpenFor(null)}
+                          query={emojiQuery}
+                          setQuery={setEmojiQuery}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="admin-posts-overlay-row admin-posts-overlay-format">
                   <span className="admin-posts-overlay-label">Text color</span>

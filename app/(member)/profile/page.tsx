@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { getFirebaseDb, getFirebaseFunctions } from "../../../lib/firebase";
 import {
@@ -11,10 +11,41 @@ import {
   runTransaction,
   serverTimestamp,
 } from "firebase/firestore";
-import { updateProfile, updatePassword, updateEmail, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
+import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import { getFirebaseAuth } from "../../../lib/firebase";
 import { getAuthErrorMessage } from "../../../lib/auth-redirect";
 import { httpsCallable } from "firebase/functions";
+
+const PROFILE_EMOJI_CATEGORIES = {
+  faces: "😀 😃 😄 😁 😆 😅 🤣 😂 🙂 🙃 😉 😊 😇 🥰 😍 🤩 😘 😎 🥳 😏 😒 😞 😔 😟 😕 🙁 😣 😖 😫 😩 🥺 😭 😤 😠 😡 🤬 😳 😱 😨 😰 😥 😓 🤗 🤔 😴 🤤 😪 🤒 🤕 🤠 🤡 💩 👻 💀 🎃".split(" "),
+  animals: "🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐵 🦄 🦋 🐝 🐢 🐙 🐬 🐳 🦈 🐊 🐘 🦒 🦘 🐎 🐕 🐓 🦅 🦆 🦢 🦉 🦚 🦜 🐸".split(" "),
+  plants: "🌹 🥀 🌺 🌻 🌼 🌷 🌱 🌲 🌳 🌴 🌵 🌿 🍀 🍁 🍄 🔥 ✨ ⭐ ☀️ 🌙 ☁️ 🌊 🌎".split(" "),
+  food: "🍇 🍉 🍊 🍋 🍌 🍍 🍎 🍏 🍐 🍑 🍒 🍓 🥝 🍅 🥥 🥑 🍆 🥔 🥕 🌽 🌶️ 🥒 🥬 🥦 🍞 🥐 🥖 🧀 🍖 🍔 🍟 🍕 🌮 🍣 🍤 🍦 🍩 🍪 🎂 🍰 🧁 🍫 🍬 ☕ 🍵 🍾 🍷 🍸 🍹 🍺 🍻 🥂".split(" "),
+  sports: "⚽ 🏀 🏈 ⚾ 🎾 🏐 🏉 🎱 🏓 🏸 🏒 ⛳ 🏹 🥊 🥋 ⛸️ 🎿 🏂 🏋️ 🤸 🏇 🏊 🏄 🎯 🎳 🎮 🎲 🧩 ♟️".split(" "),
+  travel: "🎨 🎬 🎤 🎧 🎹 🥁 🎉 🎊 🎄 🎆 🚀 ✈️ 🚁 🛰️ ⛵ 🚢 🚗 🚕 🚌 🚓 🚑 🚒 🚚 🚂 🚲 🚦 🗽 🗼 🏰 🎡 🎢 🎪 ⛺ 🏠 🏡 🏢 🏨 🏦 🏥 🏫 🏛️ 🏝️ 🏞️ ⛰️".split(" "),
+  objects: "💡 💻 🖥️ 🖱️ 📱 ☎️ 📺 📷 📹 🎥 💿 💾 💰 💵 💎 🔧 🔨 🛠️ 🔑 🚪 🪑 🛏️ 🛁 🚽 🎁 🎈 📚 📖 📄 📰 🔗 📎 ✂️ 🗑️ 🔒 🔓 🔔".split(" "),
+  symbols: "❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 💟 ☮️ ✝️ ☪️ ☯️ ♈ ♉ ♊ ♋ ♌ ♍ ♎ ♏ ♐ ♑ ♒ ♓ 💯 ✅ ❌ ❓ ❕ ©️ ®️ ™️".split(" "),
+} as const;
+const PROFILE_EMOJI_CATEGORY_ORDER = ["all", "faces", "animals", "plants", "food", "sports", "travel", "objects", "symbols"] as const;
+type ProfileEmojiCategory = (typeof PROFILE_EMOJI_CATEGORY_ORDER)[number];
+const PROFILE_EMOJI_CATEGORY_ICONS: Record<ProfileEmojiCategory, string> = {
+  all: "😀",
+  faces: "😀",
+  animals: "🐶",
+  plants: "🌹",
+  food: "🍎",
+  sports: "⚽",
+  travel: "✈️",
+  objects: "💡",
+  symbols: "❤️",
+};
+const PASSWORD_REQUIREMENTS = [
+  { id: "len", test: (p: string) => p.length >= 8, label: "At least 8 characters" },
+  { id: "lower", test: (p: string) => /[a-z]/.test(p), label: "One lowercase letter" },
+  { id: "upper", test: (p: string) => /[A-Z]/.test(p), label: "One uppercase letter" },
+  { id: "num", test: (p: string) => /\d/.test(p), label: "One number" },
+  { id: "special", test: (p: string) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(p), label: "One special character" },
+];
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -33,11 +64,46 @@ export default function ProfilePage() {
   const [saveLoading, setSaveLoading] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+  const [bioEmojiOpen, setBioEmojiOpen] = useState(false);
+  const [bioEmojiQuery, setBioEmojiQuery] = useState("");
+  const [bioEmojiCategory, setBioEmojiCategory] = useState<ProfileEmojiCategory>("all");
   const [passwordForm, setPasswordForm] = useState({ current: "", new: "", confirm: "" });
   const [passwordLoading, setPasswordLoading] = useState(false);
-  const [emailForm, setEmailForm] = useState({ password: "", newEmail: "" });
-  const [emailLoading, setEmailLoading] = useState(false);
+  const [accountSectionOpen, setAccountSectionOpen] = useState<"password" | null>(null);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const auth = getFirebaseAuth();
+  const bioRef = useRef<HTMLTextAreaElement | null>(null);
+  const bioEmojiAnchorRef = useRef<HTMLDivElement | null>(null);
+
+  const visibleBioEmojis = useMemo(() => {
+    const q = bioEmojiQuery.trim().toLowerCase();
+    const source =
+      bioEmojiCategory === "all"
+        ? PROFILE_EMOJI_CATEGORY_ORDER.filter((c) => c !== "all").flatMap((c) => PROFILE_EMOJI_CATEGORIES[c])
+        : PROFILE_EMOJI_CATEGORIES[bioEmojiCategory];
+    if (!q) return source;
+    return source.filter((e) => e.includes(q));
+  }, [bioEmojiCategory, bioEmojiQuery]);
+
+  const insertBioEmojiAtCursor = (emoji: string) => {
+    const el = bioRef.current;
+    if (!el) {
+      setForm((f) => ({ ...f, bio: f.bio + emoji }));
+      return;
+    }
+    const current = form.bio;
+    const start = el.selectionStart ?? current.length;
+    const end = el.selectionEnd ?? current.length;
+    const next = `${current.slice(0, start)}${emoji}${current.slice(end)}`;
+    setForm((f) => ({ ...f, bio: next }));
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + emoji.length;
+      el.setSelectionRange(pos, pos);
+    });
+  };
 
   const loadProfile = useCallback(() => {
     if (!user || !db) return;
@@ -76,6 +142,22 @@ export default function ProfilePage() {
     if (user && db) loadProfile();
     else if (!user) setLoading(false);
   }, [user, db, loadProfile]);
+
+  useEffect(() => {
+    if (!bioEmojiOpen) return;
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (bioEmojiAnchorRef.current?.contains(target)) return;
+      setBioEmojiOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+    };
+  }, [bioEmojiOpen]);
 
   const handleEdit = () => {
     if (profile) {
@@ -176,8 +258,8 @@ export default function ProfilePage() {
       setMessage({ type: "error", text: "Enter your current password." });
       return;
     }
-    if (newPass.length < 8) {
-      setMessage({ type: "error", text: "New password must be at least 8 characters." });
+    if (!PASSWORD_REQUIREMENTS.every((r) => r.test(newPass))) {
+      setMessage({ type: "error", text: "New password does not meet all requirements." });
       return;
     }
     if (newPass !== confirm) {
@@ -197,39 +279,6 @@ export default function ProfilePage() {
       setMessage({ type: "error", text: getAuthErrorMessage(err, "Could not update password.") });
     } finally {
       setPasswordLoading(false);
-    }
-  };
-
-  const handleChangeEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user?.email || !auth) return;
-    const { password, newEmail } = emailForm;
-    const trimmed = newEmail.trim().toLowerCase();
-    if (!password) {
-      setMessage({ type: "error", text: "Enter your current password." });
-      return;
-    }
-    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setMessage({ type: "error", text: "Enter a valid new email address." });
-      return;
-    }
-    if (trimmed === user.email) {
-      setMessage({ type: "error", text: "New email is the same as current." });
-      return;
-    }
-    setEmailLoading(true);
-    setMessage(null);
-    try {
-      const cred = EmailAuthProvider.credential(user.email, password);
-      await reauthenticateWithCredential(user, cred);
-      await updateEmail(user, trimmed);
-      setMessage({ type: "success", text: "Email updated. Check your inbox to verify." });
-      setEmailForm({ password: "", newEmail: "" });
-      setTimeout(() => setMessage(null), 4000);
-    } catch (err) {
-      setMessage({ type: "error", text: getAuthErrorMessage(err, "Could not update email.") });
-    } finally {
-      setEmailLoading(false);
     }
   };
 
@@ -310,16 +359,80 @@ export default function ProfilePage() {
             <label>Email</label>
             <p className="profile-email-readonly">{email}</p>
             <label htmlFor="profile-bio">Bio</label>
-            <textarea
-              id="profile-bio"
-              value={form.bio}
-              onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
-              disabled={!editing}
-              placeholder="Write a short bio…"
-              maxLength={500}
-              className="profile-textarea"
-              rows={4}
-            />
+            <div className="profile-bio-emoji-anchor" ref={bioEmojiAnchorRef}>
+              <textarea
+                ref={bioRef}
+                id="profile-bio"
+                value={form.bio}
+                onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
+                disabled={!editing}
+                placeholder="Write a short bio…"
+                maxLength={500}
+                className="profile-textarea profile-textarea-with-emoji"
+                rows={4}
+              />
+            {editing && (
+              <div className="profile-bio-emoji profile-bio-emoji-inline">
+                <button
+                  type="button"
+                  className="profile-bio-emoji-trigger profile-bio-emoji-trigger-inline"
+                  onClick={() => {
+                    setBioEmojiOpen((o) => !o);
+                    setBioEmojiQuery("");
+                    setBioEmojiCategory("all");
+                  }}
+                  aria-label="Add emoji to bio"
+                >
+                  😀
+                </button>
+                {bioEmojiOpen && (
+                  <div className="profile-bio-emoji-picker-wrap">
+                    <input
+                      type="text"
+                      value={bioEmojiQuery}
+                      onChange={(e) => setBioEmojiQuery(e.target.value)}
+                      placeholder="Search emoji..."
+                      className="profile-bio-emoji-search"
+                    />
+                    <div className="profile-bio-emoji-grid" role="dialog" aria-label="Pick emoji">
+                      {visibleBioEmojis.length === 0 ? (
+                        <p className="profile-bio-emoji-empty">No emoji found.</p>
+                      ) : (
+                        visibleBioEmojis.map((e, i) => (
+                          <button
+                            key={`${bioEmojiCategory}-${i}-${e}`}
+                            type="button"
+                            className="profile-bio-emoji-btn"
+                            onClick={() => {
+                              insertBioEmojiAtCursor(e);
+                              setBioEmojiOpen(false);
+                            }}
+                            aria-label={`Emoji ${e}`}
+                          >
+                            {e}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                    <div className="profile-bio-emoji-category-bar" role="tablist" aria-label="Emoji categories">
+                      {PROFILE_EMOJI_CATEGORY_ORDER.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          className={`profile-bio-emoji-category-btn${bioEmojiCategory === c ? " active" : ""}`}
+                          onClick={() => setBioEmojiCategory(c)}
+                          aria-label={`Show ${c} emoji`}
+                          title={c}
+                        >
+                          {PROFILE_EMOJI_CATEGORY_ICONS[c]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            </div>
             <div className="profile-form-actions">
               {!editing ? (
                 <button type="button" className="btn btn-secondary btn-edit-profile" onClick={handleEdit}>
@@ -356,71 +469,81 @@ export default function ProfilePage() {
 
         <section className="profile-card profile-account-card">
           <h2>Account</h2>
-          <p className="profile-account-desc">Change your password or email. You must enter your current password to confirm.</p>
+          <p className="profile-account-desc">Change your password. You must enter your current password to confirm.</p>
 
-          <form className="profile-form profile-password-form" onSubmit={handleChangePassword}>
-            <h3 className="profile-account-subtitle">Change password</h3>
-            <label htmlFor="profile-current-password">Current password</label>
-            <input
-              id="profile-current-password"
-              type="password"
-              value={passwordForm.current}
-              onChange={(e) => setPasswordForm((f) => ({ ...f, current: e.target.value }))}
-              placeholder="Current password"
-              className="profile-input"
-              autoComplete="current-password"
-            />
-            <label htmlFor="profile-new-password">New password</label>
-            <input
-              id="profile-new-password"
-              type="password"
-              value={passwordForm.new}
-              onChange={(e) => setPasswordForm((f) => ({ ...f, new: e.target.value }))}
-              placeholder="New password (min 8 characters)"
-              className="profile-input"
-              autoComplete="new-password"
-            />
-            <label htmlFor="profile-confirm-password">Confirm new password</label>
-            <input
-              id="profile-confirm-password"
-              type="password"
-              value={passwordForm.confirm}
-              onChange={(e) => setPasswordForm((f) => ({ ...f, confirm: e.target.value }))}
-              placeholder="Confirm new password"
-              className="profile-input"
-              autoComplete="new-password"
-            />
-            <button type="submit" className="btn btn-secondary" disabled={passwordLoading}>
-              {passwordLoading ? "Updating…" : "Update password"}
+          <div className="profile-account-collapsible">
+            <button
+              type="button"
+              className={`profile-account-toggle${accountSectionOpen === "password" ? " active" : ""}`}
+              onClick={() => setAccountSectionOpen((s) => (s === "password" ? null : "password"))}
+              aria-expanded={accountSectionOpen === "password"}
+            >
+              Change password
             </button>
-          </form>
+            {accountSectionOpen === "password" && (
+              <form className="profile-form profile-password-form" onSubmit={handleChangePassword}>
+                <label htmlFor="profile-current-password">Current password</label>
+                <div className="profile-input-row">
+                  <input
+                    id="profile-current-password"
+                    type={showCurrentPassword ? "text" : "password"}
+                    value={passwordForm.current}
+                    onChange={(e) => setPasswordForm((f) => ({ ...f, current: e.target.value }))}
+                    placeholder="Current password"
+                    className="profile-input"
+                    autoComplete="current-password"
+                  />
+                  <button type="button" className="profile-btn-show" onClick={() => setShowCurrentPassword((v) => !v)}>
+                    {showCurrentPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+                <label htmlFor="profile-new-password">New password</label>
+                <div className="profile-input-row">
+                  <input
+                    id="profile-new-password"
+                    type={showNewPassword ? "text" : "password"}
+                    value={passwordForm.new}
+                    onChange={(e) => setPasswordForm((f) => ({ ...f, new: e.target.value }))}
+                    placeholder="New password"
+                    className="profile-input"
+                    autoComplete="new-password"
+                  />
+                  <button type="button" className="profile-btn-show" onClick={() => setShowNewPassword((v) => !v)}>
+                    {showNewPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+                <div className={"auth-password-reqs" + (passwordForm.new ? " visible" : "")}>
+                  <ul>
+                    {PASSWORD_REQUIREMENTS.map((r) => (
+                      <li key={r.id} className={r.test(passwordForm.new) ? "met" : ""}>
+                        <span className="req-icon" />
+                        {r.label}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <label htmlFor="profile-confirm-password">Confirm new password</label>
+                <div className="profile-input-row">
+                  <input
+                    id="profile-confirm-password"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={passwordForm.confirm}
+                    onChange={(e) => setPasswordForm((f) => ({ ...f, confirm: e.target.value }))}
+                    placeholder="Confirm new password"
+                    className="profile-input"
+                    autoComplete="new-password"
+                  />
+                  <button type="button" className="profile-btn-show" onClick={() => setShowConfirmPassword((v) => !v)}>
+                    {showConfirmPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+                <button type="submit" className="btn btn-secondary" disabled={passwordLoading}>
+                  {passwordLoading ? "Updating…" : "Update password"}
+                </button>
+              </form>
+            )}
+          </div>
 
-          <form className="profile-form profile-email-form" onSubmit={handleChangeEmail}>
-            <h3 className="profile-account-subtitle">Change email</h3>
-            <label htmlFor="profile-email-password">Current password</label>
-            <input
-              id="profile-email-password"
-              type="password"
-              value={emailForm.password}
-              onChange={(e) => setEmailForm((f) => ({ ...f, password: e.target.value }))}
-              placeholder="Current password"
-              className="profile-input"
-              autoComplete="current-password"
-            />
-            <label htmlFor="profile-new-email">New email</label>
-            <input
-              id="profile-new-email"
-              type="email"
-              value={emailForm.newEmail}
-              onChange={(e) => setEmailForm((f) => ({ ...f, newEmail: e.target.value }))}
-              placeholder="New email address"
-              className="profile-input"
-              autoComplete="email"
-            />
-            <button type="submit" className="btn btn-secondary" disabled={emailLoading}>
-              {emailLoading ? "Updating…" : "Update email"}
-            </button>
-          </form>
         </section>
       </div>
     </main>
