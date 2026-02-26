@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { doc, getDoc, setDoc, getDocs, collection } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseStorage } from "../../../../lib/firebase";
 import { listMediaLibraryAll, type MediaItem } from "../../../../lib/media-library";
@@ -49,6 +49,8 @@ export default function AdminContentPage() {
   const [mediaLoading, setMediaLoading] = useState(false);
   const db = getFirebaseDb();
   const storage = getFirebaseStorage();
+  const contentRef = useRef(content);
+  contentRef.current = content;
 
   useEffect(() => {
     if (!db) {
@@ -96,20 +98,26 @@ export default function AdminContentPage() {
     section: "landing" | "tip",
     payload: Partial<SiteConfigContent>
   ) => {
-    if (!db) return;
+    const dbNow = getFirebaseDb();
+    if (!dbNow) {
+      showMessage("error", "Not connected. Please refresh the page.");
+      return;
+    }
     setSavingSection(section);
     setSaving(true);
     setMessage(null);
     try {
+      const latest = contentRef.current;
       await setDoc(
-        doc(db, CONTENT_DOC_PATH, SITE_CONFIG_CONTENT_ID),
-        { ...content, ...payload },
+        doc(dbNow, CONTENT_DOC_PATH, SITE_CONFIG_CONTENT_ID),
+        { ...latest, ...payload },
         { merge: true }
       );
       setContent((c) => ({ ...c, ...payload }));
       showMessage("ok", section === "landing" ? "Landing content saved." : "Tip page saved.");
-    } catch {
-      showMessage("error", "Failed to save.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to save.";
+      showMessage("error", msg);
     } finally {
       setSaving(false);
       setSavingSection(null);
@@ -117,66 +125,74 @@ export default function AdminContentPage() {
   };
 
   const handleSaveLanding = () => {
+    const c = contentRef.current;
     saveSection("landing", {
-      showMemberCount: content.showMemberCount,
-      memberCount: content.memberCount,
-      showSocialInstagram: content.showSocialInstagram,
-      showSocialFacebook: content.showSocialFacebook,
-      showSocialX: content.showSocialX,
-      showSocialTiktok: content.showSocialTiktok,
-      showSocialYoutube: content.showSocialYoutube,
+      showMemberCount: c.showMemberCount,
+      memberCount: c.memberCount,
+      showSocialInstagram: c.showSocialInstagram,
+      showSocialFacebook: c.showSocialFacebook,
+      showSocialX: c.showSocialX,
+      showSocialTiktok: c.showSocialTiktok,
+      showSocialYoutube: c.showSocialYoutube,
     });
   };
 
   const handleSaveTipPage = () => {
+    const c = contentRef.current;
     saveSection("tip", {
-      tipPageHeroImageUrl: content.tipPageHeroImageUrl?.trim() ?? "",
-      tipPageHeroTitle: content.tipPageHeroTitle?.trim() ?? "",
-      tipPageHeroSubtext: content.tipPageHeroSubtext?.trim() ?? "",
-      tipPageHeroTitleColor: content.tipPageHeroTitleColor?.trim() ?? "",
-      tipPageHeroSubtextColor: content.tipPageHeroSubtextColor?.trim() ?? "",
-      tipPageHeroTitleFontSize: content.tipPageHeroTitleFontSize,
-      tipPageHeroSubtextFontSize: content.tipPageHeroSubtextFontSize,
+      tipPageHeroImageUrl: c.tipPageHeroImageUrl?.trim() ?? "",
+      tipPageHeroTitle: c.tipPageHeroTitle?.trim() ?? "",
+      tipPageHeroSubtext: c.tipPageHeroSubtext?.trim() ?? "",
+      tipPageHeroTitleColor: c.tipPageHeroTitleColor?.trim() ?? "",
+      tipPageHeroSubtextColor: c.tipPageHeroSubtextColor?.trim() ?? "",
+      tipPageHeroTitleFontSize: c.tipPageHeroTitleFontSize,
+      tipPageHeroSubtextFontSize: c.tipPageHeroSubtextFontSize,
     });
   };
 
   const handleRefreshCount = async () => {
-    if (!db) return;
+    const dbNow = getFirebaseDb();
+    if (!dbNow) {
+      showMessage("error", "Not connected. Please refresh the page.");
+      return;
+    }
     setSaving(true);
     setMessage(null);
     try {
-      const snap = await getDocs(collection(db, "members"));
+      const snap = await getDocs(collection(dbNow, "members"));
       const count = snap.size;
-      setContent((c) => ({ ...c, memberCount: count }));
+      const c = contentRef.current;
+      setContent((prev) => ({ ...prev, memberCount: count }));
       await setDoc(
-        doc(db, CONTENT_DOC_PATH, SITE_CONFIG_CONTENT_ID),
+        doc(dbNow, CONTENT_DOC_PATH, SITE_CONFIG_CONTENT_ID),
         {
-          testimonialQuote: content.testimonialQuote?.trim() ?? "",
-          testimonialAttribution: content.testimonialAttribution?.trim() ?? "",
-          showMemberCount: content.showMemberCount,
+          testimonialQuote: c.testimonialQuote?.trim() ?? "",
+          testimonialAttribution: c.testimonialAttribution?.trim() ?? "",
+          showMemberCount: c.showMemberCount,
           memberCount: count,
-          tipPageHeroImageUrl: content.tipPageHeroImageUrl?.trim() ?? "",
-          tipPageHeroTitle: content.tipPageHeroTitle?.trim() ?? "",
-          tipPageHeroSubtext: content.tipPageHeroSubtext?.trim() ?? "",
-          tipPageHeroTitleColor: content.tipPageHeroTitleColor?.trim() ?? "",
-          tipPageHeroSubtextColor: content.tipPageHeroSubtextColor?.trim() ?? "",
-          tipPageHeroTitleFontSize: content.tipPageHeroTitleFontSize,
-          tipPageHeroSubtextFontSize: content.tipPageHeroSubtextFontSize,
-          privacyPolicyLastUpdated: content.privacyPolicyLastUpdated?.trim() ?? "",
-          termsLastUpdated: content.termsLastUpdated?.trim() ?? "",
-          privacyPolicyHtml: content.privacyPolicyHtml ?? "",
-          termsHtml: content.termsHtml ?? "",
-          showSocialInstagram: content.showSocialInstagram,
-          showSocialFacebook: content.showSocialFacebook,
-          showSocialX: content.showSocialX,
-          showSocialTiktok: content.showSocialTiktok,
-          showSocialYoutube: content.showSocialYoutube,
+          tipPageHeroImageUrl: c.tipPageHeroImageUrl?.trim() ?? "",
+          tipPageHeroTitle: c.tipPageHeroTitle?.trim() ?? "",
+          tipPageHeroSubtext: c.tipPageHeroSubtext?.trim() ?? "",
+          tipPageHeroTitleColor: c.tipPageHeroTitleColor?.trim() ?? "",
+          tipPageHeroSubtextColor: c.tipPageHeroSubtextColor?.trim() ?? "",
+          tipPageHeroTitleFontSize: c.tipPageHeroTitleFontSize,
+          tipPageHeroSubtextFontSize: c.tipPageHeroSubtextFontSize,
+          privacyPolicyLastUpdated: c.privacyPolicyLastUpdated?.trim() ?? "",
+          termsLastUpdated: c.termsLastUpdated?.trim() ?? "",
+          privacyPolicyHtml: c.privacyPolicyHtml ?? "",
+          termsHtml: c.termsHtml ?? "",
+          showSocialInstagram: c.showSocialInstagram,
+          showSocialFacebook: c.showSocialFacebook,
+          showSocialX: c.showSocialX,
+          showSocialTiktok: c.showSocialTiktok,
+          showSocialYoutube: c.showSocialYoutube,
         },
         { merge: true }
       );
       showMessage("ok", `Member count updated: ${count}.`);
-    } catch {
-      showMessage("error", "Could not refresh member count.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not refresh member count.";
+      showMessage("error", msg);
     } finally {
       setSaving(false);
     }
@@ -191,7 +207,12 @@ export default function AdminContentPage() {
   };
 
   const saveLegalModal = async () => {
-    if (!db || !legalModal) return;
+    if (!legalModal) return;
+    const dbNow = getFirebaseDb();
+    if (!dbNow) {
+      showMessage("error", "Not connected. Please refresh the page.");
+      return;
+    }
     const today = todayYMD();
     const payload =
       legalModal === "privacy"
@@ -200,10 +221,11 @@ export default function AdminContentPage() {
     setSaving(true);
     setMessage(null);
     try {
+      const latest = contentRef.current;
       await setDoc(
-        doc(db, CONTENT_DOC_PATH, SITE_CONFIG_CONTENT_ID),
+        doc(dbNow, CONTENT_DOC_PATH, SITE_CONFIG_CONTENT_ID),
         {
-          ...content,
+          ...latest,
           ...payload,
         },
         { merge: true }
@@ -212,8 +234,9 @@ export default function AdminContentPage() {
       setLegalModal(null);
       setLegalDraft("");
       showMessage("ok", legalModal === "privacy" ? "Privacy policy saved. Date set to today." : "Terms saved. Date set to today.");
-    } catch {
-      showMessage("error", "Failed to save.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to save.";
+      showMessage("error", msg);
     } finally {
       setSaving(false);
     }
@@ -412,7 +435,7 @@ export default function AdminContentPage() {
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
             <input
               type="color"
-              value={content.tipPageHeroTitleColor || "#ffffff"}
+              value={content.tipPageHeroTitleColor || "#d25288"}
               onChange={(e) => setContent((c) => ({ ...c, tipPageHeroTitleColor: e.target.value }))}
               title="Title text color"
               style={{ width: 36, height: 28, padding: 2, border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", background: "var(--bg)" }}
@@ -450,7 +473,7 @@ export default function AdminContentPage() {
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
             <input
               type="color"
-              value={content.tipPageHeroSubtextColor || "#e5e5e5"}
+              value={content.tipPageHeroSubtextColor || "#fef0f7"}
               onChange={(e) => setContent((c) => ({ ...c, tipPageHeroSubtextColor: e.target.value }))}
               title="Subtext color"
               style={{ width: 36, height: 28, padding: 2, border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", background: "var(--bg)" }}

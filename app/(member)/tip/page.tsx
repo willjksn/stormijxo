@@ -15,8 +15,8 @@ export default function TipPage() {
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
   const [heroTitle, setHeroTitle] = useState<string>("Show Your Love");
   const [heroSubtext, setHeroSubtext] = useState<string>("No minimum — send what you like.");
-  const [heroTitleColor, setHeroTitleColor] = useState<string>("#ffffff");
-  const [heroSubtextColor, setHeroSubtextColor] = useState<string>("#e5e5e5");
+  const [heroTitleColor, setHeroTitleColor] = useState<string>("#d25288");
+  const [heroSubtextColor, setHeroSubtextColor] = useState<string>("#fef0f7");
   const [heroTitleFontSize, setHeroTitleFontSize] = useState<number | undefined>(undefined);
   const [heroSubtextFontSize, setHeroSubtextFontSize] = useState<number | undefined>(undefined);
   const db = getFirebaseDb();
