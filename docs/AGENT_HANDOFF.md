@@ -12,41 +12,31 @@ Convert `Stormij_xo` from a multi-page static HTML app into a modern app experie
 
 ## Current Status (What Is Done)
 
-- Landing page has been heavily refreshed (copy + style polish).
-- Landing headline/body tone updated to a conversational, premium/flirty feel.
-- Member/admin header flicker issues were reduced with caching/layout-stability fixes.
-- Stripe backend migration to Vercel API routes was started:
-  - `api/tip-checkout.js`
-  - `api/stripe-webhook.js`
-  - `api/_lib/firebase-admin.js`
-- Clean URL support and redirect fixes were added in `vercel.json`.
-- Global styling in `styles.css` was expanded to align landing/admin/member visual language.
-- **Next.js app shell scaffolded** (Next 16, React 19, TypeScript): `app/layout.tsx`, `app/globals.css` (imports `styles.css`, member-header.css, member-feed.css), `next.config.ts`, `tsconfig.json`.
-- **Landing ported** to `app/page.tsx` (hero, perks, pricing, CTA, footer; pink-luxe preserved).
-- **Member home ported** to `app/home/page.tsx` with `MemberHeader` and demo feed; `app/components/MemberHeader.tsx`, `app/home/demo-posts.ts`.
-- Additional app routes: `app/calendar/page.tsx`, `app/treats/page.tsx`, `app/admin/schedule/page.tsx`; `app/assets/[...path]/route.ts` for asset proxy.
-- **Full route migration complete**: `app/post/` (member), `app/terms/`, `app/privacy/`, `app/success/`, `app/signup/`. All `.html` links replaced with Next `Link`. `vercel.json` Next-first (no rewrites to static HTML).
-- **404/build fixes**: `generate-firebase-config` writes to `public/firebase-config.js`; build script runs it before `next build`.
-- **Admin nav**: Same-tab navigation, RequireAdmin shows header during auth check for seamless transition.
-- **Pretty URLs for posts**: `/post/[id]` (e.g. `/post/demo-1`); `app/(member)/post/[id]/page.tsx`; `/post?id=x` redirects to `/post/x`.
-- **Recent UX/auth/admin fixes** (see `docs/SESSION_NOTES.md` for details):
-  - Member header mobile: overflow/cutoff fixed; Admin in profile dropdown on small screens (≤1024px), in header on desktop; profile dropdown positioned so not cut off; Admin hidden in dropdown on desktop.
-  - Landing header mobile: nav on same row as logo.
-  - Auth modal: SJ_XO logo; feed/grid titles removed.
-  - Logo: `/home` when logged in, `/` when not (landing); member logo → `/home`.
-  - Sign out: `window.location.href = "/"` so user lands on landing page.
-  - Admin allowlist: `stormij.xo@gmail.com` in `lib/auth-redirect.ts` and legacy admin-auth/member-header scripts.
-- **Admin Posts (Tools → Posts)**: create feed posts with media library/upload, captions, AI suggest, caption overlay styles, hide comments/likes; profile: edit display name/bio, change password/email (reauth).
-- **Media library** (Admin → Media): Folders stored in Firestore `mediaLibrary/config`; single Grid/List toggle; list view shows item title with smaller corner checkbox; add folder works (Firestore rules allow `mediaLibrary` read/write when authenticated). Success messages auto-dismiss after 3s.
-- **Post form sections**: Poll, Tip goal, and Text overlay (on image) are expandable: “+ Add …” opens the section, “Cancel” (secondary button) closes it. Tip goal: enable, description, target $, progress bar, raised amount. Text overlay: animation, overlay text, color, format (highlight/underline/italic).
-- **Tip page** (`/tip`): “Show Your Love” hero; copy “No minimum — send what you like.”; footer “Thank You!” + SJ xo logo (`/assets/sj-heart-icon.png` in `public/assets/`). Logo can have transparent background via `node scripts/make-white-transparent.js assets/sj-heart-icon.png`. Card uses `isolation: isolate` so pink doesn’t bleed into header.
-- **Member header**: Tip link (heart icon) next to Treats; active state for `/tip`. Admin nav order: **Calendar, Post, Media, Content**.
-- **Feed**: Admins see a pencil (edit) icon on each post linking to `/admin/posts?edit=<postId>`. Uses `isAdminEmail()` from `lib/auth-redirect.ts`; edit icon only when `showAdminEdit` is true.
-- **Admin dashboard – Content & engagement**: Two stat cards (Posts this month, Total likes) plus **three best-post cards** in a responsive grid:
-  - **Most likes**: Post this month with highest like count (preview image, caption snippet, “X likes”, Edit post).
-  - **Most comments**: Post this month with highest comment count (same layout).
-  - **Most tips**: Post this month with highest tip goal raised (`tipGoal.raisedCents`); card only shown when at least one post has tips. Smaller card layout (`.best-post-card-sm`, `.best-posts-grid`). Demo placeholders when no data (likes/comments); no demo for tips.
-- **Auth/imports**: Member home uses `../../contexts/AuthContext` and `../../../lib/...` for root `lib/`. Firestore rules: `mediaLibrary/{docId}` allow read, write when `request.auth != null`; deploy with `firebase deploy --only firestore:rules`.
+- App Router migration is fully active for member/admin/legal/checkout flows; the product now runs as a Next.js app-first experience.
+- Landing page (`app/page.tsx`) is live with refreshed copy/styling and Stripe pricing CTA.
+- Member feed (`app/(member)/home/page.tsx`) now supports:
+  - clickable likes per signed-in user (`likedBy` + `likeCount`)
+  - comment modal (opens from comment icon) with inline composer
+  - admin comment moderation in modal (hide/unhide/delete)
+  - saved posts (`savedPostIds` on user doc), with `/saved` page and unsave action
+- Post detail (`app/(member)/post/[id]/page.tsx`) supports member comments, admin replies, and full emoji picker flow.
+- Emoji picker behavior has been normalized across profile/admin/posts and comment/reply inputs (search + categories + outside-click close).
+- Member profile (`app/(member)/profile/page.tsx`) updates:
+  - change-email section removed
+  - manage subscription calls `/api/customer-portal`
+  - customer-portal route hardened for mixed field names and email case; can recover Stripe customer ID from subscription ID.
+- Stripe tip flow updates:
+  - Landing tip buttons are wired again and keep labels visible during redirect.
+  - In-app tip page keeps "select amount, then tap Tip" behavior.
+  - API accepts `amountCents` and legacy `amount`.
+  - Tip metadata carries `tip_post_id`; webhook increments `post.tipGoal.raisedCents` when applicable.
+- Treats for members is intentionally disabled (visible nav item but non-clickable; member treats page returns "coming soon").
+- Calendar/admin schedule polish:
+  - calendar cards slightly smaller
+  - media fill adjusted (no white edges)
+  - preview cleaned: removed "X • Post" and "Export", delete moved into edit/reschedule controls
+- Landing pricing copy currently reflects `$12` in key visible CTA text.
+- Best-effort media protection guardrails were added for member routes (context menu/drag/save-print shortcut deterrents + video download control restrictions). Note: screenshot prevention cannot be guaranteed on web.
 
 ## Important Context
 
@@ -82,14 +72,19 @@ Convert `Stormij_xo` from a multi-page static HTML app into a modern app experie
 ## Files to Review First
 
 - `styles.css`
-- `index.html`
-- `member/member-header.js`
-- `member/member-header.css`
-- `admin/admin-auth.js`
+- `app/page.tsx`
+- `app/(member)/home/page.tsx`
+- `app/(member)/post/[id]/page.tsx`
+- `app/(member)/profile/page.tsx`
+- `app/(member)/tip/page.tsx`
+- `app/(member)/saved/page.tsx`
+- `app/components/MemberHeader.tsx`
+- `app/api/customer-portal/route.ts`
+- `app/api/tip-checkout/route.ts`
 - `api/tip-checkout.js`
 - `api/stripe-webhook.js`
-- `vercel.json`
-- `serve.json`
+- `app/calendar/page.tsx`
+- `app/calendar/calendar.module.css`
 
 ## Next Chat Prompt Template (Copy/Paste)
 
@@ -111,11 +106,11 @@ Before editing:
 
 ## Next Steps (Suggested)
 
-1. **Tip goal on member side**: Posts store `tipGoal`; member feed and post detail don’t yet show the goal (description, progress bar) or a “Tip for this post” action. Optionally attribute tips to a post (e.g. `postId` in checkout/webhook and update `tipGoal.raisedCents`).
-2. **Tip page image**: Optional admin-configurable hero image (e.g. Firestore `siteConfig/tipPage.imageUrl` + upload in admin) instead of gradient-only hero.
-3. **Grid view**: Optionally wire grid view to Firestore posts if not already.
-4. **Stripe / payments**: Continue wiring when ready (tip-checkout, webhooks, success/cancel URLs).
-5. **OPENAI_API_KEY**: Set for better AI caption suggestions on Posts.
+1. **Subscription portal verification**: If users still fail to redirect, inspect prod member docs for `stripeCustomerId/stripeSubscriptionId` data quality and webhook history.
+2. **Media protection hardening**: Consider signed/expiring media URLs and stricter delivery controls (UI-only protections are deterrents, not guarantees).
+3. **Treats relaunch switch**: Re-enable member Treats nav/page once checkout/inventory flow is stable.
+4. **Landing pricing consistency**: Ensure all legacy/static surfaces and Stripe product references match current offer copy.
+5. **Operational polish**: Keep `docs/SESSION_NOTES.md` current for release-level changes and rollback context.
 
 ## What to Say to a New Chat Agent
 
