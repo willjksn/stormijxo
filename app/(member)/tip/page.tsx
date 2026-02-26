@@ -135,12 +135,10 @@ export default function TipPage() {
               key={dollars}
               type="button"
               className={`tip-preset-btn${selectedPreset === dollars ? " active" : ""}`}
-              onClick={async () => {
+              onClick={() => {
                 setSelectedPreset(dollars);
                 setCustomAmount("");
-                await startTipCheckout(dollars * 100);
               }}
-              disabled={loading}
             >
               ${dollars}
             </button>
