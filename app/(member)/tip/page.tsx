@@ -58,8 +58,8 @@ export default function TipPage() {
         ? Math.round(parseFloat(customAmount) * 100)
         : 0;
 
-  const handleTip = async () => {
-    if (amountCents < 100) return;
+  const startTipCheckout = async (cents: number) => {
+    if (cents < 100) return;
     setLoading(true);
     try {
       const base = typeof window !== "undefined" ? window.location.origin : "";
@@ -67,10 +67,10 @@ export default function TipPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amountCents,
+          amountCents: cents,
           postId: postId || undefined,
           base_url: base,
-          success_url: `${base}/success`,
+          success_url: `${base}/success?tip=1`,
           cancel_url: `${base}/tip`,
         }),
       });
@@ -85,6 +85,10 @@ export default function TipPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleTip = async () => {
+    await startTipCheckout(amountCents);
   };
 
   return (
@@ -131,10 +135,12 @@ export default function TipPage() {
               key={dollars}
               type="button"
               className={`tip-preset-btn${selectedPreset === dollars ? " active" : ""}`}
-              onClick={() => {
+              onClick={async () => {
                 setSelectedPreset(dollars);
                 setCustomAmount("");
+                await startTipCheckout(dollars * 100);
               }}
+              disabled={loading}
             >
               ${dollars}
             </button>

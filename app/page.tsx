@@ -213,12 +213,6 @@ export default function LandingPage() {
           function setLoading(isLoading) {
             document.querySelectorAll(".btn-tip").forEach(function(b) {
               b.disabled = isLoading;
-              if (b.getAttribute("data-amount")) {
-                var cents = Number(b.getAttribute("data-amount") || "0");
-                b.textContent = isLoading ? "…" : "$" + Math.round(cents / 100);
-              } else if (b.id === "tip-custom-btn") {
-                b.textContent = isLoading ? "…" : "Tip";
-              }
             });
           }
           function startTip(amountCents) {
