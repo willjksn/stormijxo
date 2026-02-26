@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { collection, doc, getDocs, setDoc, deleteDoc } from "firebase/firestore";
-import { getFirebaseDb } from "../../../../lib/firebase";
+import { getFirebaseDb, getFirebaseAuth } from "../../../../lib/firebase";
 import {
   TREATS_COLLECTION,
-  DEFAULT_TREATS,
   slugForTreatName,
   type TreatDoc,
 } from "../../../../lib/treats";
@@ -29,7 +28,11 @@ export default function AdminTreatsPage() {
 
   const loadTreats = useCallback(() => {
     if (!db) {
-      setTreats(DEFAULT_TREATS);
+      setTreats([]);
+      setMessage({
+        type: "error",
+        text: "Firebase not connected. Check Vercel public env vars and redeploy.",
+      });
       setLoading(false);
       return;
     }
@@ -48,10 +51,17 @@ export default function AdminTreatsPage() {
           });
         });
         list.sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
-        setTreats(list.length > 0 ? list : DEFAULT_TREATS);
+        setTreats(list);
       })
-      .catch(() => {
-        setTreats(DEFAULT_TREATS);
+      .catch((err) => {
+        setTreats([]);
+        const e = err as { message?: string; code?: string };
+        const msg = e?.message ?? "Could not load treats.";
+        const hint =
+          msg.includes("permission") || e?.code === "permission-denied"
+            ? " You are signed in but Firestore denied access. Sign out/in and recheck rules in this Firebase project."
+            : "";
+        setMessage({ type: "error", text: msg + hint });
       })
       .finally(() => setLoading(false));
   }, [db]);
@@ -62,7 +72,7 @@ export default function AdminTreatsPage() {
 
   const showMsg = (type: "ok" | "error", text: string) => {
     setMessage({ type, text });
-    setTimeout(() => setMessage(null), 3000);
+    setTimeout(() => setMessage(null), type === "error" ? 8000 : 3000);
   };
 
   const handleStartEdit = (t: TreatDoc) => {
@@ -78,7 +88,15 @@ export default function AdminTreatsPage() {
   const handleSaveEdit = async () => {
     if (!editForm) return;
     if (!db) {
-      showMsg("error", "Firebase is not configured. Add NEXT_PUBLIC_FIREBASE_* to .env.local to save treats.");
+      showMsg(
+        "error",
+        "Firebase not connected. In Vercel set NEXT_PUBLIC_FIREBASE_WEB_API, NEXT_PUBLIC_FIREBASE_DOMAIN, NEXT_PUBLIC_FIREBASE_PROJECT_ID, and NEXT_PUBLIC_FIREBASE_APP_ID, then redeploy."
+      );
+      return;
+    }
+    const auth = getFirebaseAuth();
+    if (!auth?.currentUser) {
+      showMsg("error", "Session expired or not signed in. Please sign in again and retry.");
       return;
     }
     setSaving(true);
@@ -91,12 +109,19 @@ export default function AdminTreatsPage() {
         quantityLeft: Math.max(0, editForm.quantityLeft),
         order: editForm.order,
       });
-      await loadTreats();
       setEditingId(null);
       setEditForm(null);
+      await loadTreats();
       showMsg("ok", "Treat updated.");
     } catch (err) {
-      showMsg("error", err instanceof Error ? err.message : "Failed to save.");
+      const e = err as { message?: string; code?: string };
+      const msg = e?.message ?? "Failed to save.";
+      const hint =
+        msg.includes("permission") || e?.code === "permission-denied"
+          ? " Sign out, sign in again, and retry. If it persists, ensure Firestore rules are deployed for this project."
+          : "";
+      showMsg("error", msg + hint);
+      if (typeof console !== "undefined" && console.error) console.error("Treats save error:", err);
     } finally {
       setSaving(false);
     }
@@ -104,6 +129,11 @@ export default function AdminTreatsPage() {
 
   const handleDelete = async (id: string) => {
     if (!db || !confirm("Remove this treat? Members will no longer see it.")) return;
+    const auth = getFirebaseAuth();
+    if (!auth?.currentUser) {
+      showMsg("error", "Session expired or not signed in. Please sign in again and retry.");
+      return;
+    }
     setSaving(true);
     setMessage(null);
     try {
@@ -124,6 +154,11 @@ export default function AdminTreatsPage() {
   const handleAddNew = async () => {
     if (!db || !newTreat.name.trim()) {
       showMsg("error", "Name is required.");
+      return;
+    }
+    const auth = getFirebaseAuth();
+    if (!auth?.currentUser) {
+      showMsg("error", "Session expired or not signed in. Please sign in again and retry.");
       return;
     }
     const id = slugForTreatName(newTreat.name.trim());

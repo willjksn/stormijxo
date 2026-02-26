@@ -1,7 +1,10 @@
 /**
  * Firebase client init for the Next.js app.
- * Set NEXT_PUBLIC_FIREBASE_* in .env.local (or use the same FIREBASE_* vars
- * and add NEXT_PUBLIC_ prefixed copies for client exposure).
+ * Config (pick one):
+ * - NEXT_PUBLIC_FIREBASE_CONFIG: JSON string of full config.
+ * - Or individual vars. In Vercel use these names (no KEY/AUTH to avoid warnings):
+ *   NEXT_PUBLIC_FIREBASE_WEB_API, NEXT_PUBLIC_FIREBASE_DOMAIN, NEXT_PUBLIC_FIREBASE_PROJECT_ID, etc.
+ * - Or NEXT_PUBLIC_FIREBASE_API_KEY, NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN in .env.local.
  */
 import { getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth, setPersistence, browserLocalPersistence, type Auth } from "firebase/auth";
@@ -23,15 +26,45 @@ function getConfig(): FirebaseConfig | null {
   if (typeof window !== "undefined" && (window as unknown as { FIREBASE_CONFIG?: FirebaseConfig }).FIREBASE_CONFIG) {
     return (window as unknown as { FIREBASE_CONFIG: FirebaseConfig }).FIREBASE_CONFIG;
   }
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  const configJson = process.env.NEXT_PUBLIC_FIREBASE_CONFIG;
+  if (configJson && configJson.trim()) {
+    try {
+      const parsed = JSON.parse(configJson) as Record<string, unknown>;
+      const apiKey = typeof parsed.apiKey === "string" ? parsed.apiKey : "";
+      const projectId = typeof parsed.projectId === "string" ? parsed.projectId : "";
+      const appId = typeof parsed.appId === "string" ? parsed.appId : "";
+      if (apiKey && apiKey !== "YOUR_API_KEY" && projectId && appId) {
+        return {
+          apiKey,
+          authDomain: typeof parsed.authDomain === "string" ? parsed.authDomain : "",
+          projectId,
+          storageBucket: typeof parsed.storageBucket === "string" ? parsed.storageBucket : "",
+          messagingSenderId: typeof parsed.messagingSenderId === "string" ? parsed.messagingSenderId : "",
+          appId,
+          measurementId: typeof parsed.measurementId === "string" ? parsed.measurementId : undefined,
+        };
+      }
+    } catch {
+      // invalid JSON, fall through to individual vars
+    }
+  }
+  const apiKey =
+    process.env.NEXT_PUBLIC_FIREBASE_WEB_API ||
+    process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
   if (!apiKey || apiKey === "YOUR_API_KEY") return null;
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "";
+  const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID ?? "";
+  if (!projectId || !appId) return null;
   return {
     apiKey,
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? "",
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "",
+    authDomain:
+      process.env.NEXT_PUBLIC_FIREBASE_DOMAIN ??
+      process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ??
+      "",
+    projectId,
     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? "",
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? "",
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID ?? "",
+    appId,
     measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
   };
 }

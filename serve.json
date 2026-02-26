@@ -1,4 +1,5 @@
 {
+  "_comment": "Legacy static hosting only. On Vercel, vercel.json redirects *.html to app routes; the Next.js app is the canonical front end.",
   "rewrites": [
     { "source": "/home", "destination": "/member/feed.html" },
     { "source": "/feed", "destination": "/member/feed.html" },

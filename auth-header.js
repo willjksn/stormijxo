@@ -16,7 +16,7 @@
   auth.onAuthStateChanged(function(user) {
     if (user) {
       var path = (window.location.pathname || "").replace(/^\//, "");
-      var isLanding = !path || path === "index.html" || path.endsWith("/index.html");
+      var isLanding = !path || path === "" || path === "index.html" || path === "index" || path.endsWith("/index.html");
       if (isLanding) {
         var hash = (window.location.hash || "").toLowerCase();
         var viewLanding = hash.indexOf("view=landing") !== -1;
@@ -28,7 +28,7 @@
       link.href = "/profile";
       link.textContent = "Profile";
     } else {
-      link.href = "login.html";
+      link.href = "/login";
       link.textContent = "Log in";
     }
   });

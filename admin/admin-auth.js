@@ -111,13 +111,13 @@
           if (isAdmin && callback) callback(user, { bootstrap: false });
           else {
             auth.signOut();
-            window.location.href = "login.html?reason=noaccess";
+            window.location.href = "/admin/login?reason=noaccess";
           }
         }).catch(function() {
-          window.location.href = "login.html?reason=error";
+          window.location.href = "/admin/login?reason=error";
         });
       }).catch(function() {
-        window.location.href = "login.html?reason=error";
+        window.location.href = "/admin/login?reason=error";
       });
     });
   };

@@ -15,8 +15,8 @@ tipApp.post("/", async function(req, res) {
     return res.status(400).json({ error: "Amount must be between 100 and 100000 cents ($1–$1000)" });
   }
   const baseUrl = body.base_url || "https://stormij.vercel.app";
-  const successUrl = body.success_url || baseUrl + (baseUrl.endsWith("/") ? "" : "/") + "success.html?tip=1";
-  const cancelUrl = body.cancel_url || baseUrl + (baseUrl.endsWith("/") ? "" : "/") + "index.html";
+  const successUrl = body.success_url || baseUrl + (baseUrl.endsWith("/") ? "" : "/") + "success?tip=1";
+  const cancelUrl = body.cancel_url || baseUrl + (baseUrl.endsWith("/") ? "" : "/");
   const instagramHandle = typeof body.instagram_handle === "string" ? body.instagram_handle.trim().slice(0, 64) : "";
   const config = functions.config();
   const stripeSecret = config.stripe && config.stripe.secret;

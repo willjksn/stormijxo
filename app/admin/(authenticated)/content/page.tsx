@@ -7,9 +7,19 @@ import { listMediaLibraryAll, type MediaItem } from "../../../../lib/media-libra
 import type { SiteConfigContent } from "../../../../lib/site-config";
 import { SITE_CONFIG_CONTENT_ID } from "../../../../lib/site-config";
 import { DEFAULT_PRIVACY_HTML, DEFAULT_TERMS_HTML } from "../../../../lib/legal-defaults";
+import { prepareLegalHtml } from "../../../../lib/legal-display";
 import { LazyMediaImage } from "../../../components/LazyMediaImage";
 
 const CONTENT_DOC_PATH = "site_config";
+
+/** Remove undefined values so Firestore receives only defined fields (merge-safe). */
+function stripUndefined<T extends Record<string, unknown>>(obj: T): { [K in keyof T]: T[K] } {
+  const out = {} as { [K in keyof T]: T[K] };
+  for (const k of Object.keys(obj) as (keyof T)[]) {
+    if (obj[k] !== undefined) (out as Record<string, unknown>)[k as string] = obj[k];
+  }
+  return out;
+}
 
 function todayYMD(): string {
   return new Date().toISOString().slice(0, 10);
@@ -91,7 +101,7 @@ export default function AdminContentPage() {
 
   const showMessage = (type: "ok" | "error", text: string) => {
     setMessage({ type, text });
-    setTimeout(() => setMessage(null), 3000);
+    setTimeout(() => setMessage(null), type === "error" ? 8000 : 3000);
   };
 
   const saveSection = async (
@@ -100,7 +110,10 @@ export default function AdminContentPage() {
   ) => {
     const dbNow = getFirebaseDb();
     if (!dbNow) {
-      showMessage("error", "Not connected. Please refresh the page.");
+      showMessage(
+        "error",
+        "Firebase not connected. In Vercel set NEXT_PUBLIC_FIREBASE_WEB_API, NEXT_PUBLIC_FIREBASE_DOMAIN, NEXT_PUBLIC_FIREBASE_PROJECT_ID, and NEXT_PUBLIC_FIREBASE_APP_ID (and STORAGE_BUCKET, MESSAGING_SENDER_ID if needed), then redeploy."
+      );
       return;
     }
     setSavingSection(section);
@@ -108,16 +121,49 @@ export default function AdminContentPage() {
     setMessage(null);
     try {
       const latest = contentRef.current;
+      const toWrite = stripUndefined({ ...latest, ...payload } as Record<string, unknown>);
       await setDoc(
         doc(dbNow, CONTENT_DOC_PATH, SITE_CONFIG_CONTENT_ID),
-        { ...latest, ...payload },
+        toWrite,
         { merge: true }
       );
       setContent((c) => ({ ...c, ...payload }));
+      const snap = await getDoc(doc(dbNow, CONTENT_DOC_PATH, SITE_CONFIG_CONTENT_ID));
+      if (snap.exists()) {
+        const d = snap.data() as SiteConfigContent;
+        setContent({
+          testimonialQuote: d.testimonialQuote ?? "",
+          testimonialAttribution: d.testimonialAttribution ?? "",
+          showMemberCount: !!d.showMemberCount,
+          memberCount: typeof d.memberCount === "number" ? d.memberCount : 0,
+          tipPageHeroImageUrl: d.tipPageHeroImageUrl ?? "",
+          tipPageHeroTitle: d.tipPageHeroTitle ?? "",
+          tipPageHeroSubtext: d.tipPageHeroSubtext ?? "",
+          tipPageHeroTitleColor: d.tipPageHeroTitleColor ?? "",
+          tipPageHeroSubtextColor: d.tipPageHeroSubtextColor ?? "",
+          tipPageHeroTitleFontSize: typeof d.tipPageHeroTitleFontSize === "number" ? d.tipPageHeroTitleFontSize : undefined,
+          tipPageHeroSubtextFontSize: typeof d.tipPageHeroSubtextFontSize === "number" ? d.tipPageHeroSubtextFontSize : undefined,
+          privacyPolicyLastUpdated: d.privacyPolicyLastUpdated ?? "",
+          termsLastUpdated: d.termsLastUpdated ?? "",
+          privacyPolicyHtml: d.privacyPolicyHtml ?? "",
+          termsHtml: d.termsHtml ?? "",
+          showSocialInstagram: d.showSocialInstagram !== false,
+          showSocialFacebook: d.showSocialFacebook !== false,
+          showSocialX: d.showSocialX !== false,
+          showSocialTiktok: d.showSocialTiktok !== false,
+          showSocialYoutube: d.showSocialYoutube !== false,
+        });
+      }
       showMessage("ok", section === "landing" ? "Landing content saved." : "Tip page saved.");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to save.";
-      showMessage("error", msg);
+      const e = err as { message?: string; code?: string };
+      const msg = e?.message ?? "Failed to save.";
+      const hint =
+        msg.includes("permission") || e?.code === "permission-denied"
+          ? " Sign in again and retry."
+          : "";
+      showMessage("error", msg + hint);
+      if (typeof console !== "undefined" && console.error) console.error("Content save error:", err);
     } finally {
       setSaving(false);
       setSavingSection(null);
@@ -289,6 +335,22 @@ export default function AdminContentPage() {
           }}
         >
           {message.text}
+        </p>
+      )}
+
+      {!loading && !db && (
+        <p
+          className="admin-content-msg error"
+          style={{
+            padding: "0.75rem 1rem",
+            borderRadius: 8,
+            marginBottom: "1rem",
+            background: "rgba(197, 48, 48, 0.15)",
+            color: "#c53030",
+            fontWeight: 500,
+          }}
+        >
+          Firebase is not connected. In Vercel set NEXT_PUBLIC_FIREBASE_WEB_API, NEXT_PUBLIC_FIREBASE_DOMAIN, NEXT_PUBLIC_FIREBASE_PROJECT_ID, and NEXT_PUBLIC_FIREBASE_APP_ID, then redeploy.
         </p>
       )}
 
@@ -534,6 +596,23 @@ export default function AdminContentPage() {
               className="admin-content-input"
               style={{ flex: 1, minHeight: 320, margin: "1rem 1.25rem", padding: "0.75rem", border: "1px solid var(--border)", borderRadius: 8, fontSize: "0.9rem", background: "var(--bg)", color: "var(--text)", resize: "vertical" }}
             />
+            <div style={{ padding: "0 1.25rem 1rem" }}>
+              <p style={{ margin: "0 0 0.5rem", color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 600 }}>
+                Live preview
+              </p>
+              <div
+                className="legal-body"
+                style={{
+                  maxHeight: "260px",
+                  overflowY: "auto",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  padding: "0.85rem",
+                  background: "var(--bg)",
+                }}
+                dangerouslySetInnerHTML={{ __html: prepareLegalHtml(legalDraft.trim() || (legalModal === "privacy" ? DEFAULT_PRIVACY_HTML : DEFAULT_TERMS_HTML)) }}
+              />
+            </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", padding: "1rem 1.25rem", borderTop: "1px solid var(--border)" }}>
               <button type="button" className="btn btn-secondary" onClick={() => { setLegalModal(null); setLegalDraft(""); }}>
                 Cancel
