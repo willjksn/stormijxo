@@ -5,6 +5,7 @@ import { collection, doc, getDocs, setDoc, deleteDoc } from "firebase/firestore"
 import { getFirebaseDb, getFirebaseAuth } from "../../../../lib/firebase";
 import {
   TREATS_COLLECTION,
+  DEFAULT_TREATS,
   slugForTreatName,
   type TreatDoc,
 } from "../../../../lib/treats";
@@ -51,15 +52,15 @@ export default function AdminTreatsPage() {
           });
         });
         list.sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
-        setTreats(list);
+        setTreats(list.length > 0 ? list : DEFAULT_TREATS);
       })
       .catch((err) => {
-        setTreats([]);
+        setTreats(DEFAULT_TREATS);
         const e = err as { message?: string; code?: string };
         const msg = e?.message ?? "Could not load treats.";
         const hint =
           msg.includes("permission") || e?.code === "permission-denied"
-            ? " You are signed in but Firestore denied access. Sign out/in and recheck rules in this Firebase project."
+            ? " You are signed in but Firestore denied access. Showing default treats. Sign out/in and recheck rules in this Firebase project."
             : "";
         setMessage({ type: "error", text: msg + hint });
       })

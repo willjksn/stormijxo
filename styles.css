@@ -1944,7 +1944,7 @@ main:not([class]) .section-title::after {
   padding: 2rem;
   box-shadow: 0 4px 24px rgba(47, 26, 36, 0.06), 0 2px 8px rgba(212, 85, 139, 0.06);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 .admin-posts-one-card::before {
   content: "";
