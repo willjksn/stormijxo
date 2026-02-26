@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-import { getFirebaseDb, getFirebaseFunctions } from "../../../lib/firebase";
+import { getFirebaseDb } from "../../../lib/firebase";
 import {
   doc,
   getDoc,
@@ -14,7 +14,6 @@ import {
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import { getFirebaseAuth } from "../../../lib/firebase";
 import { getAuthErrorMessage } from "../../../lib/auth-redirect";
-import { httpsCallable } from "firebase/functions";
 
 const PROFILE_EMOJI_CATEGORIES = {
   faces: "😀 😃 😄 😁 😆 😅 🤣 😂 🙂 🙃 😉 😊 😇 🥰 😍 🤩 😘 😎 🥳 😏 😒 😞 😔 😟 😕 🙁 😣 😖 😫 😩 🥺 😭 😤 😠 😡 🤬 😳 😱 😨 😰 😥 😓 🤗 🤔 😴 🤤 😪 🤒 🤕 🤠 🤡 💩 👻 💀 🎃".split(" "),
@@ -52,7 +51,6 @@ const PASSWORD_REQUIREMENTS = [
 export default function ProfilePage() {
   const { user } = useAuth();
   const db = getFirebaseDb();
-  const fbFunctions = getFirebaseFunctions();
 
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<{
@@ -230,20 +228,25 @@ export default function ProfilePage() {
 
   const handleManageSubscription = async () => {
     if (!confirm("You will be taken to Stripe to manage your subscription (update payment, view billing, cancel). Continue?")) return;
-    if (!fbFunctions) {
-      setMessage({ type: "error", text: "Functions not configured." });
-      return;
-    }
+    if (!user) return;
     setPortalLoading(true);
     setMessage(null);
     try {
-      const createPortal = httpsCallable<{ returnUrl?: string }, { url: string }>(fbFunctions, "createCustomerPortalSession");
       const returnUrl = typeof window !== "undefined" ? `${window.location.origin}/profile` : "/profile";
-      const result = await createPortal({ returnUrl });
-      if (result.data?.url) {
-        window.location.href = result.data.url;
+      const token = await user.getIdToken();
+      const res = await fetch("/api/customer-portal", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ returnUrl }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (res.ok && data.url) {
+        window.location.href = data.url;
       } else {
-        setMessage({ type: "error", text: "Could not open subscription portal." });
+        setMessage({ type: "error", text: data.error || "Could not open subscription portal." });
       }
     } catch (err) {
       setMessage({ type: "error", text: (err as Error).message || "Could not open subscription portal." });
