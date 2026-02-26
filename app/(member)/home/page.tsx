@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useMemo } from "react";
-import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { collection, getDocs, query, orderBy, limit, doc, runTransaction, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { getFirebaseDb } from "../../../lib/firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { isAdminEmail } from "../../../lib/auth-redirect";
@@ -85,13 +85,53 @@ export type FeedPost = {
   dateStr?: string;
   createdAt?: { toDate: () => Date };
   likeCount: number;
-  comments: { username?: string; author?: string; text: string }[];
+  likedBy?: string[];
+  comments: { username?: string; author?: string; text: string; hidden?: boolean }[];
   captionStyle?: "static" | "scroll-up" | "scroll-across" | "dissolve";
   overlayTextSize?: number;
   hideComments?: boolean;
   hideLikes?: boolean;
   poll?: { question: string; options: string[]; optionVotes?: number[] };
   tipGoal?: { description: string; targetCents: number; raisedCents: number };
+};
+
+function displayPublicName(nameLike: string): string {
+  const n = (nameLike || "").toString().trim();
+  if (!n) return "user";
+  if (isAdminEmail(n.includes("@") ? n : null)) return "stormij";
+  if (/^will\b/i.test(n) || /will[\s_.-]*jackson/i.test(n)) return "stormij";
+  return n;
+}
+
+function getCommentAvatarName(nameLike: string): string {
+  const name = displayPublicName(nameLike);
+  return name || "user";
+}
+
+const COMMENT_EMOJI_CATEGORIES = {
+  faces: "😀 😃 😄 😁 😆 😅 🤣 😂 🙂 🙃 😉 😊 😇 🥰 😍 🤩 😘 😎 🥳 😏 😒 😞 😔 😟 😕 🙁 😣 😖 😫 😩 🥺 😭 😤 😠 😡 🤬 😳 😱 😨 😰 😥 😓 🤗 🤔 😴 🤤 😪 🤒 🤕 🤠 🤡 💩 👻 💀 🎃".split(" "),
+  people: "👩 👩‍🦰 👩‍🦱 👩‍🦳 👩‍🦲 👱‍♀️ 👵 👸 💃 🕺 👯‍♀️ 🧚‍♀️ 🧜‍♀️ 🦸‍♀️ 🧝‍♀️ 🙋‍♀️ 🙆‍♀️ 🙅‍♀️ 🤷‍♀️ 👩‍💻 👩‍🎤 👩‍🎨 👩‍🍳 👰‍♀️ 🤰 🤱".split(" "),
+  animals: "🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐵 🦄 🦋 🐝 🐢 🐙 🐬 🐳 🦈 🐊 🐘 🦒 🦘 🐎 🐕 🐓 🦅 🦆 🦢 🦉 🦚 🦜 🐸".split(" "),
+  plants: "🌹 🥀 🌺 🌻 🌼 🌷 🌱 🌲 🌳 🌴 🌵 🌿 🍀 🍁 🍄 🔥 ✨ ⭐ ☀️ 🌙 ☁️ 🌊 🌎".split(" "),
+  food: "🍇 🍉 🍊 🍋 🍌 🍍 🍎 🍏 🍐 🍑 🍒 🍓 🥝 🍅 🥥 🥑 🍆 🥔 🥕 🌽 🌶️ 🥒 🥬 🥦 🍞 🥐 🥖 🧀 🍖 🍔 🍟 🍕 🌮 🍣 🍤 🍦 🍩 🍪 🎂 🍰 🧁 🍫 🍬 ☕ 🍵 🍾 🍷 🍸 🍹 🍺 🍻 🥂".split(" "),
+  sports: "⚽ 🏀 🏈 ⚾ 🎾 🏐 🏉 🎱 🏓 🏸 🏒 ⛳ 🏹 🥊 🥋 ⛸️ 🎿 🏂 🏋️ 🤸 🏇 🏊 🏄 🎯 🎳 🎮 🎲 🧩 ♟️".split(" "),
+  travel: "🎨 🎬 🎤 🎧 🎹 🥁 🎉 🎊 🎄 🎆 🚀 ✈️ 🚁 🛰️ ⛵ 🚢 🚗 🚕 🚌 🚓 🚑 🚒 🚚 🚂 🚲 🚦 🗽 🗼 🏰 🎡 🎢 🎪 ⛺ 🏠 🏡 🏢 🏨 🏦 🏥 🏫 🏛️ 🏝️ 🏞️ ⛰️".split(" "),
+  objects: "💡 💻 🖥️ 🖱️ 📱 ☎️ 📺 📷 📹 🎥 💿 💾 💰 💵 💎 🔧 🔨 🛠️ 🔑 🚪 🪑 🛏️ 🛁 🚽 🎁 🎈 📚 📖 📄 📰 🔗 📎 ✂️ 🗑️ 🔒 🔓 🔔 👗 👠 👑 💍 💄 👛 👜".split(" "),
+  symbols: "❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 💟 ☮️ ✝️ ☪️ ☯️ ♈ ♉ ♊ ♋ ♌ ♍ ♎ ♏ ♐ ♑ ♒ ♓ 💯 ✅ ❌ ❓ ❕ ©️ ®️ ™️".split(" "),
+} as const;
+const COMMENT_EMOJI_CATEGORY_ORDER = ["all", "faces", "people", "animals", "plants", "food", "sports", "travel", "objects", "symbols"] as const;
+type CommentEmojiCategory = (typeof COMMENT_EMOJI_CATEGORY_ORDER)[number];
+const COMMENT_EMOJI_CATEGORY_ICONS: Record<CommentEmojiCategory, string> = {
+  all: "😀",
+  faces: "😀",
+  people: "👩",
+  animals: "🐶",
+  plants: "🌹",
+  food: "🍎",
+  sports: "⚽",
+  travel: "✈️",
+  objects: "💡",
+  symbols: "❤️",
 };
 
 function FeedCardCaptionOverlay({ caption, style: captionStyle, size }: { caption: string; style?: string; size?: number }) {
@@ -106,18 +146,207 @@ function FeedCardCaptionOverlay({ caption, style: captionStyle, size }: { captio
 function FeedCard({
   post,
   showAdminEdit,
+  onCommentsUpdated,
+  onLikeUpdated,
+  currentUser,
+  savedPostIds,
+  onSavedUpdated,
 }: {
   post: FeedPost;
   showAdminEdit?: boolean;
+  onCommentsUpdated?: (postId: string, comments: FeedPost["comments"]) => void;
+  onLikeUpdated?: (postId: string, likedBy: string[], likeCount: number) => void;
+  currentUser: { uid: string; email: string | null; displayName: string | null } | null;
+  savedPostIds: string[];
+  onSavedUpdated?: (savedIds: string[]) => void;
 }) {
   const firstUrl = post.mediaUrls?.[0];
   const isVideo = post.mediaTypes?.[0] === "video" || (firstUrl && /\.(mp4|webm|mov|ogg)(\?|$)/i.test(firstUrl));
   const dateStr = post.dateStr ?? (post.createdAt?.toDate ? formatRelativeDate(post.createdAt) : "");
   const captionStyle = post.captionStyle ?? "static";
   const showCaptionOnMedia = captionStyle !== "static" && post.body?.trim();
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentActionIndex, setCommentActionIndex] = useState<number | null>(null);
+  const [likeSaving, setLikeSaving] = useState(false);
+  const [modalComment, setModalComment] = useState("");
+  const [modalCommentSaving, setModalCommentSaving] = useState(false);
+  const [commentEmojiOpen, setCommentEmojiOpen] = useState(false);
+  const [emojiQuery, setEmojiQuery] = useState("");
+  const [emojiCategory, setEmojiCategory] = useState<CommentEmojiCategory>("all");
+  const db = getFirebaseDb();
+  const commentInputRef = useRef<HTMLInputElement | null>(null);
+  const commentEmojiWrapRef = useRef<HTMLDivElement | null>(null);
+  const visibleComments = useMemo(() => post.comments.filter((c) => !c.hidden), [post.comments]);
+  const commentsForViewer = showAdminEdit ? post.comments : visibleComments;
+  const isLiked = !!currentUser?.uid && (post.likedBy ?? []).includes(currentUser.uid);
+  const isSaved = savedPostIds.includes(post.id);
+
+  const visibleEmojis = useMemo(() => {
+    const q = emojiQuery.trim().toLowerCase();
+    const source =
+      emojiCategory === "all"
+        ? COMMENT_EMOJI_CATEGORY_ORDER.filter((c) => c !== "all").flatMap((c) => COMMENT_EMOJI_CATEGORIES[c])
+        : COMMENT_EMOJI_CATEGORIES[emojiCategory];
+    if (!q) return source;
+    return source.filter((e) => e.includes(q));
+  }, [emojiCategory, emojiQuery]);
+
+  useEffect(() => {
+    if (!commentEmojiOpen) return;
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (commentEmojiWrapRef.current?.contains(target)) return;
+      setCommentEmojiOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+    };
+  }, [commentEmojiOpen]);
+
+  const toggleHideComment = async (index: number) => {
+    if (!showAdminEdit || !db || !post.id) return;
+    setCommentActionIndex(index);
+    try {
+      const postRef = doc(db, "posts", post.id);
+      let nextComments: FeedPost["comments"] = post.comments;
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(postRef);
+        if (!snap.exists()) throw new Error("Post not found.");
+        const data = snap.data() as Record<string, unknown>;
+        const existing = Array.isArray(data.comments) ? ([...data.comments] as FeedPost["comments"]) : [];
+        if (!existing[index]) return;
+        const target = existing[index]!;
+        existing[index] = { ...target, hidden: !target.hidden };
+        tx.update(postRef, { comments: existing });
+        nextComments = existing;
+      });
+      onCommentsUpdated?.(post.id, nextComments);
+    } finally {
+      setCommentActionIndex(null);
+    }
+  };
+
+  const deleteComment = async (index: number) => {
+    if (!showAdminEdit || !db || !post.id) return;
+    setCommentActionIndex(index);
+    try {
+      const postRef = doc(db, "posts", post.id);
+      let nextComments: FeedPost["comments"] = post.comments;
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(postRef);
+        if (!snap.exists()) throw new Error("Post not found.");
+        const data = snap.data() as Record<string, unknown>;
+        const existing = Array.isArray(data.comments) ? ([...data.comments] as FeedPost["comments"]) : [];
+        if (!existing[index]) return;
+        existing.splice(index, 1);
+        tx.update(postRef, { comments: existing });
+        nextComments = existing;
+      });
+      onCommentsUpdated?.(post.id, nextComments);
+    } finally {
+      setCommentActionIndex(null);
+    }
+  };
+
+  const toggleLike = async () => {
+    if (!db || !post.id || !currentUser?.uid || likeSaving) return;
+    setLikeSaving(true);
+    try {
+      const postRef = doc(db, "posts", post.id);
+      let nextLikedBy = post.likedBy ?? [];
+      let nextLikeCount = post.likeCount ?? 0;
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(postRef);
+        if (!snap.exists()) throw new Error("Post not found.");
+        const data = snap.data() as Record<string, unknown>;
+        const existingLikedBy = Array.isArray(data.likedBy)
+          ? (data.likedBy as unknown[]).map((v) => String(v))
+          : [];
+        const uid = currentUser.uid;
+        const hasLiked = existingLikedBy.includes(uid);
+        nextLikedBy = hasLiked ? existingLikedBy.filter((v) => v !== uid) : [...existingLikedBy, uid];
+        nextLikeCount = nextLikedBy.length;
+        tx.update(postRef, { likedBy: nextLikedBy, likeCount: nextLikeCount });
+      });
+      onLikeUpdated?.(post.id, nextLikedBy, nextLikeCount);
+    } finally {
+      setLikeSaving(false);
+    }
+  };
+
+  const insertEmojiAtCursor = (emoji: string) => {
+    const el = commentInputRef.current;
+    const current = modalComment;
+    const start = el?.selectionStart ?? current.length;
+    const end = el?.selectionEnd ?? current.length;
+    const next = `${current.slice(0, start)}${emoji}${current.slice(end)}`;
+    setModalComment(next);
+    requestAnimationFrame(() => {
+      if (!el) return;
+      el.focus();
+      const pos = start + emoji.length;
+      el.setSelectionRange(pos, pos);
+    });
+  };
+
+  const submitModalComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db || !post.id || !currentUser) return;
+    const text = modalComment.trim();
+    if (!text || modalCommentSaving) return;
+    setModalCommentSaving(true);
+    try {
+      const postRef = doc(db, "posts", post.id);
+      const username = isAdminEmail(currentUser.email ?? null)
+        ? "stormij"
+        : (currentUser.displayName || currentUser.email?.split("@")[0] || "member").toString().trim().slice(0, 60);
+      let nextComments: FeedPost["comments"] = post.comments;
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(postRef);
+        if (!snap.exists()) throw new Error("Post not found.");
+        const data = snap.data() as Record<string, unknown>;
+        const existing = Array.isArray(data.comments) ? (data.comments as FeedPost["comments"]) : [];
+        nextComments = [...existing, { username, text: text.slice(0, 500) }];
+        tx.update(postRef, { comments: nextComments });
+      });
+      onCommentsUpdated?.(post.id, nextComments);
+      setModalComment("");
+      setCommentEmojiOpen(false);
+    } finally {
+      setModalCommentSaving(false);
+    }
+  };
+
+  const toggleSavePost = async () => {
+    if (!db || !currentUser?.uid || !post.id) return;
+    const userRef = doc(db, "users", currentUser.uid);
+    let nextSaved = savedPostIds;
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(userRef);
+      const data = snap.exists() ? (snap.data() as Record<string, unknown>) : {};
+      const existing = Array.isArray(data.savedPostIds)
+        ? (data.savedPostIds as unknown[]).map((v) => String(v))
+        : [];
+      const has = existing.includes(post.id);
+      nextSaved = has ? existing.filter((id) => id !== post.id) : [...existing, post.id];
+      tx.set(
+        userRef,
+        {
+          savedPostIds: nextSaved,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    });
+    onSavedUpdated?.(nextSaved);
+  };
 
   return (
-    <article className="feed-card" key={post.id}>
+    <article className={`feed-card${commentsOpen ? " comments-open" : ""}`} key={post.id}>
       <div className="feed-card-header">
         <div className="feed-card-avatar">
           <img src="/assets/sj-heart-avatar.png" alt="stormij" className="feed-card-avatar-img" />
@@ -151,19 +380,31 @@ function FeedCard({
       {!post.hideLikes && (
         <div className="feed-card-actions">
           <span className="feed-card-action-group">
-            <button type="button" className="feed-card-action-btn" aria-label="Like">
+            <button
+              type="button"
+              className={`feed-card-action-btn${isLiked ? " liked" : ""}`}
+              aria-label="Like"
+              onClick={toggleLike}
+              disabled={!currentUser?.uid || likeSaving}
+            >
               <HeartOutline />
               <HeartFilled />
             </button>
             <span className="feed-card-action-count">{post.likeCount ?? 0}</span>
           </span>
           {!post.hideComments && (
-            <Link href={`/post/${post.id}#comments`} className="feed-card-action-group feed-card-action-link" aria-label="Comments">
+            <button type="button" className="feed-card-action-group feed-card-action-link" aria-label="Comments" onClick={() => setCommentsOpen(true)}>
               <CommentIcon />
-              <span className="feed-card-action-count">{post.comments?.length ?? 0}</span>
-            </Link>
+              <span className="feed-card-action-count">{commentsForViewer.length}</span>
+            </button>
           )}
-          <button type="button" className="feed-card-action-btn bookmark-btn" aria-label="Save">
+          <button
+            type="button"
+            className={`feed-card-action-btn bookmark-btn${isSaved ? " bookmarked" : ""}`}
+            aria-label={isSaved ? "Unsave post" : "Save post"}
+            onClick={toggleSavePost}
+            disabled={!currentUser?.uid}
+          >
             <BookmarkOutline />
             <BookmarkFilled />
           </button>
@@ -221,18 +462,24 @@ function FeedCard({
             </Link>
           </div>
         )}
-        {!post.hideComments && post.comments?.length > 0 && (
+        {!post.hideComments && (
           <>
-            <Link href={`/post/${post.id}#comments`} className="feed-card-view-comments">
-              View all {post.comments.length} comments
-            </Link>
+            {commentsForViewer.length > 0 && (
+              <button type="button" className="feed-card-view-comments" onClick={() => setCommentsOpen(true)}>
+                View all {commentsForViewer.length} comments
+              </button>
+            )}
             <div className="feed-card-comments-list">
-              {post.comments.slice(0, 2).map((c, i) => (
-                <div key={i} className="feed-card-comment">
-                  <span className="comment-username">{c.username ?? c.author ?? "user"}</span>
-                  {c.text}
-                </div>
-              ))}
+              {commentsForViewer.length === 0 ? (
+                <div className="feed-card-comment feed-card-comment-empty">No comments yet.</div>
+              ) : (
+                commentsForViewer.slice(0, 2).map((c, i) => (
+                  <div key={i} className="feed-card-comment">
+                    <span className="comment-username">{displayPublicName(c.username ?? c.author ?? "user")}</span>
+                    {c.text}
+                  </div>
+                ))
+              )}
             </div>
           </>
         )}
@@ -240,6 +487,167 @@ function FeedCard({
           View post
         </Link>
       </div>
+      {commentsOpen && (
+        <div className="feed-comments-modal-backdrop" role="presentation" onClick={() => setCommentsOpen(false)}>
+          <div
+            className="feed-comments-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="All comments"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="feed-comments-modal-head">
+              <h3>Comments</h3>
+              <button type="button" className="feed-comments-modal-close" onClick={() => setCommentsOpen(false)} aria-label="Close comments">
+                ×
+              </button>
+            </div>
+            <div className={`feed-comments-modal-content${firstUrl ? "" : " no-media"}`}>
+              {firstUrl && (
+                <div className="feed-comments-modal-media-wrap">
+                  {isVideo ? (
+                    <video src={firstUrl} controls playsInline className="feed-comments-modal-media" />
+                  ) : (
+                    <img src={firstUrl} alt="" className="feed-comments-modal-media" />
+                  )}
+                </div>
+              )}
+              <div className="feed-comments-modal-panel">
+                <div className="feed-comments-modal-list">
+                  {commentsForViewer.length === 0 ? (
+                    <p className="feed-comments-modal-empty">No comments yet.</p>
+                  ) : (
+                    commentsForViewer.map((c, idx) => {
+                      const sourceIndex = showAdminEdit ? idx : post.comments.findIndex((x) => x === c);
+                      const authorName = getCommentAvatarName(c.username ?? c.author ?? "user");
+                      return (
+                        <div className="feed-comments-modal-item" key={`${idx}-${c.text.slice(0, 12)}`}>
+                          <div className="feed-comments-modal-item-avatar" aria-hidden>
+                            {authorName === "stormij" ? (
+                              <img src="/assets/sj-heart-avatar.png" alt="" className="feed-comments-modal-avatar-img" />
+                            ) : (
+                              <span>{authorName.charAt(0).toUpperCase()}</span>
+                            )}
+                          </div>
+                          <div className="feed-comments-modal-item-body">
+                            <p className="feed-comments-modal-text">
+                              <span className="comment-username">{authorName}</span>
+                              {c.hidden && showAdminEdit ? <span className="feed-comments-hidden-tag">Hidden</span> : null}
+                              {c.text}
+                            </p>
+                            {showAdminEdit && sourceIndex >= 0 && (
+                              <div className="feed-comments-admin-actions">
+                                <button
+                                  type="button"
+                                  className="feed-comments-admin-btn"
+                                  onClick={() => toggleHideComment(sourceIndex)}
+                                  disabled={commentActionIndex === sourceIndex}
+                                >
+                                  {c.hidden ? "Unhide" : "Hide"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="feed-comments-admin-btn danger"
+                                  onClick={() => deleteComment(sourceIndex)}
+                                  disabled={commentActionIndex === sourceIndex}
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+                {currentUser && (
+                  <form className="feed-comments-modal-compose" onSubmit={submitModalComment}>
+                    <div className="feed-comments-modal-item-avatar feed-comments-modal-compose-avatar" aria-hidden>
+                      {isAdminEmail(currentUser.email ?? null) ? (
+                        <img src="/assets/sj-heart-avatar.png" alt="" className="feed-comments-modal-avatar-img" />
+                      ) : (
+                        <span>{(currentUser.displayName || currentUser.email || "u").charAt(0).toUpperCase()}</span>
+                      )}
+                    </div>
+                    <div
+                      className="feed-comments-modal-compose-input-wrap"
+                      ref={(el) => {
+                        commentEmojiWrapRef.current = el;
+                      }}
+                    >
+                      <input
+                        ref={(el) => {
+                          commentInputRef.current = el;
+                        }}
+                        type="text"
+                        className="feed-comments-modal-compose-input"
+                        value={modalComment}
+                        onChange={(e) => setModalComment(e.target.value)}
+                        placeholder="Write a comment..."
+                        maxLength={500}
+                      />
+                      <button
+                        type="button"
+                        className="feed-comments-modal-emoji-trigger"
+                        onClick={() => setCommentEmojiOpen((v) => !v)}
+                        aria-label="Add emoji"
+                      >
+                        😀
+                      </button>
+                      {commentEmojiOpen && (
+                        <div className="feed-comments-modal-emoji-picker">
+                          <input
+                            type="text"
+                            value={emojiQuery}
+                            onChange={(e) => setEmojiQuery(e.target.value)}
+                            placeholder="Search emoji..."
+                            className="feed-comments-modal-emoji-search"
+                          />
+                          <div className="feed-comments-modal-emoji-grid">
+                            {visibleEmojis.length === 0 ? (
+                              <p className="feed-comments-modal-emoji-empty">No emoji found.</p>
+                            ) : (
+                              visibleEmojis.map((e, idx) => (
+                                <button
+                                  key={`modal-comment-emoji-${idx}-${e}`}
+                                  type="button"
+                                  className="feed-comments-modal-emoji-item"
+                                  onClick={() => insertEmojiAtCursor(e)}
+                                  aria-label={`Emoji ${e}`}
+                                >
+                                  {e}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                          <div className="feed-comments-modal-emoji-cats">
+                            {COMMENT_EMOJI_CATEGORY_ORDER.map((c) => (
+                              <button
+                                key={`modal-comment-cat-${c}`}
+                                type="button"
+                                className={`feed-comments-modal-emoji-cat${emojiCategory === c ? " active" : ""}`}
+                                onClick={() => setEmojiCategory(c)}
+                                aria-label={`Show ${c} emoji`}
+                                title={c}
+                              >
+                                {COMMENT_EMOJI_CATEGORY_ICONS[c]}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <button type="submit" className="feed-comments-modal-compose-send" disabled={modalCommentSaving || !modalComment.trim()}>
+                      {modalCommentSaving ? "Posting..." : "Post"}
+                    </button>
+                  </form>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </article>
   );
 }
@@ -247,6 +655,7 @@ function FeedCard({
 export default function HomeFeedPage() {
   const [firestorePosts, setFirestorePosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [savedPostIds, setSavedPostIds] = useState<string[]>([]);
   const db = getFirebaseDb();
   const { user } = useAuth();
   const showAdminEdit = !!user && isAdminEmail(user.email ?? null);
@@ -270,6 +679,7 @@ export default function HomeFeedPage() {
             mediaTypes: (d.mediaTypes as ("image" | "video")[]) ?? [],
             createdAt: d.createdAt as { toDate: () => Date },
             likeCount: typeof d.likeCount === "number" ? d.likeCount : 0,
+            likedBy: (d.likedBy as string[]) ?? [],
             comments: (d.comments as FeedPost["comments"]) ?? [],
             captionStyle: (d.captionStyle as FeedPost["captionStyle"]) ?? "static",
             overlayTextSize: typeof d.overlayTextSize === "number" ? d.overlayTextSize : (d.overlayTextSize === "small" ? 14 : d.overlayTextSize === "large" ? 24 : 18),
@@ -285,6 +695,20 @@ export default function HomeFeedPage() {
       .finally(() => setLoading(false));
   }, [db]);
 
+  useEffect(() => {
+    if (!db || !user?.uid) {
+      setSavedPostIds([]);
+      return;
+    }
+    getDoc(doc(db, "users", user.uid))
+      .then((snap) => {
+        const d = snap.exists() ? snap.data() : {};
+        const ids = Array.isArray(d.savedPostIds) ? (d.savedPostIds as unknown[]).map((v) => String(v)) : [];
+        setSavedPostIds(ids);
+      })
+      .catch(() => setSavedPostIds([]));
+  }, [db, user?.uid]);
+
   const posts: FeedPost[] = useMemo(() => firestorePosts, [firestorePosts]);
 
   return (
@@ -293,6 +717,11 @@ export default function HomeFeedPage() {
         <Link href="/grid" className="feed-view-toggle" title="Switch to grid view" aria-label="Switch to grid view">
           <GridIcon />
         </Link>
+        {!!user && !showAdminEdit && (
+          <Link href="/saved" className="feed-saved-link" title="Saved posts" aria-label="Saved posts">
+            Saved
+          </Link>
+        )}
       </div>
 
       {loading && <p className="feed-loading">Loading…</p>}
@@ -301,7 +730,20 @@ export default function HomeFeedPage() {
           <p className="feed-empty">No posts yet.</p>
         )}
         {!loading && posts.map((post) => (
-          <FeedCard key={post.id} post={post} showAdminEdit={showAdminEdit} />
+          <FeedCard
+            key={post.id}
+            post={post}
+            showAdminEdit={showAdminEdit}
+            onCommentsUpdated={(postId, comments) => {
+              setFirestorePosts((prev) => prev.map((p) => (p.id === postId ? { ...p, comments } : p)));
+            }}
+            onLikeUpdated={(postId, likedBy, likeCount) => {
+              setFirestorePosts((prev) => prev.map((p) => (p.id === postId ? { ...p, likedBy, likeCount } : p)));
+            }}
+            currentUser={user ? { uid: user.uid, email: user.email, displayName: user.displayName } : null}
+            savedPostIds={savedPostIds}
+            onSavedUpdated={(savedIds) => setSavedPostIds(savedIds)}
+          />
         ))}
       </div>
     </main>
