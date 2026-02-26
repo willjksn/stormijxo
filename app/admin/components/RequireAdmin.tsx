@@ -19,7 +19,7 @@ export function RequireAdmin({ children, header }: RequireAdminProps) {
 
   useEffect(() => {
     if (!user) {
-      if (!authLoading) router.replace("/admin/login");
+      if (!authLoading) router.replace("/");
       return;
     }
     const db = getFirebaseDb();
@@ -35,7 +35,7 @@ export function RequireAdmin({ children, header }: RequireAdminProps) {
   useEffect(() => {
     if (authLoading || (user && allowed === null)) return;
     if (!user || allowed === false) {
-      router.replace("/admin/login");
+      router.replace("/");
     }
   }, [authLoading, user, allowed, router]);
 

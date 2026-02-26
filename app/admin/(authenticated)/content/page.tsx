@@ -7,6 +7,7 @@ import { listMediaLibraryAll, type MediaItem } from "../../../../lib/media-libra
 import type { SiteConfigContent } from "../../../../lib/site-config";
 import { SITE_CONFIG_CONTENT_ID } from "../../../../lib/site-config";
 import { DEFAULT_PRIVACY_HTML, DEFAULT_TERMS_HTML } from "../../../../lib/legal-defaults";
+import { LazyMediaImage } from "../../../components/LazyMediaImage";
 
 const CONTENT_DOC_PATH = "site_config";
 
@@ -27,10 +28,19 @@ export default function AdminContentPage() {
     tipPageHeroImageUrl: "",
     tipPageHeroTitle: "",
     tipPageHeroSubtext: "",
+    tipPageHeroTitleColor: "",
+    tipPageHeroSubtextColor: "",
+    tipPageHeroTitleFontSize: undefined,
+    tipPageHeroSubtextFontSize: undefined,
     privacyPolicyLastUpdated: "",
     termsLastUpdated: "",
     privacyPolicyHtml: "",
     termsHtml: "",
+    showSocialInstagram: true,
+    showSocialFacebook: true,
+    showSocialX: true,
+    showSocialTiktok: true,
+    showSocialYoutube: true,
   });
   const [legalModal, setLegalModal] = useState<null | "privacy" | "terms">(null);
   const [legalDraft, setLegalDraft] = useState("");
@@ -57,10 +67,19 @@ export default function AdminContentPage() {
             tipPageHeroImageUrl: d.tipPageHeroImageUrl ?? "",
             tipPageHeroTitle: d.tipPageHeroTitle ?? "",
             tipPageHeroSubtext: d.tipPageHeroSubtext ?? "",
+            tipPageHeroTitleColor: d.tipPageHeroTitleColor ?? "",
+            tipPageHeroSubtextColor: d.tipPageHeroSubtextColor ?? "",
+            tipPageHeroTitleFontSize: typeof d.tipPageHeroTitleFontSize === "number" ? d.tipPageHeroTitleFontSize : undefined,
+            tipPageHeroSubtextFontSize: typeof d.tipPageHeroSubtextFontSize === "number" ? d.tipPageHeroSubtextFontSize : undefined,
             privacyPolicyLastUpdated: d.privacyPolicyLastUpdated ?? "",
             termsLastUpdated: d.termsLastUpdated ?? "",
             privacyPolicyHtml: d.privacyPolicyHtml ?? "",
             termsHtml: d.termsHtml ?? "",
+            showSocialInstagram: d.showSocialInstagram !== false,
+            showSocialFacebook: d.showSocialFacebook !== false,
+            showSocialX: d.showSocialX !== false,
+            showSocialTiktok: d.showSocialTiktok !== false,
+            showSocialYoutube: d.showSocialYoutube !== false,
           });
         }
       })
@@ -101,6 +120,11 @@ export default function AdminContentPage() {
     saveSection("landing", {
       showMemberCount: content.showMemberCount,
       memberCount: content.memberCount,
+      showSocialInstagram: content.showSocialInstagram,
+      showSocialFacebook: content.showSocialFacebook,
+      showSocialX: content.showSocialX,
+      showSocialTiktok: content.showSocialTiktok,
+      showSocialYoutube: content.showSocialYoutube,
     });
   };
 
@@ -109,6 +133,10 @@ export default function AdminContentPage() {
       tipPageHeroImageUrl: content.tipPageHeroImageUrl?.trim() ?? "",
       tipPageHeroTitle: content.tipPageHeroTitle?.trim() ?? "",
       tipPageHeroSubtext: content.tipPageHeroSubtext?.trim() ?? "",
+      tipPageHeroTitleColor: content.tipPageHeroTitleColor?.trim() ?? "",
+      tipPageHeroSubtextColor: content.tipPageHeroSubtextColor?.trim() ?? "",
+      tipPageHeroTitleFontSize: content.tipPageHeroTitleFontSize,
+      tipPageHeroSubtextFontSize: content.tipPageHeroSubtextFontSize,
     });
   };
 
@@ -130,10 +158,19 @@ export default function AdminContentPage() {
           tipPageHeroImageUrl: content.tipPageHeroImageUrl?.trim() ?? "",
           tipPageHeroTitle: content.tipPageHeroTitle?.trim() ?? "",
           tipPageHeroSubtext: content.tipPageHeroSubtext?.trim() ?? "",
+          tipPageHeroTitleColor: content.tipPageHeroTitleColor?.trim() ?? "",
+          tipPageHeroSubtextColor: content.tipPageHeroSubtextColor?.trim() ?? "",
+          tipPageHeroTitleFontSize: content.tipPageHeroTitleFontSize,
+          tipPageHeroSubtextFontSize: content.tipPageHeroSubtextFontSize,
           privacyPolicyLastUpdated: content.privacyPolicyLastUpdated?.trim() ?? "",
           termsLastUpdated: content.termsLastUpdated?.trim() ?? "",
           privacyPolicyHtml: content.privacyPolicyHtml ?? "",
           termsHtml: content.termsHtml ?? "",
+          showSocialInstagram: content.showSocialInstagram,
+          showSocialFacebook: content.showSocialFacebook,
+          showSocialX: content.showSocialX,
+          showSocialTiktok: content.showSocialTiktok,
+          showSocialYoutube: content.showSocialYoutube,
         },
         { merge: true }
       );
@@ -267,40 +304,95 @@ export default function AdminContentPage() {
           {savingSection === "landing" ? "Saving…" : "Save section"}
         </button>
       </div>
+
+      <div className="content-block">
+        <h2>Social icons (hero &amp; footer)</h2>
+        <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginBottom: "1rem" }}>
+          Show or hide each social icon on the landing page hero and footer.
+        </p>
+        <div className="admin-social-toggles">
+          {(
+            [
+              { key: "showSocialInstagram" as const, label: "Instagram" },
+              { key: "showSocialFacebook" as const, label: "Facebook" },
+              { key: "showSocialX" as const, label: "X" },
+              { key: "showSocialTiktok" as const, label: "TikTok" },
+              { key: "showSocialYoutube" as const, label: "YouTube" },
+            ] as const
+          ).map(({ key, label }) => {
+            const on = content[key] !== false;
+            return (
+              <button
+                key={key}
+                type="button"
+                role="switch"
+                aria-checked={on}
+                title={on ? "Hide" : "Show"}
+                className={`admin-social-toggle ${on ? "on" : "off"}`}
+                onClick={() => setContent((c) => ({ ...c, [key]: !on }))}
+              >
+                <span className="admin-social-toggle-label">{label}</span>
+                <span className="admin-social-toggle-dot" aria-hidden />
+              </button>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={handleSaveLanding}
+          disabled={saving}
+          style={{ marginTop: "1rem" }}
+        >
+          {savingSection === "landing" ? "Saving…" : "Save section"}
+        </button>
+      </div>
       </section>
 
       <section className="content-section" aria-labelledby="content-tip-heading">
         <h2 id="content-tip-heading" className="content-section-title">Tip page</h2>
       <div className="content-block">
         <h2>Hero image</h2>
-        <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginBottom: "0.5rem" }}>
+        <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginBottom: "0.75rem" }}>
           Choose an image from your media library. Leave empty for gradient only.
         </p>
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem" }}>
+        <div className="admin-hero-image-block">
           {content.tipPageHeroImageUrl ? (
-            <div style={{ position: "relative", flex: "0 0 auto" }}>
+            <div className="admin-hero-image-preview">
               <img
                 src={content.tipPageHeroImageUrl}
-                alt="Hero"
-                style={{ maxWidth: 160, maxHeight: 100, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }}
+                alt="Current hero"
+                className="admin-hero-image-img"
               />
+              <div className="admin-hero-image-actions">
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => setShowMediaPicker(true)}
+                >
+                  Change image
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setContent((c) => ({ ...c, tipPageHeroImageUrl: "" }))}
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="admin-hero-image-empty">
+              <p className="admin-hero-image-empty-text">No image set</p>
               <button
                 type="button"
-                className="btn btn-secondary"
-                style={{ marginLeft: "0.5rem", marginTop: "0.5rem" }}
-                onClick={() => setContent((c) => ({ ...c, tipPageHeroImageUrl: "" }))}
+                className="btn btn-primary"
+                onClick={() => setShowMediaPicker(true)}
               >
-                Remove
+                Choose image
               </button>
             </div>
-          ) : null}
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => setShowMediaPicker(true)}
-          >
-            {content.tipPageHeroImageUrl ? "Change image" : "Add media"}
-          </button>
+          )}
         </div>
         <label className="admin-content-label" style={{ display: "block", marginTop: "1rem", marginBottom: "0.35rem", fontWeight: 500, fontSize: "0.9rem" }}>
           Hero title (text overlay)
@@ -313,7 +405,34 @@ export default function AdminContentPage() {
           className="admin-content-input"
           style={{ width: "100%", padding: "0.5rem 0.75rem", border: "1px solid var(--border)", borderRadius: 8, fontSize: "0.95rem", background: "var(--bg-card)", color: "var(--text)" }}
         />
-        <label className="admin-content-label" style={{ display: "block", marginTop: "0.75rem", marginBottom: "0.35rem", fontWeight: 500, fontSize: "0.9rem" }}>
+        <div className="admin-hero-text-options">
+          <label className="admin-content-label" style={{ display: "block", marginTop: "0.5rem", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.85rem" }}>
+            Title color
+          </label>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <input
+              type="color"
+              value={content.tipPageHeroTitleColor || "#ffffff"}
+              onChange={(e) => setContent((c) => ({ ...c, tipPageHeroTitleColor: e.target.value }))}
+              title="Title text color"
+              style={{ width: 36, height: 28, padding: 2, border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", background: "var(--bg)" }}
+            />
+          </div>
+          <label className="admin-content-label" style={{ display: "block", marginTop: "0.5rem", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.85rem" }}>
+            Title font size (px)
+          </label>
+          <input
+            type="number"
+            min={10}
+            max={120}
+            value={content.tipPageHeroTitleFontSize ?? ""}
+            onChange={(e) => setContent((c) => ({ ...c, tipPageHeroTitleFontSize: e.target.value === "" ? undefined : Math.max(10, Math.min(120, Number(e.target.value))) }))}
+            placeholder="e.g. 32"
+            className="admin-content-input"
+            style={{ width: "6rem", padding: "0.4rem 0.5rem", border: "1px solid var(--border)", borderRadius: 8, fontSize: "0.9rem", background: "var(--bg-card)", color: "var(--text)" }}
+          />
+        </div>
+        <label className="admin-content-label" style={{ display: "block", marginTop: "1rem", marginBottom: "0.35rem", fontWeight: 500, fontSize: "0.9rem" }}>
           Hero subtext
         </label>
         <input
@@ -324,6 +443,33 @@ export default function AdminContentPage() {
           className="admin-content-input"
           style={{ width: "100%", padding: "0.5rem 0.75rem", border: "1px solid var(--border)", borderRadius: 8, fontSize: "0.95rem", background: "var(--bg-card)", color: "var(--text)" }}
         />
+        <div className="admin-hero-text-options">
+          <label className="admin-content-label" style={{ display: "block", marginTop: "0.5rem", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.85rem" }}>
+            Subtext color
+          </label>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <input
+              type="color"
+              value={content.tipPageHeroSubtextColor || "#e5e5e5"}
+              onChange={(e) => setContent((c) => ({ ...c, tipPageHeroSubtextColor: e.target.value }))}
+              title="Subtext color"
+              style={{ width: 36, height: 28, padding: 2, border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", background: "var(--bg)" }}
+            />
+          </div>
+          <label className="admin-content-label" style={{ display: "block", marginTop: "0.5rem", marginBottom: "0.25rem", fontWeight: 500, fontSize: "0.85rem" }}>
+            Subtext font size (px)
+          </label>
+          <input
+            type="number"
+            min={10}
+            max={72}
+            value={content.tipPageHeroSubtextFontSize ?? ""}
+            onChange={(e) => setContent((c) => ({ ...c, tipPageHeroSubtextFontSize: e.target.value === "" ? undefined : Math.max(10, Math.min(72, Number(e.target.value))) }))}
+            placeholder="e.g. 18"
+            className="admin-content-input"
+            style={{ width: "6rem", padding: "0.4rem 0.5rem", border: "1px solid var(--border)", borderRadius: 8, fontSize: "0.9rem", background: "var(--bg-card)", color: "var(--text)" }}
+          />
+        </div>
         <button
           type="button"
           className="btn btn-primary"
@@ -378,16 +524,18 @@ export default function AdminContentPage() {
       )}
 
       {showMediaPicker && (
-        <div className="admin-content-modal-overlay" role="dialog" aria-modal="true" aria-label="Choose hero image" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setShowMediaPicker(false)}>
-          <div className="admin-content-modal" style={{ maxWidth: 560, maxHeight: "85vh", display: "flex", flexDirection: "column", background: "var(--bg-card)", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.2)", overflow: "hidden" }} onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ margin: 0, padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)", fontSize: "1.1rem" }}>Choose hero image</h2>
-            <div style={{ flex: 1, overflow: "auto", padding: "1rem" }}>
+        <div className="admin-content-modal-overlay" role="dialog" aria-modal="true" aria-label="Choose hero image" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }} onClick={() => setShowMediaPicker(false)}>
+          <div className="admin-content-modal admin-media-picker-modal" onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ margin: 0, padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)", fontSize: "1.1rem", flexShrink: 0 }}>Choose hero image</h2>
+            <div className="admin-media-picker-body">
               {mediaLoading ? (
-                <p style={{ color: "var(--text-muted)" }}>Loading…</p>
+                <div className="admin-media-picker-loading">
+                  <p style={{ margin: 0, fontSize: "1rem" }}>Loading images…</p>
+                </div>
               ) : mediaItems.length === 0 ? (
-                <p style={{ color: "var(--text-muted)" }}>No images in media library. Upload images in Media first.</p>
+                <p style={{ color: "var(--text-muted)", margin: 0 }}>No images in media library. Upload images in Media first.</p>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: "0.75rem" }}>
+                <div className="admin-media-picker-grid">
                   {mediaItems.map((item) => (
                     <button
                       key={item.path}
@@ -397,15 +545,14 @@ export default function AdminContentPage() {
                         setContent((c) => ({ ...c, tipPageHeroImageUrl: item.url }));
                         setShowMediaPicker(false);
                       }}
-                      style={{ padding: 0, border: "2px solid var(--border)", borderRadius: 8, overflow: "hidden", background: "var(--bg)", cursor: "pointer" }}
                     >
-                      <img src={item.url} alt="" style={{ width: "100%", aspectRatio: "1", objectFit: "cover", display: "block" }} />
+                      <LazyMediaImage src={item.url} alt="" loading="lazy" />
                     </button>
                   ))}
                 </div>
               )}
             </div>
-            <div style={{ padding: "1rem 1.25rem", borderTop: "1px solid var(--border)" }}>
+            <div className="admin-media-picker-footer">
               <button type="button" className="btn btn-secondary" onClick={() => setShowMediaPicker(false)}>Cancel</button>
             </div>
           </div>

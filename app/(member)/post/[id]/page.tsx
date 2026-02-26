@@ -1,8 +1,8 @@
 "use client";
 
-import { useParams, useSearchParams } from "next/navigation";
+import { use, useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useState, useMemo } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { getFirebaseDb } from "../../../../lib/firebase";
 import { DEMO_POSTS } from "../../home/demo-posts";
@@ -16,7 +16,7 @@ type PostData = {
   dateStr: string;
   comments: { username?: string; author?: string; text: string }[];
   captionStyle?: "static" | "scroll-up" | "scroll-across" | "dissolve";
-  overlayTextSize?: "small" | "medium" | "large";
+  overlayTextSize?: number;
   hideComments?: boolean;
   hideLikes?: boolean;
   tipGoal?: { description: string; targetCents: number; raisedCents: number };
@@ -39,10 +39,14 @@ function postBodyWithHashtags(body: string): string {
   );
 }
 
-export default function PostByIdPage() {
-  const params = useParams();
+export default function PostByIdPage({
+  params,
+}: {
+  params: Promise<{ id?: string }>;
+}) {
+  const resolved = use(params);
+  const id = resolved?.id ?? "";
   const searchParams = useSearchParams();
-  const id = (params?.id as string) ?? "";
   const imgIndex = Math.max(0, parseInt(searchParams.get("img") ?? "0", 10));
 
   const [status, setStatus] = useState<"loading" | "error" | "ok">("loading");
@@ -74,7 +78,7 @@ export default function PostByIdPage() {
         dateStr: demoPost.dateStr,
         comments: demoPost.comments,
         captionStyle: "static",
-        overlayTextSize: "medium",
+        overlayTextSize: 18,
         hideComments: false,
         hideLikes: false,
         tipGoal: demoPost.tipGoal,
@@ -110,7 +114,7 @@ export default function PostByIdPage() {
           dateStr,
           comments: (d.comments as PostData["comments"]) || [],
           captionStyle: (d.captionStyle as PostData["captionStyle"]) ?? "static",
-          overlayTextSize: (d.overlayTextSize as PostData["overlayTextSize"]) ?? "medium",
+          overlayTextSize: typeof d.overlayTextSize === "number" ? d.overlayTextSize : (d.overlayTextSize === "small" ? 14 : d.overlayTextSize === "large" ? 24 : 18),
           hideComments: !!d.hideComments,
           hideLikes: !!d.hideLikes,
           tipGoal: d.tipGoal as PostData["tipGoal"] | undefined,
@@ -179,7 +183,7 @@ export default function PostByIdPage() {
                 )}
                 {showCaptionOnMedia && (
                   <div className={`post-caption-overlay post-caption-overlay-${captionStyle}`}>
-                    <span className={`post-caption-overlay-text${post.overlayTextSize === "small" ? " post-caption-overlay-text-small" : post.overlayTextSize === "large" ? " post-caption-overlay-text-large" : ""}`}>{post.body}</span>
+                    <span className="post-caption-overlay-text" style={post.overlayTextSize != null && post.overlayTextSize > 0 ? { fontSize: `${post.overlayTextSize}px` } : undefined}>{post.body}</span>
                   </div>
                 )}
               </div>

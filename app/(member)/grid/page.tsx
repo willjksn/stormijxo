@@ -78,7 +78,7 @@ export default function GridPage() {
               {isVideo ? (
                 <video src={firstUrl} muted playsInline className="feed-grid-media" aria-hidden />
               ) : (
-                <img src={firstUrl} alt="" loading="lazy" className="feed-grid-media" />
+                <img src={firstUrl} alt="" loading="lazy" decoding="async" className="feed-grid-media" />
               )}
             </Link>
           );

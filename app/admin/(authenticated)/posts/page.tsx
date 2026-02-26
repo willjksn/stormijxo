@@ -18,6 +18,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseStorage } from "../../../../lib/firebase";
 import { listMediaLibrary, uploadToMediaLibrary, type MediaItem } from "../../../../lib/media-library";
 import { useAuth } from "../../../contexts/AuthContext";
+import { LazyMediaImage } from "../../../components/LazyMediaImage";
 import type { PostStatus } from "../../../../lib/posts";
 
 const OVERLAY_ANIMATIONS = [
@@ -85,7 +86,7 @@ export default function AdminPostsPage() {
   const [overlayHighlight, setOverlayHighlight] = useState(false);
   const [overlayUnderline, setOverlayUnderline] = useState(false);
   const [overlayItalic, setOverlayItalic] = useState(false);
-  const [overlayTextSize, setOverlayTextSize] = useState<"small" | "medium" | "large">("medium");
+  const [overlayTextSize, setOverlayTextSize] = useState<number>(18);
   const [hideComments, setHideComments] = useState(false);
   const [hideLikes, setHideLikes] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -171,8 +172,9 @@ export default function AdminPostsPage() {
         setOverlayHighlight(!!d.overlayHighlight);
         setOverlayUnderline(!!d.overlayUnderline);
         setOverlayItalic(!!d.overlayItalic);
-        const size = (d.overlayTextSize as "small" | "medium" | "large") ?? "medium";
-        setOverlayTextSize(size === "small" || size === "large" ? size : "medium");
+        const sizeRaw = d.overlayTextSize;
+        const sizeNum = typeof sizeRaw === "number" && sizeRaw >= 10 && sizeRaw <= 72 ? sizeRaw : (sizeRaw === "small" ? 14 : sizeRaw === "large" ? 24 : 18);
+        setOverlayTextSize(sizeNum);
         const hasOverlay = !!((d.overlayText as string)?.trim()) || (d.captionStyle as string) !== "static";
         setOverlaySectionOpen(hasOverlay);
         setHideComments(!!d.hideComments);
@@ -423,7 +425,7 @@ export default function AdminPostsPage() {
         setOverlayHighlight(false);
         setOverlayUnderline(false);
         setOverlayItalic(false);
-        setOverlayTextSize("medium");
+        setOverlayTextSize(18);
         setHideComments(false);
         setHideLikes(false);
         setPoll(null);
@@ -513,7 +515,7 @@ export default function AdminPostsPage() {
                   {m.isVideo ? (
                     <video src={m.url} muted playsInline className="admin-posts-thumb-media" />
                   ) : (
-                    <img src={m.url} alt={m.alt || ""} className="admin-posts-thumb-media" />
+                    <img src={m.url} alt={m.alt || ""} className="admin-posts-thumb-media" loading="lazy" decoding="async" />
                   )}
                   <button type="button" className="admin-posts-thumb-remove" onClick={() => removeSelected(i)} aria-label="Remove">×</button>
                 </div>
@@ -737,20 +739,16 @@ export default function AdminPostsPage() {
                     aria-label="Overlay text color"
                   />
                   <span className="admin-posts-overlay-label">Text size</span>
-                  <div className="admin-posts-format-buttons">
-                    {(["small", "medium", "large"] as const).map((size) => (
-                      <button
-                        key={size}
-                        type="button"
-                        className={`admin-posts-format-btn${overlayTextSize === size ? " active" : ""}`}
-                        onClick={() => setOverlayTextSize(size)}
-                        aria-pressed={overlayTextSize === size}
-                        title={size.charAt(0).toUpperCase() + size.slice(1)}
-                      >
-                        {size.charAt(0).toUpperCase() + size.slice(1)}
-                      </button>
-                    ))}
-                  </div>
+                  <input
+                    type="number"
+                    min={10}
+                    max={72}
+                    value={overlayTextSize}
+                    onChange={(e) => setOverlayTextSize(e.target.value === "" ? 18 : Math.max(10, Math.min(72, Number(e.target.value) || 18)))}
+                    placeholder="18"
+                    aria-label="Overlay text size (px)"
+                    className="admin-posts-overlay-size-input"
+                  />
                   <span className="admin-posts-overlay-label">Format</span>
                   <div className="admin-posts-format-buttons">
                     <button
@@ -856,9 +854,9 @@ export default function AdminPostsPage() {
                       title={item.name}
                     >
                       {item.isVideo ? (
-                        <video src={item.url} muted playsInline className="admin-posts-library-media" />
+                        <video src={item.url} muted playsInline className="admin-posts-library-media" loading="lazy" />
                       ) : (
-                        <img src={item.url} alt="" className="admin-posts-library-media" />
+                        <LazyMediaImage src={item.url} alt="" className="admin-posts-library-media" loading="lazy" />
                       )}
                     </button>
                   ))}

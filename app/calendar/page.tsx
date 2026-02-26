@@ -161,7 +161,7 @@ function CalendarPostCard({
           ? (isVideo ? (
             <video src={firstUrl} muted playsInline className={styles.calendarPostMedia} aria-hidden />
           ) : (
-            <img src={firstUrl} alt="" className={styles.calendarPostMedia} />
+            <img src={firstUrl} alt="" className={styles.calendarPostMedia} loading="lazy" decoding="async" />
           ))
           : <div className={styles.calendarPostMediaPlaceholder}>No media</div>}
       </div>
@@ -644,7 +644,7 @@ export function SchedulePlanner() {
                 previewPost.mediaTypes?.[0] === "video" || /\.(mp4|webm|mov|ogg)(\?|$)/i.test(previewPost.mediaUrls[0]) ? (
                   <video src={previewPost.mediaUrls[0]} controls className={styles.previewMedia} aria-hidden />
                 ) : (
-                  <img src={previewPost.mediaUrls[0]} alt="" className={styles.previewMedia} />
+                  <img src={previewPost.mediaUrls[0]} alt="" className={styles.previewMedia} loading="lazy" decoding="async" />
                 )
               ) : (
                 <div className={styles.previewMediaPlaceholder}>No image</div>

@@ -4,7 +4,7 @@
  * and add NEXT_PUBLIC_ prefixed copies for client exposure).
  */
 import { getApps, initializeApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
+import { getAuth, setPersistence, browserLocalPersistence, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getFunctions, type Functions } from "firebase/functions";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
@@ -57,6 +57,7 @@ export function getFirebaseAuth(): Auth | null {
   const a = getApp();
   if (!a) return null;
   auth = getAuth(a);
+  setPersistence(auth, browserLocalPersistence).catch(() => {});
   return auth;
 }
 

@@ -16,6 +16,14 @@ export type SiteConfigContent = {
   tipPageHeroTitle?: string;
   /** Tip page hero subtext (e.g. "No minimum — send what you like.") */
   tipPageHeroSubtext?: string;
+  /** Tip page hero title text color (hex, e.g. #ffffff) */
+  tipPageHeroTitleColor?: string;
+  /** Tip page hero subtext color (hex) */
+  tipPageHeroSubtextColor?: string;
+  /** Tip page hero title font size in pixels (number) */
+  tipPageHeroTitleFontSize?: number;
+  /** Tip page hero subtext font size in pixels (number) */
+  tipPageHeroSubtextFontSize?: number;
   /** Privacy policy last updated date (YYYY-MM-DD) */
   privacyPolicyLastUpdated?: string;
   /** Terms of service last updated date (YYYY-MM-DD) */
@@ -24,6 +32,16 @@ export type SiteConfigContent = {
   privacyPolicyHtml?: string;
   /** Terms of service body (HTML). When set, shown on /terms; date set on save. */
   termsHtml?: string;
+  /** Show Instagram icon in hero and footer (default true) */
+  showSocialInstagram?: boolean;
+  /** Show Facebook icon in hero and footer (default true) */
+  showSocialFacebook?: boolean;
+  /** Show X (Twitter) icon in hero and footer (default true) */
+  showSocialX?: boolean;
+  /** Show TikTok icon in hero and footer (default true) */
+  showSocialTiktok?: boolean;
+  /** Show YouTube icon in hero and footer (default true) */
+  showSocialYoutube?: boolean;
 };
 
 export const SITE_CONFIG_CONTENT_ID = "content";

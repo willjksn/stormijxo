@@ -10,6 +10,7 @@ import {
   deleteMediaLibrary,
   type MediaItem,
 } from "../../../../lib/media-library";
+import { LazyMediaImage } from "../../../components/LazyMediaImage";
 
 const MEDIA_COLLECTION = "mediaLibrary";
 const MEDIA_CONFIG_DOC = "config";
@@ -380,9 +381,9 @@ export default function AdminMediaPage() {
                     </button>
                     <div className="admin-media-card-preview">
                       {item.isVideo ? (
-                        <video src={item.url} muted playsInline className="admin-media-card-media" />
+                        <video src={item.url} muted playsInline className="admin-media-card-media" loading="lazy" />
                       ) : (
-                        <img src={item.url} alt="" className="admin-media-card-media" />
+                        <LazyMediaImage src={item.url} alt="" className="admin-media-card-media" loading="lazy" />
                       )}
                     </div>
                     {viewMode === "list" && (

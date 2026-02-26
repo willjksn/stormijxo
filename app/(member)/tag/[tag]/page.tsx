@@ -1,11 +1,15 @@
 "use client";
 
+import { use } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
 
-export default function TagPage() {
-  const params = useParams();
-  const tag = (params?.tag as string) ?? "";
+export default function TagPage({
+  params,
+}: {
+  params: Promise<{ tag?: string }>;
+}) {
+  const resolved = use(params);
+  const tag = resolved?.tag ?? "";
 
   return (
     <main className="member-main member-post-main">

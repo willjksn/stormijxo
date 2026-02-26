@@ -287,7 +287,7 @@ export default function AdminDashboardPage() {
                           <div className="best-post-card-inner">
                             {topPostLikes.imageUrl && (
                               <div className="best-post-card-preview">
-                                <img src={topPostLikes.imageUrl} alt="" />
+                                <img src={topPostLikes.imageUrl} alt="" loading="lazy" decoding="async" />
                               </div>
                             )}
                             <div className="best-post-card-meta">
@@ -320,7 +320,7 @@ export default function AdminDashboardPage() {
                           <div className="best-post-card-inner">
                             {topPostComments.imageUrl && (
                               <div className="best-post-card-preview">
-                                <img src={topPostComments.imageUrl} alt="" />
+                                <img src={topPostComments.imageUrl} alt="" loading="lazy" decoding="async" />
                               </div>
                             )}
                             <div className="best-post-card-meta">
@@ -353,7 +353,7 @@ export default function AdminDashboardPage() {
                           <div className="best-post-card-inner">
                             {topPostTips.imageUrl && (
                               <div className="best-post-card-preview">
-                                <img src={topPostTips.imageUrl} alt="" />
+                                <img src={topPostTips.imageUrl} alt="" loading="lazy" decoding="async" />
                               </div>
                             )}
                             <div className="best-post-card-meta">
@@ -377,7 +377,7 @@ export default function AdminDashboardPage() {
                             {activity.map((item, i) => (
                               <div key={i} className="recent-activity-item">
                                 <div className="activity-avatar">
-                                  {item.photoUrl ? <img src={item.photoUrl} alt="" /> : item.initial}
+                                  {item.photoUrl ? <img src={item.photoUrl} alt="" loading="lazy" decoding="async" /> : item.initial}
                                 </div>
                                 <div className="activity-body">
                                   <span className="activity-name">{item.name}</span>

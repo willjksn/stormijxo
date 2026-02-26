@@ -18,8 +18,8 @@ export type PostDoc = {
   overlayHighlight?: boolean;
   overlayUnderline?: boolean;
   overlayItalic?: boolean;
-  /** Font size for overlay text: small, medium, large */
-  overlayTextSize?: "small" | "medium" | "large";
+  /** Font size for overlay text in pixels (number). Legacy: "small"|"medium"|"large" mapped to 14, 18, 24 when loading. */
+  overlayTextSize?: number;
   hideComments?: boolean;
   hideLikes?: boolean;
   /** Optional poll: question + options (members can vote) */

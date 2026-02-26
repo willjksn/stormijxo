@@ -15,6 +15,10 @@ export default function TipPage() {
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
   const [heroTitle, setHeroTitle] = useState<string>("Show Your Love");
   const [heroSubtext, setHeroSubtext] = useState<string>("No minimum — send what you like.");
+  const [heroTitleColor, setHeroTitleColor] = useState<string>("#ffffff");
+  const [heroSubtextColor, setHeroSubtextColor] = useState<string>("#e5e5e5");
+  const [heroTitleFontSize, setHeroTitleFontSize] = useState<number | undefined>(undefined);
+  const [heroSubtextFontSize, setHeroSubtextFontSize] = useState<number | undefined>(undefined);
   const db = getFirebaseDb();
 
   useEffect(() => {
@@ -22,11 +26,23 @@ export default function TipPage() {
     getDoc(doc(db, "site_config", SITE_CONFIG_CONTENT_ID))
       .then((snap) => {
         if (snap.exists()) {
-          const d = snap.data() as { tipPageHeroImageUrl?: string; tipPageHeroTitle?: string; tipPageHeroSubtext?: string };
+          const d = snap.data() as {
+            tipPageHeroImageUrl?: string;
+            tipPageHeroTitle?: string;
+            tipPageHeroSubtext?: string;
+            tipPageHeroTitleColor?: string;
+            tipPageHeroSubtextColor?: string;
+            tipPageHeroTitleFontSize?: number;
+            tipPageHeroSubtextFontSize?: number;
+          };
           const url = d.tipPageHeroImageUrl?.trim();
           if (url) setHeroImageUrl(url);
           if (d.tipPageHeroTitle?.trim()) setHeroTitle(d.tipPageHeroTitle.trim());
           if (d.tipPageHeroSubtext?.trim()) setHeroSubtext(d.tipPageHeroSubtext.trim());
+          if (d.tipPageHeroTitleColor?.trim()) setHeroTitleColor(d.tipPageHeroTitleColor.trim());
+          if (d.tipPageHeroSubtextColor?.trim()) setHeroSubtextColor(d.tipPageHeroSubtextColor.trim());
+          if (typeof d.tipPageHeroTitleFontSize === "number") setHeroTitleFontSize(d.tipPageHeroTitleFontSize);
+          if (typeof d.tipPageHeroSubtextFontSize === "number") setHeroSubtextFontSize(d.tipPageHeroSubtextFontSize);
         }
       })
       .catch(() => {});
@@ -77,11 +93,27 @@ export default function TipPage() {
             alt=""
             className="tip-hero-image"
             aria-hidden
+            fetchPriority="high"
+            decoding="async"
           />
         )}
         <div className="tip-hero-content">
-          <h1 className="tip-title">{heroTitle}</h1>
-          <p className="tip-subhead">
+          <h1
+            className="tip-title"
+            style={{
+              ...(heroTitleColor ? { color: heroTitleColor } : {}),
+              ...(heroTitleFontSize != null ? { fontSize: `${heroTitleFontSize}px` } : {}),
+            }}
+          >
+            {heroTitle}
+          </h1>
+          <p
+            className="tip-subhead"
+            style={{
+              ...(heroSubtextColor ? { color: heroSubtextColor } : {}),
+              ...(heroSubtextFontSize != null ? { fontSize: `${heroSubtextFontSize}px` } : {}),
+            }}
+          >
             {heroSubtext}
           </p>
         </div>

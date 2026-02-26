@@ -88,19 +88,18 @@ export type FeedPost = {
   likeCount: number;
   comments: { username?: string; author?: string; text: string }[];
   captionStyle?: "static" | "scroll-up" | "scroll-across" | "dissolve";
-  overlayTextSize?: "small" | "medium" | "large";
+  overlayTextSize?: number;
   hideComments?: boolean;
   hideLikes?: boolean;
   poll?: { question: string; options: string[]; optionVotes?: number[] };
   tipGoal?: { description: string; targetCents: number; raisedCents: number };
 };
 
-function FeedCardCaptionOverlay({ caption, style: captionStyle, size }: { caption: string; style?: string; size?: "small" | "medium" | "large" }) {
+function FeedCardCaptionOverlay({ caption, style: captionStyle, size }: { caption: string; style?: string; size?: number }) {
   if (!caption?.trim()) return null;
-  const sizeClass = size === "small" || size === "large" ? ` feed-card-caption-overlay-text-${size}` : "";
   return (
     <div className={`feed-card-caption-overlay feed-card-caption-overlay-${captionStyle || "static"}`} aria-hidden>
-      <span className={`feed-card-caption-overlay-text${sizeClass}`}>{caption}</span>
+      <span className="feed-card-caption-overlay-text" style={size != null && size > 0 ? { fontSize: `${size}px` } : undefined}>{caption}</span>
     </div>
   );
 }
@@ -142,7 +141,7 @@ function FeedCard({
           (isVideo ? (
             <video src={firstUrl} muted playsInline className="feed-card-media" />
           ) : (
-            <img src={firstUrl} alt="" className="feed-card-media" loading="lazy" />
+            <img src={firstUrl} alt="" className="feed-card-media" loading="lazy" decoding="async" />
           ))}
         {showCaptionOnMedia && (
           <FeedCardCaptionOverlay caption={post.body} style={captionStyle} size={post.overlayTextSize} />
@@ -276,7 +275,7 @@ export default function HomeFeedPage() {
             likeCount: typeof d.likeCount === "number" ? d.likeCount : 0,
             comments: (d.comments as FeedPost["comments"]) ?? [],
             captionStyle: (d.captionStyle as FeedPost["captionStyle"]) ?? "static",
-            overlayTextSize: (d.overlayTextSize as FeedPost["overlayTextSize"]) ?? "medium",
+            overlayTextSize: typeof d.overlayTextSize === "number" ? d.overlayTextSize : (d.overlayTextSize === "small" ? 14 : d.overlayTextSize === "large" ? 24 : 18),
             hideComments: !!d.hideComments,
             hideLikes: !!d.hideLikes,
             poll: d.poll as FeedPost["poll"] | undefined,
@@ -299,7 +298,7 @@ export default function HomeFeedPage() {
       likeCount: p.likeCount,
       comments: p.comments,
       captionStyle: "static" as const,
-      overlayTextSize: "medium" as const,
+      overlayTextSize: 18,
       hideComments: false,
       hideLikes: false,
       poll: p.poll,
