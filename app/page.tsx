@@ -146,7 +146,7 @@ export default function LandingPage() {
               <button type="button" className="btn btn-tip" data-amount="2000">$20</button>
             </div>
             <div className="tip-custom">
-              <label htmlFor="tip-custom-amount" className="tip-custom-label">Or enter an amount</label>
+              <label htmlFor="tip-custom-amount" className="tip-custom-label">Or enter an amount (USD)</label>
               <div className="tip-custom-row">
                 <div className="tip-input-wrap">
                   <span className="tip-custom-prefix">$</span>

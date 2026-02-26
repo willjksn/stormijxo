@@ -35,12 +35,17 @@ module.exports = async (req, res) => {
   }
 
   const body = req.body || {};
-  const amountCents = Number.isInteger(body.amount) ? body.amount : parseInt(body.amount, 10);
+  const rawAmount =
+    body.amountCents != null
+      ? body.amountCents
+      : body.amount;
+  const amountCents = Number.isInteger(rawAmount) ? rawAmount : parseInt(rawAmount, 10);
   if (!Number.isInteger(amountCents) || amountCents < MIN_TIP_CENTS || amountCents > MAX_TIP_CENTS) {
     json(res, 400, { error: "Amount must be between 100 and 100000 cents ($1-$1000)." });
     return;
   }
 
+  const postId = typeof body.postId === "string" ? body.postId.trim() : "";
   const instagramHandle = typeof body.instagram_handle === "string"
     ? body.instagram_handle.trim().slice(0, 64)
     : "";
@@ -71,6 +76,7 @@ module.exports = async (req, res) => {
       cancel_url: cancelUrl,
       metadata: {
         type: "tip",
+        tip_post_id: postId || "",
         tip_instagram_handle: instagramHandle || "",
       },
       custom_fields: [
