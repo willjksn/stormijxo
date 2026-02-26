@@ -8,6 +8,7 @@ const TOOLS_LINKS = [
   { id: "posts", label: "Post", href: "/admin/posts" },
   { id: "media", label: "Media", href: "/admin/media" },
   { id: "content", label: "Content", href: "/admin/content" },
+  { id: "treats", label: "Treats", href: "/admin/treats" },
 ] as const;
 
 export function AdminToolsNav() {
@@ -20,6 +21,7 @@ export function AdminToolsNav() {
     if (pathname === "/admin/posts") return "posts";
     if (pathname === "/admin/media") return "media";
     if (pathname === "/admin/content") return "content";
+    if (pathname === "/admin/treats") return "treats";
     if (pathname === "/admin/dashboard" && panel === "tools" && toolParam) {
       return TOOLS_LINKS.some((t) => t.id === toolParam) ? toolParam : "calendar";
     }

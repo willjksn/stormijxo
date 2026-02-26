@@ -14,7 +14,8 @@ export default function AdminAuthenticatedLayout({ children }: { children: React
     (pathname === "/admin/dashboard" && panel === "tools") ||
     pathname === "/admin/posts" ||
     pathname === "/admin/media" ||
-    pathname === "/admin/content";
+    pathname === "/admin/content" ||
+    pathname === "/admin/treats";
 
   return (
     <div className="admin-page">

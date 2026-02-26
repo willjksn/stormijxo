@@ -1,38 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
+import { TREATS_COLLECTION } from "../../../lib/treats";
 
-const TREAT_PRODUCTS: Record<string, { name: string; price: number; description: string }> = {
-  "voice-30": {
-    name: "30-Second Voice Note",
-    price: 2500,
-    description: "I'll say your name. Keep it short. Keep it personal.",
-  },
-  "voice-60": {
-    name: "60-Second Voice Note",
-    price: 4500,
-    description: "More direct. Slightly longer. Still chill.",
-  },
-  "video-reply": {
-    name: "Private Video Reply",
-    price: 3500,
-    description: "Ask me something. I'll respond privately.",
-  },
-  birthday: {
-    name: "Birthday Message",
-    price: 5000,
-    description: "Custom video. Don't make it weird.",
-  },
-  overthinking: {
-    name: "Overthinking Response",
-    price: 3000,
-    description: "Tell me what's stuck in your head. I'll answer.",
-  },
-  "check-in": {
-    name: "Random Check-In",
-    price: 2000,
-    description: "A short message from me when you least expect it.",
-  },
-};
+// Firebase Admin (CJS) for server-side Firestore read
+function getFirebaseAdmin(): ReturnType<typeof import("firebase-admin").initializeApp> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getFirebaseAdmin: getAdmin } = require("../../../api/_lib/firebase-admin");
+  return getAdmin();
+}
 
 export async function POST(req: NextRequest) {
   const stripeSecret =
@@ -55,15 +30,39 @@ export async function POST(req: NextRequest) {
   }
 
   const treatId = typeof body.treatId === "string" ? body.treatId.trim() : "";
-  const product = treatId ? TREAT_PRODUCTS[treatId] : null;
+  if (!treatId) {
+    return NextResponse.json({ error: "Missing treatId." }, { status: 400 });
+  }
 
-  if (!product) {
+  let treatDoc: { name: string; price: number; description: string; quantityLeft: number } | null = null;
+  try {
+    const admin = getFirebaseAdmin();
+    const snap = await admin.firestore().collection(TREATS_COLLECTION).doc(treatId).get();
+    if (snap.exists) {
+      const d = snap.data();
+      treatDoc = {
+        name: (d?.name ?? "").toString(),
+        price: typeof d?.price === "number" ? d.price : 0,
+        description: (d?.description ?? "").toString(),
+        quantityLeft: typeof d?.quantityLeft === "number" ? d.quantityLeft : 0,
+      };
+    }
+  } catch (err) {
+    console.error("treat-checkout Firestore read error:", err);
     return NextResponse.json(
-      { error: "Invalid treat. Choose from: voice-30, voice-60, video-reply, birthday, overthinking, check-in." },
+      { error: "Could not load treat. Try again later." },
+      { status: 500 }
+    );
+  }
+
+  if (!treatDoc || treatDoc.quantityLeft <= 0) {
+    return NextResponse.json(
+      { error: "This treat is not available or sold out." },
       { status: 400 }
     );
   }
 
+  const priceCents = Math.round(treatDoc.price * 100);
   const baseUrl = body.base_url || process.env.PUBLIC_APP_URL || "https://stormijxo.com";
   const normalizedBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
   const successUrl = body.success_url || `${normalizedBase}/success`;
@@ -78,10 +77,10 @@ export async function POST(req: NextRequest) {
           quantity: 1,
           price_data: {
             currency: "usd",
-            unit_amount: product.price,
+            unit_amount: priceCents,
             product_data: {
-              name: product.name,
-              description: product.description,
+              name: treatDoc.name,
+              description: treatDoc.description,
               metadata: { treatId },
             },
           },

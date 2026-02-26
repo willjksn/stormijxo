@@ -32,23 +32,33 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 1rem 1.5rem 0;
+  padding: 0.35rem 1.25rem 0;
 }
 .auth-modal-brand {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: -0.75rem;
+  justify-content: center;
+  width: 100%;
+  max-width: 220px;
+  height: 80px;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 .auth-modal-brand .auth-modal-logo {
-  width: 220px;
-  height: 220px;
+  width: auto;
+  height: 80px;
+  max-width: 220px;
   object-fit: contain;
+  object-position: center top;
 }
 @media (max-width: 480px) {
+  .auth-modal-brand {
+    height: 72px;
+    max-width: 200px;
+  }
   .auth-modal-brand .auth-modal-logo {
-    width: 180px;
-    height: 180px;
+    height: 72px;
+    max-width: 200px;
   }
 }
 .auth-modal-close {
@@ -66,7 +76,7 @@
   background: var(--accent-soft);
 }
 .auth-modal-title {
-  padding: 0.5rem 1.5rem 0;
+  padding: 0.35rem 1.5rem 0;
 }
 .auth-modal-title h2 {
   font-size: 1.35rem;

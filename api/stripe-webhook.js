@@ -78,8 +78,17 @@ module.exports = async (req, res) => {
         const isTreat = meta.type === "treat";
 
         if (isTreat) {
-          // Treat purchase - store in purchases collection.
           const email = session.customer_email || (session.customer_details && session.customer_details.email) || null;
+          const treatId = meta.treatId || null;
+          let productName = treatId ? `Treat: ${treatId}` : null;
+          const treatRef = treatId ? db.collection("treats").doc(treatId) : null;
+          let treatSnap = null;
+          if (treatRef) treatSnap = await treatRef.get();
+          if (treatSnap && treatSnap.exists) {
+            const d = treatSnap.data();
+            const name = (d.name || "").toString();
+            if (name) productName = name;
+          }
           await purchasesRef.add({
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             purchasedAt: session.created
@@ -88,13 +97,18 @@ module.exports = async (req, res) => {
             amountCents: typeof session.amount_total === "number" ? session.amount_total : null,
             currency: session.currency || "usd",
             email,
-            treatId: meta.treatId || null,
-            productName: meta.treatId ? `Treat: ${meta.treatId}` : null,
+            treatId,
+            productName,
             stripeCustomerId: session.customer || null,
             stripeSessionId: session.id,
             paymentStatus: session.payment_status || null,
             source: "stripe_treat",
           });
+          if (treatRef && treatSnap && treatSnap.exists) {
+            const current = treatSnap.data().quantityLeft;
+            const next = Math.max(0, (typeof current === "number" ? current : 0) - 1);
+            await treatRef.update({ quantityLeft: next });
+          }
         } else {
         let tipInstagram = (session.metadata && session.metadata.tip_instagram_handle) || null;
         const customFields = session.custom_fields || [];

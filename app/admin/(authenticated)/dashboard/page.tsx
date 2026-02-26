@@ -24,6 +24,11 @@ function ToolsPanel({ currentTool }: { currentTool: string }) {
             <Link href="/admin/content" className="tools-outbound-link">Open Content</Link> to manage content.
           </p>
         )}
+        {currentTool === "treats" && (
+          <p className="tools-placeholder-text">
+            <Link href="/admin/treats" className="tools-outbound-link">Open Treats</Link> to manage treat cards and quantities.
+          </p>
+        )}
         {currentTool === "posts" && (
           <p className="tools-placeholder-text">
             <Link href="/admin/posts" className="tools-outbound-link">Open Post</Link> to manage posts.
@@ -39,6 +44,7 @@ const TOOLS_QUICK_LINKS = [
   { id: "posts", label: "Post" },
   { id: "media", label: "Media" },
   { id: "content", label: "Content" },
+  { id: "treats", label: "Treats" },
 ] as const;
 
 export default function AdminDashboardPage() {
