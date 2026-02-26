@@ -14,7 +14,6 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { getFirebaseDb } from "../../../../lib/firebase";
-import { AdminTabs } from "../../components/AdminTabs";
 import { ALLOWED_ADMIN_EMAILS } from "../../../../lib/auth-redirect";
 
 type SpendEntry = { monthlyCents: number; storeItems: string[] };
@@ -410,7 +409,6 @@ export default function AdminUsersPage() {
 
   return (
     <>
-      <AdminTabs />
       <main className="admin-main">
         <div className="admin-content">
           <div className="um-card">

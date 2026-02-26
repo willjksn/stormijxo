@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { collection, getDocs, orderBy, query, limit } from "firebase/firestore";
 import { getFirebaseDb } from "../../../../lib/firebase";
-import { AdminTabs } from "../../components/AdminTabs";
 import { SchedulePlanner } from "../../../calendar/page";
 
 type Timestamp = { toDate: () => Date };
@@ -204,7 +203,6 @@ export default function AdminDashboardPage() {
 
   return (
     <>
-      <AdminTabs />
       <main className="admin-main custom-scrollbar" role="main">
         <div className="admin-main-inner">
           {panel === "overview" && (
