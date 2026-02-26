@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { getFirebaseDb } from "../../../lib/firebase";
-import { TREATS_COLLECTION, type TreatDoc } from "../../../lib/treats";
+import { TREATS_COLLECTION, DEFAULT_TREATS, type TreatDoc } from "../../../lib/treats";
 
 export default function TreatsPage() {
   const [treats, setTreats] = useState<TreatDoc[]>([]);
@@ -13,6 +13,7 @@ export default function TreatsPage() {
 
   useEffect(() => {
     if (!db) {
+      setTreats(DEFAULT_TREATS);
       setListLoading(false);
       return;
     }
@@ -31,9 +32,9 @@ export default function TreatsPage() {
           });
         });
         list.sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
-        setTreats(list);
+        setTreats(list.length > 0 ? list : DEFAULT_TREATS);
       })
-      .catch(() => {})
+      .catch(() => setTreats(DEFAULT_TREATS))
       .finally(() => setListLoading(false));
   }, [db]);
 

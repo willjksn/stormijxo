@@ -291,6 +291,12 @@
 .content-block label { display: block; margin-bottom: 0.35rem; font-weight: 500; font-size: 0.9rem; }
 .content-block input, .content-block textarea { width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.75rem; font-family: inherit; }
 .content-block textarea { min-height: 80px; resize: vertical; }
+.content-block input:focus,
+.content-block textarea:focus {
+  outline: none;
+  border-color: var(--accent-hover);
+  box-shadow: 0 0 0 2px rgba(188, 63, 116, 0.3);
+}
 
 /* Content page: hero image block */
 .admin-hero-image-block { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg); min-height: 140px; }

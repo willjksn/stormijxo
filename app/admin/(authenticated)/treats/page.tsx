@@ -76,7 +76,11 @@ export default function AdminTreatsPage() {
   };
 
   const handleSaveEdit = async () => {
-    if (!db || !editForm) return;
+    if (!editForm) return;
+    if (!db) {
+      showMsg("error", "Firebase is not configured. Add NEXT_PUBLIC_FIREBASE_* to .env.local to save treats.");
+      return;
+    }
     setSaving(true);
     setMessage(null);
     try {
@@ -87,9 +91,7 @@ export default function AdminTreatsPage() {
         quantityLeft: Math.max(0, editForm.quantityLeft),
         order: editForm.order,
       });
-      setTreats((prev) =>
-        prev.map((t) => (t.id === editForm.id ? { ...editForm, quantityLeft: Math.max(0, editForm.quantityLeft) } : t))
-      );
+      await loadTreats();
       setEditingId(null);
       setEditForm(null);
       showMsg("ok", "Treat updated.");
@@ -315,7 +317,7 @@ export default function AdminTreatsPage() {
                       <input
                         type="number"
                         min={0}
-                        value={editForm.price}
+                        value={editForm.price === 0 ? "" : editForm.price}
                         onChange={(e) =>
                           setEditForm((f) => (f ? { ...f, price: e.target.value === "" ? 0 : Number(e.target.value) } : f))
                         }
@@ -349,7 +351,7 @@ export default function AdminTreatsPage() {
                       <input
                         type="number"
                         min={0}
-                        value={editForm.quantityLeft}
+                        value={editForm.quantityLeft === 0 ? "" : editForm.quantityLeft}
                         onChange={(e) =>
                           setEditForm((f) =>
                             f ? { ...f, quantityLeft: e.target.value === "" ? 0 : Number(e.target.value) } : f
