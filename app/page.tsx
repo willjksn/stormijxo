@@ -214,6 +214,11 @@ export default function LandingPage() {
               b.disabled = isLoading;
             });
           }
+          function resetTipUi() {
+            setLoading(false);
+            setError("");
+          }
+          window.addEventListener("pageshow", resetTipUi);
           function startTip(amountCents) {
             if (!amountCents || amountCents < 100 || amountCents > 100000) return;
             setError("");

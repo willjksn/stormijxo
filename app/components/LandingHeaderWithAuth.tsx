@@ -19,11 +19,11 @@ export function LandingHeaderWithAuth() {
 
   useEffect(() => {
     if (showMemberNav) return;
-    if (authIntent === "signup" || authIntent === "login") {
-      setModalTab(authIntent);
+    if (authIntent === "signup" || authIntent === "login" || !!redirect) {
+      setModalTab(authIntent === "signup" || authIntent === "login" ? authIntent : "login");
       setModalOpen(true);
     }
-  }, [authIntent, showMemberNav]);
+  }, [authIntent, redirect, showMemberNav]);
 
   useEffect(() => {
     let active = true;
@@ -75,9 +75,11 @@ export function LandingHeaderWithAuth() {
     if (typeof window === "undefined") return;
     const url = new URL(window.location.href);
     const hadAuthParams = url.searchParams.has("auth") || url.searchParams.has("pay");
-    if (!hadAuthParams) return;
+    const hadRedirect = url.searchParams.has("redirect");
+    if (!hadAuthParams && !hadRedirect) return;
     url.searchParams.delete("auth");
     url.searchParams.delete("pay");
+    url.searchParams.delete("redirect");
     window.history.replaceState({}, "", url.pathname + (url.search ? `?${url.searchParams.toString()}` : "") + url.hash);
   };
 

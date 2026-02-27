@@ -248,16 +248,28 @@
       var cancelUrl = base + "/#pricing";
       var errEl = document.getElementById("tip-error");
       var tipHandleInput = document.getElementById("tip-instagram-handle");
+      function setLoading(isLoading) {
+        document.querySelectorAll(".btn-tip").forEach(function(b) {
+          b.disabled = isLoading;
+          if (isLoading) {
+            if (b.getAttribute("data-amount")) b.textContent = "…";
+            else if (b.id === "tip-custom-btn") b.textContent = "…";
+          } else {
+            if (b.getAttribute("data-amount")) b.textContent = "$" + (b.getAttribute("data-amount") / 100);
+            else if (b.id === "tip-custom-btn") b.textContent = "Tip";
+          }
+        });
+      }
+      function resetTipUi() {
+        setLoading(false);
+        if (errEl) { errEl.style.display = "none"; errEl.textContent = ""; }
+      }
+      window.addEventListener("pageshow", resetTipUi);
       function startTipCheckout(amountCents, resetButtons) {
         if (!amountCents || amountCents < 100 || amountCents > 100000) return;
         if (errEl) { errEl.style.display = "none"; errEl.textContent = ""; }
         var instagramHandle = tipHandleInput ? (tipHandleInput.value || "").trim() : "";
-        if (resetButtons) {
-          document.querySelectorAll(".btn-tip").forEach(function(b) {
-            b.disabled = true;
-            if (b.getAttribute("data-amount")) b.textContent = "…";
-          });
-        }
+        if (resetButtons) setLoading(true);
         fetch(tipUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -267,20 +279,12 @@
             if (result.ok && result.data && result.data.url) {
               window.location.href = result.data.url;
             } else {
-              document.querySelectorAll(".btn-tip").forEach(function(b) {
-                b.disabled = false;
-                if (b.getAttribute("data-amount")) b.textContent = "$" + (b.getAttribute("data-amount") / 100);
-                else if (b.id === "tip-custom-btn") b.textContent = "Tip";
-              });
+              setLoading(false);
               if (errEl) { errEl.textContent = result.data && result.data.error ? result.data.error : "Something went wrong."; errEl.style.display = "block"; }
             }
           })
           .catch(function() {
-            document.querySelectorAll(".btn-tip").forEach(function(b) {
-              b.disabled = false;
-              if (b.getAttribute("data-amount")) b.textContent = "$" + (b.getAttribute("data-amount") / 100);
-              else if (b.id === "tip-custom-btn") b.textContent = "Tip";
-            });
+            setLoading(false);
             if (errEl) { errEl.textContent = "Could not start checkout. Try again."; errEl.style.display = "block"; }
           });
       }

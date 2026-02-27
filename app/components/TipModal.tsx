@@ -34,11 +34,20 @@ export function TipModal({ isOpen, onClose, postId, cancelPath, customerEmail, u
     if (!isOpen) return;
     setSelectedPreset(null);
     setCustomAmount("");
+    setLoading(false);
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+    const onPageShow = () => {
+      // Browser back/forward cache can restore stale disabled state.
+      setLoading(false);
+    };
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("pageshow", onPageShow);
+    };
   }, [isOpen, onClose]);
 
   const startTipCheckout = async () => {
