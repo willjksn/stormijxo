@@ -42,33 +42,22 @@ export function RequireAdmin({ children, header }: RequireAdminProps) {
       setAdminDocEnsured(true);
       return;
     }
-    const doFetch = () =>
-      auth.currentUser!.getIdToken(true).then((token) =>
-        fetch("/api/admin/ensure-admin-doc", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: "{}",
-        })
-      );
-    doFetch()
-      .then((res) => {
-        if (cancelled) return;
-        if (res.ok) {
-          setAdminDocEnsured(true);
-          return;
-        }
-        return new Promise<Response>((r) => setTimeout(r, 600)).then(() => doFetch());
-      })
-      .then((res) => {
-        if (cancelled) return;
-        if (res?.ok) setAdminDocEnsured(true);
-      })
-      .catch(() => {
-        if (!cancelled) setAdminDocEnsured(true);
-      });
-    const t = setTimeout(() => {
+    const setDone = () => {
       if (!cancelled) setAdminDocEnsured(true);
-    }, 4000);
+    };
+    auth.currentUser!.getIdToken(true).then((token) => {
+      const authHeader = { Authorization: `Bearer ${token}` };
+      const getReq = fetch("/api/admin/ensure-admin-doc", { method: "GET", headers: authHeader });
+      const postReq = fetch("/api/admin/ensure-admin-doc", {
+        method: "POST",
+        headers: { ...authHeader, "Content-Type": "application/json" },
+        body: "{}",
+      });
+      Promise.all([getReq, postReq]).then(([getRes, postRes]) => {
+        if (getRes.ok || postRes.ok) setDone();
+      }).catch(setDone);
+    }).catch(setDone);
+    const t = setTimeout(setDone, 5000);
     return () => {
       cancelled = true;
       clearTimeout(t);
