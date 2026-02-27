@@ -2,6 +2,7 @@ import Link from "next/link";
 import Script from "next/script";
 import { Suspense } from "react";
 import "../styles.css";
+import "../auth-modal.css";
 import { LandingHeaderWithAuth } from "./components/LandingHeaderWithAuth";
 import { LandingCtaCount } from "./components/LandingContent";
 import { LandingHeroMedia } from "./components/LandingHeroMedia";
