@@ -891,7 +891,7 @@ export default function AdminContentPage() {
                   <p style={{ margin: 0, fontSize: "1rem" }}>Loading…</p>
                 </div>
               ) : (() => {
-                const displayItems = mediaPickerFor === "aboutVideo" ? mediaItems.filter((i) => i.isVideo) : mediaItems.filter((i) => !i.isVideo);
+                const displayItems = mediaPickerFor === "aboutVideo" ? mediaItems.filter((i) => i.isVideo) : mediaItems.filter((i) => !i.isVideo && !i.isAudio);
                 return displayItems.length === 0 ? (
                   <p style={{ color: "var(--text-muted)", margin: 0 }}>
                     {mediaPickerFor === "aboutVideo" ? "No videos in media library. Upload videos in Media first." : "No images in media library. Upload images in Media first."}

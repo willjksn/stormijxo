@@ -62,7 +62,7 @@ export function LandingHeroMedia() {
 
   return (
     <img
-      src="/images/hero.png"
+      src="/assets/preview1.png"
       alt="Creator"
       className="hero-image"
       data-landing-default

@@ -1,7 +1,7 @@
 "use client";
 
-import { use, useEffect, useState, useMemo, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { doc, getDoc, runTransaction } from "firebase/firestore";
 import { TipModal } from "../../../components/TipModal";
@@ -81,13 +81,9 @@ function displayPublicName(nameLike: string): string {
   return n;
 }
 
-export default function PostByIdPage({
-  params,
-}: {
-  params: Promise<{ id?: string }>;
-}) {
-  const resolved = use(params);
-  const id = resolved?.id ?? "";
+export default function PostByIdPage() {
+  const routeParams = useParams<{ id?: string }>();
+  const id = typeof routeParams?.id === "string" ? routeParams.id : "";
   const searchParams = useSearchParams();
   const imgIndex = Math.max(0, parseInt(searchParams.get("img") ?? "0", 10));
 

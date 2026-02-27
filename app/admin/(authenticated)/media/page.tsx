@@ -7,9 +7,56 @@ import {
   listMediaLibrary,
   listMediaLibraryCounts,
   uploadToMediaLibrary,
+  moveMediaLibrary,
   type MediaItem,
 } from "../../../../lib/media-library";
 import { LazyMediaImage } from "../../../components/LazyMediaImage";
+
+function VoiceIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <line x1="12" y1="19" x2="12" y2="23" />
+      <line x1="8" y1="23" x2="16" y2="23" />
+    </svg>
+  );
+}
+
+function VideoCardPreview({ url }: { url: string }) {
+  const [error, setError] = useState(false);
+  if (error) {
+    return (
+      <div className="admin-media-card-video-fallback">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="admin-media-card-video-fallback-icon" aria-hidden>
+          <rect x="2" y="4" width="20" height="16" rx="2" ry="2" />
+          <path d="M10 9l5 3-5 3V9z" />
+        </svg>
+        <span>Video</span>
+      </div>
+    );
+  }
+  return (
+    <video
+      src={url}
+      muted
+      playsInline
+      preload="metadata"
+      className="admin-media-card-media"
+      onError={() => setError(true)}
+    />
+  );
+}
 
 const MEDIA_COLLECTION = "mediaLibrary";
 const MEDIA_CONFIG_DOC = "config";
@@ -50,12 +97,15 @@ export default function AdminMediaPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
   const [folderCounts, setFolderCounts] = useState<Record<string, number>>({ general: 0 });
-  const [filter, setFilter] = useState<"all" | "images" | "videos">("all");
+  const [filter, setFilter] = useState<"all" | "images" | "videos" | "voice_notes">("all");
   const [addFolderName, setAddFolderName] = useState("");
   const [showAddFolder, setShowAddFolder] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [renameFolderId, setRenameFolderId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [moveTargetFolderId, setMoveTargetFolderId] = useState<string>(GENERAL_ID);
+  const [moving, setMoving] = useState(false);
   const addFolderButtonRef = useRef<HTMLButtonElement | null>(null);
   const addFolderPanelRef = useRef<HTMLDivElement | null>(null);
 
@@ -144,7 +194,13 @@ export default function AdminMediaPage() {
   }, [showAddFolder]);
 
   const filteredItems =
-    filter === "videos" ? library.filter((i) => i.isVideo) : filter === "images" ? library.filter((i) => !i.isVideo) : library;
+    filter === "videos"
+      ? library.filter((i) => i.isVideo)
+      : filter === "images"
+        ? library.filter((i) => !i.isVideo && !i.isAudio)
+        : filter === "voice_notes"
+          ? library.filter((i) => i.isAudio)
+          : library;
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -189,6 +245,12 @@ export default function AdminMediaPage() {
       const data = postDoc.data() as Record<string, unknown>;
       const mediaUrls = Array.isArray(data.mediaUrls) ? (data.mediaUrls as unknown[]) : [];
       mediaUrls.forEach((urlRaw) => {
+        if (typeof urlRaw !== "string") return;
+        const path = storagePathFromUrl(urlRaw);
+        if (path) inUse.add(path);
+      });
+      const audioUrls = Array.isArray(data.audioUrls) ? (data.audioUrls as unknown[]) : [];
+      audioUrls.forEach((urlRaw) => {
         if (typeof urlRaw !== "string") return;
         const path = storagePathFromUrl(urlRaw);
         if (path) inUse.add(path);
@@ -301,18 +363,49 @@ export default function AdminMediaPage() {
     }
   };
 
+  const handleMoveSelected = async () => {
+    if (!storage || selectedPaths.size === 0) return;
+    const inUsePaths = await getInUseMediaPaths();
+    const selected = Array.from(selectedPaths);
+    const inUseCount = selected.filter((p) => inUsePaths.has(p)).length;
+    if (inUseCount > 0) {
+      setMessage({ type: "error", text: "Some selected items are used in posts or content. Remove those references first, or move only unused items." });
+      return;
+    }
+    const targetId = moveTargetFolderId === GENERAL_ID ? "" : moveTargetFolderId;
+    setMoving(true);
+    setMessage(null);
+    try {
+      await moveMediaLibrary(storage, selected, targetId, (current, total) => {
+        setMessage({ type: "success", text: `Moving… ${current} of ${total}` });
+      });
+      setMessage({ type: "success", text: `${selected.length} item(s) moved.` });
+      setSelectedPaths(new Set());
+      setShowMoveModal(false);
+      setMoveTargetFolderId(GENERAL_ID);
+      await new Promise((r) => setTimeout(r, 400));
+      loadLibrary();
+      loadFolderCounts();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Move failed";
+      setMessage({ type: "error", text: msg });
+    } finally {
+      setMoving(false);
+    }
+  };
+
   return (
     <main className="admin-main admin-media-page">
       <div className="admin-media-vault">
         <header className="admin-media-header">
           <div>
             <h1>My Vault</h1>
-            <p className="admin-media-intro">Upload and manage images and videos you can reuse in posts.</p>
+            <p className="admin-media-intro">Upload and manage images, videos, and voice notes you can reuse in posts.</p>
           </div>
           <label className="admin-media-upload-btn">
             <input
               type="file"
-              accept="image/*,video/*"
+              accept="image/*,video/*,audio/*"
               onChange={handleUpload}
               disabled={uploading}
               className="sr-only"
@@ -442,6 +535,15 @@ export default function AdminMediaPage() {
                 >
                   Videos
                 </button>
+                <button
+                  type="button"
+                  className={filter === "voice_notes" ? "active" : ""}
+                  onClick={() => setFilter("voice_notes")}
+                  aria-label="Voice notes"
+                >
+                  <VoiceIcon className="admin-media-tab-icon" />
+                  Voice notes
+                </button>
               </div>
               <div className="admin-media-toolbar-right">
                 <button type="button" className="admin-media-select-all" onClick={selectAll}>
@@ -457,9 +559,22 @@ export default function AdminMediaPage() {
                   {viewMode === "grid" ? "List" : "Grid"}
                 </button>
                 {selectedPaths.size > 0 && (
-                  <button type="button" className="admin-media-delete-btn" onClick={handleDeleteSelected}>
-                    Delete selected ({selectedPaths.size})
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="admin-media-move-btn"
+                      onClick={() => {
+                        const otherFolder = folders.find((f) => f.id !== currentFolderId);
+                        setMoveTargetFolderId(otherFolder ? otherFolder.id : GENERAL_ID);
+                        setShowMoveModal(true);
+                      }}
+                    >
+                      Move {selectedPaths.size} selected
+                    </button>
+                    <button type="button" className="admin-media-delete-btn" onClick={handleDeleteSelected}>
+                      Delete selected ({selectedPaths.size})
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -468,7 +583,15 @@ export default function AdminMediaPage() {
               <p className="admin-media-loading">Loading…</p>
             ) : filteredItems.length === 0 ? (
               <div className="admin-media-empty">
-                <p>No media here. Upload an image or video to get started.</p>
+                <p>
+                  {filter === "voice_notes"
+                    ? "No voice notes here. Record voice in a post (Posts → Record voice) or upload an audio file."
+                    : filter === "videos"
+                      ? "No videos here. Upload a video to get started."
+                      : filter === "images"
+                        ? "No images here. Upload an image to get started."
+                        : "No media here. Upload an image, video, or audio to get started."}
+                </p>
               </div>
             ) : (
               <div className={`admin-media-grid admin-media-view-${viewMode}`}>
@@ -486,8 +609,13 @@ export default function AdminMediaPage() {
                       {selectedPaths.has(item.path) ? "✓" : ""}
                     </button>
                     <div className="admin-media-card-preview">
-                      {item.isVideo ? (
-                        <video src={item.url} muted playsInline preload="none" className="admin-media-card-media" />
+                      {item.isAudio ? (
+                        <div className="admin-media-card-voice">
+                          <VoiceIcon className="admin-media-card-voice-icon" />
+                          <audio src={item.url} controls className="admin-media-card-audio" />
+                        </div>
+                      ) : item.isVideo ? (
+                        <VideoCardPreview url={item.url} />
                       ) : (
                         <LazyMediaImage src={item.url} alt="" className="admin-media-card-media" loading="lazy" />
                       )}
@@ -502,6 +630,64 @@ export default function AdminMediaPage() {
           </div>
         </div>
       </div>
+
+      {showMoveModal && (
+        <div className="admin-media-move-overlay" onClick={() => !moving && setShowMoveModal(false)}>
+          <div className="admin-media-move-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-media-move-head">
+              <h3>Move {selectedPaths.size} Item{selectedPaths.size !== 1 ? "s" : ""}</h3>
+              <button
+                type="button"
+                className="admin-media-move-close"
+                onClick={() => !moving && setShowMoveModal(false)}
+                aria-label="Close"
+                disabled={moving}
+              >
+                ×
+              </button>
+            </div>
+            <p className="admin-media-move-hint">Select a folder to move the selected item(s) to:</p>
+            <ul className="admin-media-move-folders">
+              {folders.map((f) => (
+                <li key={f.id}>
+                  <button
+                    type="button"
+                    className={`admin-media-move-folder-btn${moveTargetFolderId === f.id ? " active" : ""}`}
+                    onClick={() => setMoveTargetFolderId(f.id)}
+                    disabled={moving}
+                  >
+                    <span className="admin-media-folder-icon">📁</span>
+                    {f.name}
+                    <span className="admin-media-folder-count">{folderCount(f.id)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {moveTargetFolderId === currentFolderId && folders.length > 1 && (
+              <p className="admin-media-move-same-folder-hint">Select a different folder above to move into.</p>
+            )}
+            <div className="admin-media-move-actions">
+              <button
+                type="button"
+                className="admin-media-move-cancel"
+                onClick={() => !moving && setShowMoveModal(false)}
+                disabled={moving}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="admin-media-move-submit"
+                onClick={handleMoveSelected}
+                disabled={moving || moveTargetFolderId === currentFolderId}
+                title={moveTargetFolderId === currentFolderId ? "Select a different folder to move to" : undefined}
+              >
+                {moving ? "Moving…" : "Move"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

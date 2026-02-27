@@ -1370,7 +1370,7 @@ export default function AdminPostsPage() {
             ) : (
               <div className="admin-posts-library-grid">
                 {library
-                  .filter((item) => !selectedMedia.some((m) => m.url === item.url))
+                  .filter((item) => !item.isAudio && !selectedMedia.some((m) => m.url === item.url))
                   .map((item) => (
                     <button
                       key={item.path}

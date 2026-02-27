@@ -6,7 +6,8 @@ import {
   ref,
   list,
   getDownloadURL,
-  getMetadata,
+  getBlob,
+  uploadBytes,
   uploadBytesResumable,
   deleteObject,
   type ListResult,
@@ -17,7 +18,7 @@ import type { FirebaseStorage } from "firebase/storage";
 
 const MEDIA_PREFIX = "content/media";
 
-export type MediaItem = { url: string; path: string; name: string; isVideo: boolean; folderId: string };
+export type MediaItem = { url: string; path: string; name: string; isVideo: boolean; isAudio: boolean; folderId: string };
 
 const LIST_PAGE_SIZE = 1000;
 const URL_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -90,13 +91,17 @@ export async function listMediaLibrary(
     const url = await getDownloadURLWithRetry(itemRef);
     if (!url) return null;
     const name = itemRef.name;
-    const metadata = await getMetadata(itemRef).catch(() => null);
-    const contentType = metadata?.contentType?.toLowerCase() ?? "";
+    const nameLower = name.toLowerCase();
+    const isAudio =
+      /\.(mp3|m4a|wav|opus|aac|flac)(\?|$)/i.test(name) ||
+      /post-voice-|voice-note-/i.test(name) ||
+      (/\.(webm|ogg)(\?|$)/i.test(name) && /voice|post-voice|voice-note/i.test(nameLower));
     const isVideo =
-      contentType.startsWith("video/") ||
-      /\.(mp4|webm|mov|ogg|m4v|mkv|avi|wmv|mpeg|mpg)(\?|$)/i.test(name) ||
-      itemRef.fullPath.toLowerCase().includes("video");
-    return { url, path: itemRef.fullPath, name, isVideo, folderId: folderId || "general" } satisfies MediaItem;
+      !isAudio &&
+      (/\.(mp4|webm|mov|ogg|m4v|mkv|avi|wmv|mpeg|mpg)(\?|$)/i.test(url) ||
+        /\.(mp4|webm|mov|ogg|m4v|mkv|avi|wmv|mpeg|mpg)(\?|$)/i.test(name) ||
+        itemRef.fullPath.toLowerCase().includes("video"));
+    return { url, path: itemRef.fullPath, name, isVideo, isAudio, folderId: folderId || "general" } satisfies MediaItem;
   });
   return items.filter((item): item is MediaItem => item !== null).reverse();
 }
@@ -175,4 +180,84 @@ export async function deleteMediaLibrary(
   paths: string[]
 ): Promise<void> {
   await Promise.all(paths.map((path) => deleteObject(ref(storage, path))));
+}
+
+/**
+ * Move one or more items to a different folder. Downloads each file, uploads to
+ * content/media/{targetFolderId}/{filename}, then deletes the original.
+ * Use targetFolderId "" for General. Returns the new paths.
+ */
+export async function moveMediaLibrary(
+  storage: FirebaseStorage,
+  paths: string[],
+  targetFolderId: string,
+  onProgress?: (current: number, total: number, path: string) => void
+): Promise<string[]> {
+  const newPaths: string[] = [];
+  const targetPrefix = targetFolderId ? `${MEDIA_PREFIX}/${targetFolderId}` : MEDIA_PREFIX;
+
+  for (let i = 0; i < paths.length; i++) {
+    const fromPath = paths[i]!;
+    onProgress?.(i + 1, paths.length, fromPath);
+
+    const fromRef = ref(storage, fromPath);
+    let blob: Blob;
+    try {
+      blob = await getBlob(fromRef);
+    } catch (downloadErr) {
+      const msg = downloadErr instanceof Error ? downloadErr.message : String(downloadErr);
+      const isCors = /cors|Access-Control|Failed to fetch|NetworkError|ERR_FAILED/i.test(msg) || (typeof msg === "string" && msg.includes("fetch"));
+      if (isCors) {
+        throw new Error(
+          "Storage request was blocked by CORS. Configure CORS on your Firebase Storage bucket (see docs/STORAGE_CORS.md or storage-cors.json in the project root), then try again."
+        );
+      }
+      throw new Error(`Could not download file: ${msg}`);
+    }
+
+    const fileName = fromPath.split("/").pop() || fromPath.replace(/^.*\//, "");
+    const toPath = `${targetPrefix}/${fileName}`;
+    const toRef = ref(storage, toPath);
+
+    const contentType = blob.type || getContentTypeFromName(fileName);
+    try {
+      await uploadBytes(toRef, blob, {
+        contentType: contentType || undefined,
+        customMetadata: { originalName: fileName },
+      });
+    } catch (uploadErr) {
+      const msg = uploadErr instanceof Error ? uploadErr.message : String(uploadErr);
+      throw new Error(`Upload to folder failed: ${msg}`);
+    }
+
+    try {
+      await deleteObject(fromRef);
+    } catch (deleteErr) {
+      const msg = deleteErr instanceof Error ? deleteErr.message : String(deleteErr);
+      throw new Error(`Upload succeeded but could not remove original: ${msg}`);
+    }
+
+    newPaths.push(toPath);
+    urlCache.delete(fromPath);
+  }
+  return newPaths;
+}
+
+function getContentTypeFromName(fileName: string): string {
+  const ext = fileName.replace(/^.*\./, "").toLowerCase();
+  const types: Record<string, string> = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    gif: "image/gif",
+    webp: "image/webp",
+    mp4: "video/mp4",
+    webm: "video/webm",
+    mov: "video/quicktime",
+    ogg: "video/ogg",
+    mp3: "audio/mpeg",
+    m4a: "audio/mp4",
+    wav: "audio/wav",
+  };
+  return types[ext] || "";
 }
