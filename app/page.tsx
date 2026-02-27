@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { LandingHeaderWithAuth } from "./components/LandingHeaderWithAuth";
 import { LandingCtaCount } from "./components/LandingContent";
 import { LandingSocialLinks } from "./components/LandingSocialLinks";
+import { LandingTipCheckout } from "./components/LandingTipCheckout";
 import { SubscriptionCheckoutButton } from "./components/SubscriptionCheckoutButton";
 
 export default function LandingPage() {
@@ -125,47 +126,7 @@ export default function LandingPage() {
             <span className="trust-icon" aria-hidden="true">✓</span> Cancel anytime
           </p>
 
-          <div className="tip-section reveal visible">
-            <p className="tip-heading">Want to show love?</p>
-            <p className="tip-sub">One-time tip - no subscription.</p>
-            <div className="tip-meta">
-              <input
-                type="text"
-                id="tip-instagram-handle"
-                className="tip-custom-input tip-handle-input"
-                maxLength={64}
-                placeholder="(optional) Who's showing love?"
-                aria-label="Instagram handle (optional)"
-              />
-            </div>
-            <div className="tip-buttons">
-              <button type="button" className="btn btn-tip" data-amount="300">$3</button>
-              <button type="button" className="btn btn-tip" data-amount="500">$5</button>
-              <button type="button" className="btn btn-tip" data-amount="1000">$10</button>
-              <button type="button" className="btn btn-tip" data-amount="2000">$20</button>
-            </div>
-            <div className="tip-custom">
-              <label htmlFor="tip-custom-amount" className="tip-custom-label">Or enter an amount (USD)</label>
-              <div className="tip-custom-row">
-                <div className="tip-input-wrap">
-                  <span className="tip-custom-prefix-static" aria-hidden>$</span>
-                  <input
-                    type="number"
-                    id="tip-custom-amount"
-                    className="tip-custom-input"
-                    min={1}
-                    max={1000}
-                    step={1}
-                    placeholder="e.g. 25"
-                    inputMode="decimal"
-                    aria-label="Tip amount in dollars"
-                  />
-                </div>
-                <button type="button" className="btn btn-tip btn-tip-custom" id="tip-custom-btn">Tip</button>
-              </div>
-            </div>
-            <p id="tip-error" className="tip-error" role="alert" style={{ display: "none" }} />
-          </div>
+          <LandingTipCheckout />
         </section>
 
         <section className="cta reveal landing-panel cta-panel visible">
@@ -194,86 +155,6 @@ export default function LandingPage() {
       <Script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js" strategy="afterInteractive" />
       <Script src="/firebase-config.js" strategy="afterInteractive" />
       <Script src="/landing-media.js" strategy="afterInteractive" />
-      <Script id="landing-tip-checkout" strategy="afterInteractive">{`
-        (function() {
-          var tipUrl = "/api/landing-tip";
-          var base = window.location.origin;
-          var cancelUrl = base + "/#pricing";
-          var successUrl = base + "/success?tip=1";
-          var errEl = document.getElementById("tip-error");
-          var tipHandleInput = document.getElementById("tip-instagram-handle");
-          var customInput = document.getElementById("tip-custom-amount");
-          var customBtn = document.getElementById("tip-custom-btn");
-          function setError(msg) {
-            if (!errEl) return;
-            errEl.textContent = msg || "";
-            errEl.style.display = msg ? "block" : "none";
-          }
-          function setLoading(isLoading) {
-            document.querySelectorAll(".btn-tip").forEach(function(b) {
-              b.disabled = isLoading;
-            });
-          }
-          function resetTipUi() {
-            setLoading(false);
-            setError("");
-          }
-          window.addEventListener("pageshow", resetTipUi);
-          function startTip(amountCents) {
-            if (!amountCents || amountCents < 100 || amountCents > 100000) return;
-            setError("");
-            setLoading(true);
-            var instagramHandle = tipHandleInput ? String(tipHandleInput.value || "").trim() : "";
-            fetch(tipUrl, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                amountCents: amountCents,
-                base_url: base,
-                success_url: successUrl,
-                cancel_url: cancelUrl,
-                instagram_handle: instagramHandle
-              })
-            }).then(function(r) {
-              return r.json().catch(function(){ return {}; }).then(function(d){ return { ok: r.ok, data: d }; });
-            }).then(function(result) {
-              if (result.ok && result.data && result.data.url) {
-                window.location.href = result.data.url;
-                return;
-              }
-              setLoading(false);
-              setError((result.data && result.data.error) || "Could not start checkout.");
-            }).catch(function() {
-              setLoading(false);
-              setError("Could not start checkout. Try again.");
-            });
-          }
-          document.querySelectorAll(".btn-tip[data-amount]").forEach(function(btn) {
-            btn.addEventListener("click", function() {
-              var amount = parseInt(this.getAttribute("data-amount"), 10);
-              if (!amount) return;
-              startTip(amount);
-            });
-          });
-          if (customBtn && customInput) {
-            var customClick = function() {
-              var val = parseFloat(customInput.value || "");
-              if (isNaN(val) || val < 1 || val > 1000) {
-                setError("Enter an amount between $1 and $1000.");
-                return;
-              }
-              startTip(Math.round(val * 100));
-            };
-            customBtn.addEventListener("click", customClick);
-            customInput.addEventListener("keydown", function(e) {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                customClick();
-              }
-            });
-          }
-        })();
-      `}</Script>
     </>
   );
 }

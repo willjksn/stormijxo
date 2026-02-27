@@ -5,7 +5,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseStorage } from "../../../../lib/firebase";
 import {
   listMediaLibrary,
-  listMediaLibraryAll,
+  listMediaLibraryCounts,
   uploadToMediaLibrary,
   deleteMediaLibrary,
   type MediaItem,
@@ -37,6 +37,7 @@ export default function AdminMediaPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
+  const [folderCounts, setFolderCounts] = useState<Record<string, number>>({ general: 0 });
   const [filter, setFilter] = useState<"all" | "images" | "videos">("all");
   const [addFolderName, setAddFolderName] = useState("");
   const [showAddFolder, setShowAddFolder] = useState(false);
@@ -61,13 +62,24 @@ export default function AdminMediaPage() {
     }
     setLoading(true);
     try {
-      const folderIds = folders.map((f) => (f.id === GENERAL_ID ? "" : f.id));
-      const items = await listMediaLibraryAll(storage, folderIds);
+      const folderId = currentFolderId === GENERAL_ID ? "" : currentFolderId;
+      const items = await listMediaLibrary(storage, folderId);
       setLibrary(items);
     } catch {
       setLibrary([]);
     } finally {
       setLoading(false);
+    }
+  }, [storage, currentFolderId]);
+
+  const loadFolderCounts = useCallback(async () => {
+    if (!storage) return;
+    try {
+      const folderIds = folders.map((f) => (f.id === GENERAL_ID ? "general" : f.id));
+      const counts = await listMediaLibraryCounts(storage, folderIds);
+      setFolderCounts(counts);
+    } catch {
+      // Keep last known counts on transient failures.
     }
   }, [storage, folders]);
 
@@ -78,6 +90,10 @@ export default function AdminMediaPage() {
   useEffect(() => {
     loadLibrary();
   }, [loadLibrary]);
+
+  useEffect(() => {
+    loadFolderCounts();
+  }, [loadFolderCounts]);
 
   useEffect(() => {
     setSelectedPaths(new Set());
@@ -115,12 +131,8 @@ export default function AdminMediaPage() {
     };
   }, [showAddFolder]);
 
-  const byFolder =
-    currentFolderId === GENERAL_ID
-      ? library.filter((i) => i.folderId === "general")
-      : library.filter((i) => i.folderId === currentFolderId);
   const filteredItems =
-    filter === "videos" ? byFolder.filter((i) => i.isVideo) : filter === "images" ? byFolder.filter((i) => !i.isVideo) : byFolder;
+    filter === "videos" ? library.filter((i) => i.isVideo) : filter === "images" ? library.filter((i) => !i.isVideo) : library;
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -133,7 +145,7 @@ export default function AdminMediaPage() {
       .then(() => {
         setMessage({ type: "success", text: `${file.name} added.` });
         loadLibrary();
-        if (currentFolderId === "all") loadFolders();
+        loadFolderCounts();
       })
       .catch((err) => setMessage({ type: "error", text: (err as Error).message || "Upload failed" }))
       .finally(() => {
@@ -164,6 +176,7 @@ export default function AdminMediaPage() {
       setMessage({ type: "success", text: `${selectedPaths.size} item(s) deleted.` });
       setSelectedPaths(new Set());
       loadLibrary();
+      loadFolderCounts();
     } catch (err) {
       setMessage({ type: "error", text: (err as Error).message || "Delete failed" });
     }
@@ -186,14 +199,15 @@ export default function AdminMediaPage() {
       setAddFolderName("");
       setShowAddFolder(false);
       setMessage({ type: "success", text: `Folder "${name}" added.` });
+      loadFolderCounts();
     } catch (err) {
       setMessage({ type: "error", text: (err as Error).message || "Could not add folder." });
     }
   };
 
   const folderCount = (folderId: string) => {
-    if (folderId === GENERAL_ID) return library.filter((i) => i.folderId === "general").length;
-    return library.filter((i) => i.folderId === folderId).length;
+    if (folderId === GENERAL_ID) return folderCounts.general ?? 0;
+    return folderCounts[folderId] ?? 0;
   };
 
   const handleRenameFolder = async () => {
@@ -206,6 +220,7 @@ export default function AdminMediaPage() {
     setRenameFolderId(null);
     setRenameValue("");
     setMessage({ type: "success", text: `Folder renamed to "${name}".` });
+    loadFolderCounts();
   };
 
   const handleDeleteFolder = async () => {
@@ -219,6 +234,7 @@ export default function AdminMediaPage() {
       setCurrentFolderId(GENERAL_ID);
       setMessage({ type: "success", text: "Folder deleted." });
       loadLibrary();
+      loadFolderCounts();
     } catch (err) {
       setMessage({ type: "error", text: (err as Error).message || "Delete failed" });
     }
@@ -410,7 +426,7 @@ export default function AdminMediaPage() {
                     </button>
                     <div className="admin-media-card-preview">
                       {item.isVideo ? (
-                        <video src={item.url} muted playsInline className="admin-media-card-media" />
+                        <video src={item.url} muted playsInline preload="none" className="admin-media-card-media" />
                       ) : (
                         <LazyMediaImage src={item.url} alt="" className="admin-media-card-media" loading="lazy" />
                       )}
