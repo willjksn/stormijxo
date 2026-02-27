@@ -624,19 +624,6 @@ export default function AdminContentPage() {
         <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginBottom: "1rem" }}>
           Shown when members click “About Stormi J” in the header. Video appears first if both image and video are set.
         </p>
-        <div style={{ marginBottom: "0.9rem" }}>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={content.aboutStormiJVisible !== false}
-            title={content.aboutStormiJVisible !== false ? "Hide About Stormi J button" : "Show About Stormi J button"}
-            className={`admin-social-toggle ${content.aboutStormiJVisible !== false ? "on" : "off"}`}
-            onClick={() => setContent((c) => ({ ...c, aboutStormiJVisible: !(c.aboutStormiJVisible !== false) }))}
-          >
-            <span className="admin-social-toggle-label">Show About Stormi J in member header</span>
-            <span className="admin-social-toggle-dot" aria-hidden />
-          </button>
-        </div>
 
         <div className="admin-about-stormi-card">
           <div className="admin-about-stormi-card-head">
@@ -810,7 +797,18 @@ export default function AdminContentPage() {
             </div>
           </div>
 
-          <div className="admin-about-stormi-save-wrap">
+          <div className="admin-about-stormi-save-wrap" style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={content.aboutStormiJVisible !== false}
+              title={content.aboutStormiJVisible !== false ? "Hide About Stormi J button" : "Show About Stormi J button"}
+              className={`admin-social-toggle ${content.aboutStormiJVisible !== false ? "on" : "off"}`}
+              onClick={() => setContent((c) => ({ ...c, aboutStormiJVisible: !(c.aboutStormiJVisible !== false) }))}
+            >
+              <span className="admin-social-toggle-label">Show in member header</span>
+              <span className="admin-social-toggle-dot" aria-hidden />
+            </button>
             <button
               type="button"
               className="btn btn-primary"
