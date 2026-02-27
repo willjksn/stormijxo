@@ -3,7 +3,7 @@
   display: flex;
   height: 100%;
   min-height: 400px;
-  max-width: 2200px;
+  max-width: 1200px;
   width: 100%;
   margin: 0 auto;
   background: var(--bg-card);
