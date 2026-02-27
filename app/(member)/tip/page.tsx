@@ -71,7 +71,10 @@ export default function TipPage() {
       const base = typeof window !== "undefined" ? window.location.origin : "";
       const res = await fetch("/api/tip-checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-checkout-type": "tip",
+        },
         body: JSON.stringify({
           checkoutType: "tip",
           amountCents: cents,

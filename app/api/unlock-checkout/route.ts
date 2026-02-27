@@ -25,6 +25,9 @@ export async function POST(req: NextRequest) {
   }
 
   let body: {
+    checkoutType?: string;
+    amountCents?: number | string;
+    amount?: number | string;
     postId?: string;
     uid?: string;
     customer_email?: string;
@@ -39,8 +42,11 @@ export async function POST(req: NextRequest) {
   }
 
   // Safety net: if a tip checkout request is misrouted here, forward it.
-  if ((body as { checkoutType?: string }).checkoutType === "tip") {
-    return tipCheckoutPost(tipForwardReq);
+  const checkoutHeader = (req.headers.get("x-checkout-type") || "").trim().toLowerCase();
+  const hasTipAmount =
+    body.amountCents !== undefined || body.amount !== undefined;
+  if (body.checkoutType === "tip" || checkoutHeader === "tip" || hasTipAmount) {
+    return tipCheckoutPost(tipForwardReq as unknown as NextRequest);
   }
 
   const postId = typeof body.postId === "string" ? body.postId.trim() : "";

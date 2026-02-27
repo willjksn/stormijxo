@@ -58,7 +58,10 @@ export function TipModal({ isOpen, onClose, postId, cancelPath, customerEmail, u
       const path = cancelPath.startsWith("/") ? cancelPath : `/${cancelPath}`;
       const res = await fetch("/api/tip-checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-checkout-type": "tip",
+        },
         body: JSON.stringify({
           checkoutType: "tip",
           amountCents,

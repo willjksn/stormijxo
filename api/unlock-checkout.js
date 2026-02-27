@@ -21,9 +21,13 @@ function parseBody(req) {
 module.exports = async (req, res) => {
   const requestPath = ((req && req.url) || "").toString().toLowerCase();
   const body = parseBody(req);
+  const checkoutHeader = String(
+    (req && req.headers && (req.headers["x-checkout-type"] || req.headers["X-Checkout-Type"])) || ""
+  ).trim().toLowerCase();
+  const hasTipAmount = body && (body.amountCents != null || body.amount != null);
 
   // If a tip checkout request is misrouted here, forward it.
-  if (body.checkoutType === "tip" || requestPath.includes("tip-checkout")) {
+  if (body.checkoutType === "tip" || checkoutHeader === "tip" || hasTipAmount || requestPath.includes("tip-checkout")) {
     const tipCheckoutHandler = require("./tip-checkout");
     return tipCheckoutHandler(req, res);
   }
