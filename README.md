@@ -1,5 +1,11 @@
 # My Inner circle — Private IG Close Friends
 
+## Runtime source of truth
+
+- The canonical frontend is the Next.js App Router in `app/`.
+- Run locally with `npm run dev` and deploy with your Next.js workflow.
+- Legacy static HTML files (`index.html`, `admin/*.html`, `member/*.html`) are kept only for archival/fallback reference and should not be treated as the active app.
+
 A landing page that sells monthly membership to your Instagram Close Friends via Stripe, with an **admin area** (Firebase Auth) to see who joined and who cancelled so you can manage your Close Friends list.
 
 ## How it works
@@ -56,21 +62,19 @@ A landing page that sells monthly membership to your Instagram Close Friends via
 - **Testimonials:** Add a short “What members say” section with 2–3 quotes above or below the FAQ.
 - **Video:** Add an `<iframe>` or `<video>` in a new section for a 10–20 second intro.
 
-## Run locally
-
-Open `index.html` in a browser, or use a simple server:
+## Run locally (Next.js app)
 
 ```bash
-npx serve .
+npm install
+npm run dev
 ```
 
 Then open `http://localhost:3000`.
 
-## Deploy (static)
+## Deploy
 
-- **Netlify / Vercel:** Drag the folder or connect the repo; no build step.
-- **GitHub Pages:** Push to a repo and enable Pages on the branch/folder.
-- Use your custom domain and point Stripe success/cancel URLs to `https://yourdomain.com/success.html` and `https://yourdomain.com/` (or a cancel page).
+- Deploy as a Next.js app (Vercel or equivalent Node runtime).
+- Use route-based URLs like `/success`, `/terms`, `/privacy` instead of `.html` paths.
 
 ## File overview
 
