@@ -1,6 +1,18 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAllowlistedAdminEmail() {
+      return request.auth != null && (
+        request.auth.token.email == "will_jackson@icloud.com" ||
+        request.auth.token.email == "stormij.xo@gmail.com"
+      );
+    }
+    function isAdmin() {
+      return request.auth != null && (
+        isAllowlistedAdminEmail() ||
+        exists(/databases/$(database)/documents/admin_users/$(request.auth.uid))
+      );
+    }
     // members: list of subscribers (admin reads/writes; success page can create)
     match /members/{memberId} {
       allow read, update, delete: if request.auth != null;
@@ -20,10 +32,10 @@ service cloud.firestore {
     match /purchases/{purchaseId} {
       allow read: if request.auth != null && (
         resource.data.email == request.auth.token.email ||
-        exists(/databases/$(database)/documents/admin_users/$(request.auth.uid))
+        isAdmin()
       );
       allow create: if false;
-      allow update: if request.auth != null && exists(/databases/$(database)/documents/admin_users/$(request.auth.uid));
+      allow update: if isAdmin();
       allow delete: if false;
     }
     // admin_users: staff with roles (e.g. admin); who can access admin panel
@@ -34,7 +46,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if request.auth != null && (
         request.auth.uid == userId ||
-        exists(/databases/$(database)/documents/admin_users/$(request.auth.uid))
+        isAdmin()
       );
       allow write: if request.auth != null && request.auth.uid == userId;
     }
@@ -79,7 +91,7 @@ service cloud.firestore {
       allow read: if request.auth != null && (
         resource.data.userId == request.auth.uid ||
         resource.data.forMemberEmail == request.auth.token.email ||
-        exists(/databases/$(database)/documents/admin_users/$(request.auth.uid))
+        isAdmin()
       );
       allow create: if request.auth != null;
       allow update, delete: if request.auth != null;
@@ -89,13 +101,13 @@ service cloud.firestore {
     match /conversations/{convId} {
       allow read, write: if request.auth != null && (
         convId == request.auth.uid ||
-        exists(/databases/$(database)/documents/admin_users/$(request.auth.uid))
+        isAdmin()
       );
     }
     match /conversations/{convId}/messages/{msgId} {
       allow read, write: if request.auth != null && (
         convId == request.auth.uid ||
-        exists(/databases/$(database)/documents/admin_users/$(request.auth.uid))
+        isAdmin()
       );
     }
   }
