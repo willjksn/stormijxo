@@ -14,6 +14,7 @@ import {
   limit,
   query,
   runTransaction,
+  setDoc,
   where,
 } from "firebase/firestore";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "firebase/auth";
@@ -101,6 +102,16 @@ export function SuccessContent() {
           if (code !== "auth/email-already-in-use") throw e;
           const existing = await signInWithEmailAndPassword(auth, pendingEmail, pending.password);
           uid = existing.user.uid;
+          const userRef = doc(db, "users", uid);
+          const userSnap = await getDoc(userRef);
+          if (!userSnap.exists()) {
+            await setDoc(userRef, {
+              email: existing.user.email ?? null,
+              displayName: existing.user.displayName ?? null,
+              username: (pending.username || "").trim().toLowerCase().slice(0, 32) || (existing.user.email ?? "").split("@")[0]?.toLowerCase().slice(0, 32) || uid.slice(0, 12),
+              createdAt: serverTimestamp(),
+            });
+          }
         }
 
         const existingMembership = await getDocs(

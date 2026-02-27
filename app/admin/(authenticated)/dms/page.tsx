@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
-import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs, addDoc, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseStorage } from "../../../../lib/firebase";
 import {
   ensureConversation,
@@ -118,6 +118,9 @@ export default function AdminDmsPage() {
   const [filterAll, setFilterAll] = useState(true);
   const [profileOpenForId, setProfileOpenForId] = useState<string | null>(null);
   const profileCardAnchorRef = useRef<HTMLButtonElement | null>(null);
+  const [addByUidValue, setAddByUidValue] = useState("");
+  const [addByUidLoading, setAddByUidLoading] = useState(false);
+  const [addByUidError, setAddByUidError] = useState<string | null>(null);
 
   const selected = conversations.find((c) => c.id === selectedId);
   const filteredConversations = useMemo(() => {
@@ -166,17 +169,34 @@ export default function AdminDmsPage() {
   const loadUserList = useCallback(() => {
     if (!db) return;
     setUserListLoading(true);
-    getDocs(collection(db, "users"))
-      .then((snap) => {
-        const list: UserOption[] = [];
-        snap.forEach((d) => {
+    Promise.all([
+      getDocs(collection(db, "users")),
+      getDocs(collection(db, "members")),
+    ])
+      .then(([usersSnap, membersSnap]) => {
+        const byUid = new Map<string, UserOption>();
+        usersSnap.forEach((d) => {
           const data = d.data();
-          list.push({
+          byUid.set(d.id, {
             uid: d.id,
             email: data.email != null ? String(data.email) : null,
             displayName: data.displayName != null ? String(data.displayName) : null,
           });
         });
+        membersSnap.forEach((d) => {
+          const data = d.data();
+          const uid = (data.uid ?? data.userId ?? "").toString().trim();
+          if (!uid) return;
+          if (byUid.has(uid)) return;
+          byUid.set(uid, {
+            uid,
+            email: data.email != null ? String(data.email) : null,
+            displayName: (data.displayName ?? data.instagram_handle ?? data.note ?? data.email ?? null) != null
+              ? String(data.displayName ?? data.instagram_handle ?? data.note ?? data.email)
+              : null,
+          });
+        });
+        const list = Array.from(byUid.values());
         list.sort((a, b) => {
           const na = (a.displayName || a.email || a.uid).toLowerCase();
           const nb = (b.displayName || b.email || b.uid).toLowerCase();
@@ -213,6 +233,54 @@ export default function AdminDmsPage() {
         });
       } catch (e) {
         console.error(e);
+      }
+    },
+    [db]
+  );
+
+  const handleStartByUid = useCallback(
+    async (uidRaw: string) => {
+      if (!db) return;
+      const uid = uidRaw.trim();
+      if (!uid) {
+        setAddByUidError("Enter a UID.");
+        return;
+      }
+      setAddByUidError(null);
+      setAddByUidLoading(true);
+      try {
+        const userRef = doc(db, "users", uid);
+        await setDoc(userRef, { email: null, displayName: null }, { merge: true });
+        await ensureConversation(db, uid, null, null);
+        setShowNewConversation(false);
+        setAddByUidValue("");
+        setSelectedId(uid);
+        setConversations((prev) => {
+          if (prev.some((c) => c.id === uid)) return prev;
+          return [
+            ...prev,
+            {
+              id: uid,
+              memberUid: uid,
+              memberEmail: null,
+              memberDisplayName: null,
+              createdAt: null,
+              updatedAt: null,
+              lastMessageAt: null,
+              lastMessagePreview: null,
+            },
+          ];
+        });
+        setUserList((prev) => {
+          if (prev.some((u) => u.uid === uid)) return prev;
+          return [...prev, { uid, email: null, displayName: null }].sort((a, b) =>
+            (a.displayName || a.email || a.uid).toLowerCase().localeCompare((b.displayName || b.email || b.uid).toLowerCase())
+          );
+        });
+      } catch (e) {
+        setAddByUidError((e as Error)?.message ?? "Failed to start conversation.");
+      } finally {
+        setAddByUidLoading(false);
       }
     },
     [db]
@@ -558,6 +626,45 @@ export default function AdminDmsPage() {
                 })}
               </ul>
             )}
+            <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
+              <p style={{ margin: "0 0 0.5rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                Or add by Firebase Auth UID (from Authentication in Firebase Console):
+              </p>
+              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                <input
+                  type="text"
+                  value={addByUidValue}
+                  onChange={(e) => { setAddByUidValue(e.target.value); setAddByUidError(null); }}
+                  placeholder="e.g. 4C0mktzFPLOFjLwjYzpoc53DWTi2"
+                  style={{
+                    flex: 1,
+                    minWidth: 180,
+                    padding: "0.5rem 0.75rem",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    fontSize: "0.9rem",
+                    fontFamily: "monospace",
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleStartByUid(addByUidValue);
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={addByUidLoading || !addByUidValue.trim()}
+                  onClick={() => handleStartByUid(addByUidValue)}
+                >
+                  {addByUidLoading ? "Opening…" : "Start conversation"}
+                </button>
+              </div>
+              {addByUidError && (
+                <p style={{ margin: "0.35rem 0 0", fontSize: "0.85rem", color: "var(--error, #c00)" }}>{addByUidError}</p>
+              )}
+            </div>
             <div style={{ marginTop: "1rem" }}>
               <button type="button" className="btn btn-secondary" onClick={() => setShowNewConversation(false)}>
                 Cancel

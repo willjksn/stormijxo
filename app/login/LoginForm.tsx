@@ -44,6 +44,7 @@ export function LoginForm() {
     setError(null);
     setLoading(true);
     const auth = getFirebaseAuth();
+    const db = getFirebaseDb();
     if (!auth) {
       setError("Firebase is not configured.");
       setLoading(false);
@@ -51,7 +52,19 @@ export function LoginForm() {
     }
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-      const path = await getPostLoginPath(getFirebaseDb(), cred.user.email ?? null, cred.user.uid, redirect);
+      if (db) {
+        const userRef = doc(db, "users", cred.user.uid);
+        const snap = await getDoc(userRef);
+        if (!snap.exists()) {
+          await setDoc(userRef, {
+            email: cred.user.email ?? null,
+            displayName: cred.user.displayName ?? null,
+            username: (cred.user.email ?? "").split("@")[0]?.toLowerCase().slice(0, 32) || cred.user.uid.slice(0, 12),
+            createdAt: serverTimestamp(),
+          });
+        }
+      }
+      const path = await getPostLoginPath(db, cred.user.email ?? null, cred.user.uid, redirect);
       router.replace(path);
     } catch (err) {
       setError(getAuthErrorMessage(err, "Log in failed."));

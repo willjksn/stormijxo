@@ -11,7 +11,7 @@ import {
   updateProfile,
   GoogleAuthProvider,
 } from "firebase/auth";
-import { doc, getDoc, runTransaction, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, runTransaction, serverTimestamp, setDoc } from "firebase/firestore";
 import { getFirebaseAuth, getFirebaseDb } from "../../lib/firebase";
 import { getAuthErrorMessage, getPostLoginPath } from "../../lib/auth-redirect";
 
@@ -236,6 +236,18 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath }: AuthMod
     setLoading(true);
     try {
       const cred = await signInWithEmailAndPassword(auth, loginEmail.trim(), loginPassword);
+      if (db) {
+        const userRef = doc(db, "users", cred.user.uid);
+        const snap = await getDoc(userRef);
+        if (!snap.exists()) {
+          await setDoc(userRef, {
+            email: cred.user.email ?? null,
+            displayName: cred.user.displayName ?? null,
+            username: (cred.user.email ?? "").split("@")[0]?.toLowerCase().slice(0, 32) || cred.user.uid.slice(0, 12),
+            createdAt: serverTimestamp(),
+          });
+        }
+      }
       await goAfterLoginOrCheckout(cred.user);
     } catch (err) {
       showError(getAuthErrorMessage(err, "Log in failed."));
