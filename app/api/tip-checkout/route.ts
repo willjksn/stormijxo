@@ -14,17 +14,32 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { amountCents?: number; postId?: string; instagram_handle?: string; base_url?: string; success_url?: string; cancel_url?: string };
+  let body: {
+    amountCents?: number | string;
+    amount?: number | string;
+    postId?: string;
+    instagram_handle?: string;
+    base_url?: string;
+    success_url?: string;
+    cancel_url?: string;
+  };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const amountCents = typeof body.amountCents === "number" ? Math.round(body.amountCents) : 0;
-  if (amountCents < 100) {
+  const rawAmount = body.amountCents ?? body.amount;
+  const parsedAmount =
+    typeof rawAmount === "number"
+      ? Math.round(rawAmount)
+      : typeof rawAmount === "string"
+        ? parseInt(rawAmount, 10)
+        : NaN;
+  const amountCents = Number.isFinite(parsedAmount) ? parsedAmount : 0;
+  if (!Number.isInteger(amountCents) || amountCents < 100 || amountCents > 100000) {
     return NextResponse.json(
-      { error: "Minimum tip is $1.00" },
+      { error: "Amount must be between 100 and 100000 cents ($1-$1000)." },
       { status: 400 }
     );
   }

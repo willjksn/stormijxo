@@ -51,12 +51,16 @@ export default function TipPage() {
       .catch(() => {});
   }, [db]);
 
+  const parsedCustomAmount = customAmount.trim()
+    ? Number.parseFloat(customAmount)
+    : NaN;
+  const customAmountCents = Number.isFinite(parsedCustomAmount)
+    ? Math.round(parsedCustomAmount * 100)
+    : 0;
   const amountCents =
     selectedPreset != null
       ? selectedPreset * 100
-      : customAmount.trim()
-        ? Math.round(parseFloat(customAmount) * 100)
-        : 0;
+      : customAmountCents;
 
   const startTipCheckout = async (cents: number) => {
     if (cents < 100) return;
@@ -163,7 +167,7 @@ export default function TipPage() {
           type="button"
           className="tip-cta"
           onClick={handleTip}
-          disabled={amountCents < 100 || loading}
+          disabled={amountCents < 100 || amountCents > 100000 || loading}
         >
           {loading ? "Taking you to checkout…" : `Tip $${(amountCents / 100).toFixed(2)}`}
         </button>
