@@ -5,22 +5,60 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "../contexts/AuthContext";
 import { AuthModal } from "./AuthModal";
+import { getFirebaseDb } from "../../lib/firebase";
+import { hasActiveMembership, isAdminEmail } from "../../lib/auth-redirect";
 
 export function LandingHeaderWithAuth() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTab, setModalTab] = useState<"login" | "signup">("signup");
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  const [showMemberNav, setShowMemberNav] = useState(false);
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect");
   const authIntent = searchParams.get("auth");
 
   useEffect(() => {
-    if (user) return;
+    if (showMemberNav) return;
     if (authIntent === "signup" || authIntent === "login") {
       setModalTab(authIntent);
       setModalOpen(true);
     }
-  }, [authIntent, user]);
+  }, [authIntent, showMemberNav]);
+
+  useEffect(() => {
+    let active = true;
+    if (loading || !user) {
+      setShowMemberNav(false);
+      return () => {
+        active = false;
+      };
+    }
+    if (isAdminEmail(user.email ?? null)) {
+      setShowMemberNav(true);
+      return () => {
+        active = false;
+      };
+    }
+    const db = getFirebaseDb();
+    if (!db) {
+      setShowMemberNav(false);
+      return () => {
+        active = false;
+      };
+    }
+    hasActiveMembership(db, user.email ?? null, user.uid)
+      .then((ok) => {
+        if (!active) return;
+        setShowMemberNav(ok);
+      })
+      .catch(() => {
+        if (!active) return;
+        setShowMemberNav(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user, loading]);
 
   const openSignup = () => {
     setModalTab("signup");
@@ -35,7 +73,7 @@ export function LandingHeaderWithAuth() {
   return (
     <>
       <header className="site-header">
-        <Link href={user ? "/home" : "/"} className="logo logo-pop">
+        <Link href={showMemberNav ? "/home" : "/"} className="logo logo-pop">
           <img
             src="/assets/logo.svg"
             alt="Inner Circle"
@@ -50,7 +88,7 @@ export function LandingHeaderWithAuth() {
           <span className="logo-fallback" style={{ display: "none", fontWeight: 600, fontSize: "1.1rem", color: "var(--text)" }} aria-hidden>Inner Circle</span>
         </Link>
         <nav className="header-nav">
-          {user ? (
+          {showMemberNav ? (
             <Link href="/home" className="header-link">
               Home
             </Link>
@@ -59,7 +97,7 @@ export function LandingHeaderWithAuth() {
               Sign up
             </button>
           )}
-          {user ? (
+          {showMemberNav ? (
             <Link href="/profile" className="header-login">
               Profile
             </Link>

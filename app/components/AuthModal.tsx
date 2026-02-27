@@ -298,7 +298,7 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath }: AuthMod
   if (!isOpen) return null;
 
   const title = tab === "signup" ? "Create your account" : "Welcome back";
-  const subtitle = tab === "signup" ? "Start using Inner Circle." : "Log in to Inner Circle.";
+  const subtitle = tab === "signup" ? "Create your account, then continue to secure checkout." : "Log in to Inner Circle.";
 
   const modalContent = (
     <div
