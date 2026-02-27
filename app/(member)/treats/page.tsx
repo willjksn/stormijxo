@@ -5,8 +5,12 @@ import { collection, getDocs } from "firebase/firestore";
 import { getFirebaseDb } from "../../../lib/firebase";
 import { TREATS_COLLECTION, DEFAULT_TREATS, type TreatDoc } from "../../../lib/treats";
 
+const STORE_ENABLED =
+  typeof process.env.NEXT_PUBLIC_TREATS_STORE !== "undefined"
+    ? process.env.NEXT_PUBLIC_TREATS_STORE === "true"
+    : true;
+
 export default function TreatsPage() {
-  const STORE_ENABLED = false;
   const [treats, setTreats] = useState<TreatDoc[]>([]);
   const [loading, setLoading] = useState<string | null>(null);
   const [listLoading, setListLoading] = useState(true);

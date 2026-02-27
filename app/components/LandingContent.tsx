@@ -32,25 +32,3 @@ export function LandingTestimonial() {
     </section>
   );
 }
-
-export function LandingCtaCount() {
-  const [content, setContent] = useState<SiteConfigContent | null>(null);
-  const db = getFirebaseDb();
-
-  useEffect(() => {
-    if (!db) return;
-    loadLandingConfig(db)
-      .then((cfg) => {
-        if (cfg.content) setContent(cfg.content as SiteConfigContent);
-      })
-      .catch(() => {});
-  }, [db]);
-
-  if (!content?.showMemberCount || typeof content.memberCount !== "number") return null;
-
-  return (
-    <p className="preview-sub landing-cta-count">
-      Join <strong>{content.memberCount}</strong> in the circle
-    </p>
-  );
-}

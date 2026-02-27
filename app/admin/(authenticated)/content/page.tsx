@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { doc, getDoc, setDoc, getDocs, collection } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseStorage } from "../../../../lib/firebase";
 import { listMediaLibraryAll, type MediaItem } from "../../../../lib/media-library";
 import type { SiteConfigContent } from "../../../../lib/site-config";
@@ -33,8 +33,6 @@ export default function AdminContentPage() {
   const [content, setContent] = useState<SiteConfigContent>({
     testimonialQuote: "",
     testimonialAttribution: "",
-    showMemberCount: false,
-    memberCount: 0,
     tipPageHeroImageUrl: "",
     tipPageHeroTitle: "",
     tipPageHeroSubtext: "",
@@ -74,8 +72,6 @@ export default function AdminContentPage() {
           setContent({
             testimonialQuote: d.testimonialQuote ?? "",
             testimonialAttribution: d.testimonialAttribution ?? "",
-            showMemberCount: !!d.showMemberCount,
-            memberCount: typeof d.memberCount === "number" ? d.memberCount : 0,
             tipPageHeroImageUrl: d.tipPageHeroImageUrl ?? "",
             tipPageHeroTitle: d.tipPageHeroTitle ?? "",
             tipPageHeroSubtext: d.tipPageHeroSubtext ?? "",
@@ -134,8 +130,6 @@ export default function AdminContentPage() {
         setContent({
           testimonialQuote: d.testimonialQuote ?? "",
           testimonialAttribution: d.testimonialAttribution ?? "",
-          showMemberCount: !!d.showMemberCount,
-          memberCount: typeof d.memberCount === "number" ? d.memberCount : 0,
           tipPageHeroImageUrl: d.tipPageHeroImageUrl ?? "",
           tipPageHeroTitle: d.tipPageHeroTitle ?? "",
           tipPageHeroSubtext: d.tipPageHeroSubtext ?? "",
@@ -173,8 +167,6 @@ export default function AdminContentPage() {
   const handleSaveLanding = () => {
     const c = contentRef.current;
     saveSection("landing", {
-      showMemberCount: c.showMemberCount,
-      memberCount: c.memberCount,
       showSocialInstagram: c.showSocialInstagram,
       showSocialFacebook: c.showSocialFacebook,
       showSocialX: c.showSocialX,
@@ -194,54 +186,6 @@ export default function AdminContentPage() {
       tipPageHeroTitleFontSize: c.tipPageHeroTitleFontSize,
       tipPageHeroSubtextFontSize: c.tipPageHeroSubtextFontSize,
     });
-  };
-
-  const handleRefreshCount = async () => {
-    const dbNow = getFirebaseDb();
-    if (!dbNow) {
-      showMessage("error", "Not connected. Please refresh the page.");
-      return;
-    }
-    setSaving(true);
-    setMessage(null);
-    try {
-      const snap = await getDocs(collection(dbNow, "members"));
-      const count = snap.size;
-      const c = contentRef.current;
-      setContent((prev) => ({ ...prev, memberCount: count }));
-      await setDoc(
-        doc(dbNow, CONTENT_DOC_PATH, SITE_CONFIG_CONTENT_ID),
-        {
-          testimonialQuote: c.testimonialQuote?.trim() ?? "",
-          testimonialAttribution: c.testimonialAttribution?.trim() ?? "",
-          showMemberCount: c.showMemberCount,
-          memberCount: count,
-          tipPageHeroImageUrl: c.tipPageHeroImageUrl?.trim() ?? "",
-          tipPageHeroTitle: c.tipPageHeroTitle?.trim() ?? "",
-          tipPageHeroSubtext: c.tipPageHeroSubtext?.trim() ?? "",
-          tipPageHeroTitleColor: c.tipPageHeroTitleColor?.trim() ?? "",
-          tipPageHeroSubtextColor: c.tipPageHeroSubtextColor?.trim() ?? "",
-          tipPageHeroTitleFontSize: c.tipPageHeroTitleFontSize,
-          tipPageHeroSubtextFontSize: c.tipPageHeroSubtextFontSize,
-          privacyPolicyLastUpdated: c.privacyPolicyLastUpdated?.trim() ?? "",
-          termsLastUpdated: c.termsLastUpdated?.trim() ?? "",
-          privacyPolicyHtml: c.privacyPolicyHtml ?? "",
-          termsHtml: c.termsHtml ?? "",
-          showSocialInstagram: c.showSocialInstagram,
-          showSocialFacebook: c.showSocialFacebook,
-          showSocialX: c.showSocialX,
-          showSocialTiktok: c.showSocialTiktok,
-          showSocialYoutube: c.showSocialYoutube,
-        },
-        { merge: true }
-      );
-      showMessage("ok", `Member count updated: ${count}.`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Could not refresh member count.";
-      showMessage("error", msg);
-    } finally {
-      setSaving(false);
-    }
   };
 
   const openLegalModal = (which: "privacy" | "terms") => {
@@ -320,7 +264,7 @@ export default function AdminContentPage() {
     <main className="admin-main admin-content-main" style={{ maxWidth: 640, margin: "0 auto" }}>
       <h1>Content</h1>
       <p className="intro" style={{ color: "var(--text-muted)", marginBottom: "1.5rem" }}>
-        Site-wide content: landing page (testimonial, member count), tip page hero, and legal “last updated” dates.
+        Site-wide content: landing page (testimonial, social icons), tip page hero, and legal “last updated” dates.
       </p>
 
       {message && (
@@ -356,39 +300,6 @@ export default function AdminContentPage() {
 
       <section className="content-section" aria-labelledby="content-landing-heading">
         <h2 id="content-landing-heading" className="content-section-title">Landing page</h2>
-
-      <div className="content-block">
-        <h2>Member count</h2>
-        <p className="admin-content-member-count-text" style={{ margin: "0 0 0.5rem", fontSize: "0.95rem", color: "var(--text-muted)" }}>
-          Display &quot;Join <strong>{content.memberCount}</strong> in the circle&quot; in the CTA when enabled. Count comes from the members collection.
-        </p>
-        <label className="admin-content-checkbox" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
-          <input
-            type="checkbox"
-            checked={content.showMemberCount}
-            onChange={(e) => setContent((c) => ({ ...c, showMemberCount: e.target.checked }))}
-          />
-          <span>Show member count on landing page</span>
-        </label>
-        <div className="admin-content-member-count-actions">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={handleRefreshCount}
-            disabled={saving}
-          >
-            Refresh count from members
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={handleSaveLanding}
-            disabled={saving}
-          >
-            {savingSection === "landing" ? "Saving…" : "Save section"}
-          </button>
-        </div>
-      </div>
 
       <div className="content-block">
         <h2>Social icons (hero &amp; footer)</h2>

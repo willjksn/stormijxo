@@ -55,9 +55,9 @@ service cloud.firestore {
     match /mediaLibrary/{docId} {
       allow read, write: if request.auth != null;
     }
-    // treats: store treat cards; members read (treats page), admin write; webhook updates quantity via Admin SDK
+    // treats: store treat cards; anyone can read (store listing); only authenticated can write (admin); webhook updates quantity via Admin SDK
     match /treats/{treatId} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow write: if request.auth != null;
     }
   }

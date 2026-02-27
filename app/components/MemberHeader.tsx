@@ -88,7 +88,10 @@ export function MemberHeader({ active }: MemberHeaderProps) {
 
   const displayAvatar = avatarStableRef.current;
   const showAdmin = user ? isAdminEmail(user.email ?? null) : false;
-  const treatsStoreEnabled = false;
+  const treatsStoreEnabled =
+    typeof process.env.NEXT_PUBLIC_TREATS_STORE !== "undefined"
+      ? process.env.NEXT_PUBLIC_TREATS_STORE === "true"
+      : true;
 
   return (
     <header className="member-header">

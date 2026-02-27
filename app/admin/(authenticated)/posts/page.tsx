@@ -197,6 +197,44 @@ export default function AdminPostsPage() {
   const pollEmojiWrapRef = useRef<HTMLDivElement | null>(null);
   const tipEmojiWrapRef = useRef<HTMLDivElement | null>(null);
   const overlayEmojiWrapRef = useRef<HTMLDivElement | null>(null);
+  const prevEditIdRef = useRef<string | null>(null);
+
+  const clearPostForm = useCallback(() => {
+    setCaption("");
+    setSelectedMedia([]);
+    setOverlayAnimation("static");
+    setOverlayText("");
+    setOverlayTextColor("#ffffff");
+    setOverlayHighlight(false);
+    setOverlayUnderline(false);
+    setOverlayItalic(false);
+    setOverlayTextSize(18);
+    setOverlaySectionOpen(false);
+    setHideComments(false);
+    setHideLikes(false);
+    setShowTipButton(true);
+    setPoll(null);
+    setTipGoalEnabled(false);
+    setTipGoalDescription("");
+    setTipGoalTargetDollars("");
+    setTipGoalRaisedCents(0);
+    setLockEnabled(false);
+    setLockPriceDollars("");
+    setMessage(null);
+    try {
+      sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    const prev = prevEditIdRef.current;
+    prevEditIdRef.current = editId;
+    if (prev != null && editId === null) {
+      clearPostForm();
+    }
+  }, [editId, clearPostForm]);
 
   const insertEmojiAtCursor = (field: "caption" | "pollQuestion" | "tipGoal" | "overlayText", emoji: string) => {
     if (field === "caption") {

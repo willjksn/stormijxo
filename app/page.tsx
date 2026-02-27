@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { LandingHeaderWithAuth } from "./components/LandingHeaderWithAuth";
-import { LandingCtaCount } from "./components/LandingContent";
+import { LandingTestimonial } from "./components/LandingContent";
 import { LandingHeroMedia } from "./components/LandingHeroMedia";
 import { LandingSocialLinks } from "./components/LandingSocialLinks";
 import { LandingTipCheckout } from "./components/LandingTipCheckout";
@@ -125,7 +125,6 @@ export default function LandingPage() {
         </section>
 
         <section className="cta reveal landing-panel cta-panel visible">
-          <LandingCtaCount />
           <p className="preview-sub">Join the Inner Circle</p>
           <p className="hero-promise">
             <span className="hero-promise-line">$19/month</span>

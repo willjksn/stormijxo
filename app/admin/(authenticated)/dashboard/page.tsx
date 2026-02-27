@@ -614,7 +614,9 @@ export default function AdminDashboardPage() {
                       </div>
                       <div className="top-purchases-card">
                         <h2>Top purchases</h2>
-                        <p className="top-purchases-note" style={{ marginBottom: "0.75rem" }}>Store: personal messages, 1-on-1 chat, video & voice calls</p>
+                        <p className="top-purchases-note" style={{ marginBottom: "0.75rem" }}>
+                          Treats store: personal messages, voice notes, video & more. Manage in Admin → Treats.
+                        </p>
                         <table className="top-purchases-table">
                           <thead>
                             <tr><th>Product</th><th>Purchases</th><th>Revenue</th></tr>
@@ -629,7 +631,9 @@ export default function AdminDashboardPage() {
                             ))}
                           </tbody>
                         </table>
-                        <p className="top-purchases-note">Store coming soon. Real data will appear when you add a purchases collection.</p>
+                        {topPurchases.length === 0 && (
+                          <p className="top-purchases-note">Treat purchases will appear here once members buy from the Treats page.</p>
+                        )}
                       </div>
                     </div>
                   </div>
