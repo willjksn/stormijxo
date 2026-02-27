@@ -497,7 +497,8 @@ export default function AdminPostsPage() {
     const hasMedia = selectedMedia.length > 0;
     const hasCaption = caption.trim().length > 0;
     const hasPoll = !!(poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2);
-    if (!hasMedia && !hasCaption && !hasPoll) {
+    const hasAnySavableContent = hasMedia || hasCaption || hasPoll || !!editId;
+    if (!hasAnySavableContent) {
       setMessage({ type: "error", text: "Add media, a caption, or a poll." });
       return;
     }
@@ -650,7 +651,8 @@ export default function AdminPostsPage() {
     const hasMedia = selectedMedia.length > 0;
     const hasCaption = caption.trim().length > 0;
     const hasPoll = !!(poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2);
-    if (!hasMedia && !hasCaption && !hasPoll) {
+    const hasAnySavableContent = hasMedia || hasCaption || hasPoll || !!editId;
+    if (!hasAnySavableContent) {
       setMessage({ type: "error", text: "Add media, a caption, or a poll." });
       return;
     }
@@ -677,6 +679,11 @@ export default function AdminPostsPage() {
       </main>
     );
   }
+
+  const hasMedia = selectedMedia.length > 0;
+  const hasCaption = caption.trim().length > 0;
+  const hasPoll = !!(poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2);
+  const canSavePost = hasMedia || hasCaption || hasPoll || !!editId;
 
   return (
     <main className="admin-main admin-posts-main">
@@ -849,7 +856,7 @@ export default function AdminPostsPage() {
                     type="button"
                     className="btn btn-primary"
                     onClick={() => savePost("draft")}
-                    disabled={publishLoading || !(selectedMedia.length > 0 || caption.trim() || (poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2))}
+                    disabled={publishLoading || !canSavePost}
                   >
                     Save
                   </button>
@@ -933,7 +940,7 @@ export default function AdminPostsPage() {
                     type="button"
                     className="btn btn-primary"
                     onClick={() => savePost("draft")}
-                    disabled={publishLoading || !(selectedMedia.length > 0 || caption.trim() || (poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2))}
+                    disabled={publishLoading || !canSavePost}
                   >
                     Save
                   </button>
@@ -974,7 +981,7 @@ export default function AdminPostsPage() {
                     type="button"
                     className="btn btn-primary"
                     onClick={() => savePost("draft")}
-                    disabled={publishLoading || !(selectedMedia.length > 0 || caption.trim() || (poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2))}
+                    disabled={publishLoading || !canSavePost}
                   >
                     Save
                   </button>
@@ -1141,13 +1148,13 @@ export default function AdminPostsPage() {
           </section>
 
           <div className="admin-posts-actions">
-            <button type="button" className="btn btn-primary" onClick={handlePublishNow} disabled={publishLoading || !(selectedMedia.length > 0 || caption.trim() || (poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2))}>
+            <button type="button" className="btn btn-primary" onClick={handlePublishNow} disabled={publishLoading || !canSavePost}>
               {publishLoading ? "Saving…" : "Publish now"}
             </button>
-            <button type="button" className="btn btn-secondary admin-posts-schedule-btn" onClick={handleScheduleClick} disabled={publishLoading || !(selectedMedia.length > 0 || caption.trim() || (poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2))}>
+            <button type="button" className="btn btn-secondary admin-posts-schedule-btn" onClick={handleScheduleClick} disabled={publishLoading || !canSavePost}>
               Schedule
             </button>
-            <button type="button" className="btn btn-secondary" onClick={handleSaveDraft} disabled={publishLoading || !(selectedMedia.length > 0 || caption.trim() || (poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2))}>
+            <button type="button" className="btn btn-secondary" onClick={handleSaveDraft} disabled={publishLoading || !canSavePost}>
               Save as draft
             </button>
           </div>
