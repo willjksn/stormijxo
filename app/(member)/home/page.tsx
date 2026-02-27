@@ -166,7 +166,9 @@ function FeedCard({
   onLikeUpdated,
   currentUser,
   savedPostIds,
+  unlockedPostIds,
   onSavedUpdated,
+  onUnlockRequest,
 }: {
   post: FeedPost;
   showAdminEdit?: boolean;
