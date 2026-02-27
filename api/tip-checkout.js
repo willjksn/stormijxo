@@ -35,6 +35,52 @@ module.exports = async (req, res) => {
   }
 
   const body = req.body || {};
+  const isSubscriptionIntent =
+    body.checkoutType === "subscription" ||
+    (typeof req.url === "string" && req.url.includes("subscription-checkout"));
+
+  if (isSubscriptionIntent) {
+    const priceId =
+      process.env.STRIPE_PRICE_ID_MONTHLY ||
+      process.env.STRIPE_SUBSCRIPTION_PRICE_ID;
+    if (!priceId || !String(priceId).startsWith("price_")) {
+      json(res, 500, {
+        error:
+          "Stripe subscription price not configured. Set STRIPE_PRICE_ID_MONTHLY (or STRIPE_SUBSCRIPTION_PRICE_ID).",
+      });
+      return;
+    }
+
+    const baseUrl = body.base_url || process.env.PUBLIC_APP_URL || "https://stormijxo.com";
+    const normalizedBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+    const successUrl = body.success_url || `${normalizedBase}/success`;
+    const cancelUrl = body.cancel_url || `${normalizedBase}/#pricing`;
+    const customerEmail =
+      typeof body.customer_email === "string" ? body.customer_email.trim() : undefined;
+    const uid = typeof body.uid === "string" ? body.uid.trim() : undefined;
+    const metadata = { source: "stormij_web" };
+    if (uid) metadata.uid = uid;
+
+    try {
+      const stripe = new Stripe(stripeSecret);
+      const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        line_items: [{ quantity: 1, price: priceId }],
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        customer_email: customerEmail || undefined,
+        metadata,
+        subscription_data: { metadata },
+      });
+      json(res, 200, { url: session.url });
+      return;
+    } catch (err) {
+      console.error("subscription-checkout fallback error:", err);
+      json(res, 500, { error: err && err.message ? err.message : "Checkout failed" });
+      return;
+    }
+  }
+
   const rawAmount =
     body.amountCents != null
       ? body.amountCents

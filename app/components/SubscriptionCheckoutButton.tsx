@@ -34,6 +34,7 @@ export function SubscriptionCheckoutButton({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          checkoutType: "subscription",
           success_url: `${base}/success`,
           cancel_url: `${base}/#pricing`,
           ...(customerEmail ? { customer_email: customerEmail } : {}),
