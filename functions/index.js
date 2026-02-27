@@ -245,12 +245,70 @@ exports.stripeWebhook = functions
           status: "cancelled",
           cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
           access_ends_at: periodEnd ? admin.firestore.Timestamp.fromMillis(periodEnd * 1000) : null,
+          subscriptionEndRemindersSent: [], // 7/3/1 day reminders sent by scheduled function
         });
         console.log("Updated member cancelled, access until:", periodEnd);
       }
     }
 
     res.json({ received: true });
+  });
+
+/**
+ * Cron job: runs daily at 9:00 AM UTC. Finds cancelled members whose access ends in 7, 3, or 1 day
+ * and sends them an in-app notification (once per reminder type).
+ */
+const REMINDER_DAYS = [7, 3, 1];
+exports.sendSubscriptionEndReminders = functions
+  .runWith({ node: "20" })
+  .pubsub.schedule("0 9 * * *")
+  .timeZone("UTC")
+  .onRun(async () => {
+    const db = admin.firestore();
+    const membersRef = db.collection("members");
+    const notificationsRef = db.collection("notifications");
+    const now = new Date();
+    const nowTs = admin.firestore.Timestamp.fromDate(now);
+    const snap = await membersRef
+      .where("status", "==", "cancelled")
+      .where("access_ends_at", ">", nowTs)
+      .get();
+
+    for (const docSnap of snap.docs) {
+      const data = docSnap.data();
+      const accessEndsAt = data.access_ends_at && data.access_ends_at.toDate ? data.access_ends_at.toDate() : null;
+      if (!accessEndsAt || accessEndsAt <= now) continue;
+
+      const email = (data.email || "").toString().trim().toLowerCase();
+      if (!email) continue;
+
+      const daysLeft = Math.ceil((accessEndsAt.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+      if (!REMINDER_DAYS.includes(daysLeft)) continue;
+
+      const sent = Array.isArray(data.subscriptionEndRemindersSent) ? data.subscriptionEndRemindersSent : [];
+      if (sent.includes(daysLeft)) continue;
+
+      const dayLabel = daysLeft === 1 ? "1 day" : `${daysLeft} days`;
+      const endDateStr = accessEndsAt.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+
+      await notificationsRef.add({
+        forMemberEmail: email,
+        forAdmin: false,
+        type: "subscription_ending",
+        title: "Subscription ending soon",
+        body: `Your access ends in ${dayLabel} (${endDateStr}). Resubscribe anytime from your profile to keep access.`,
+        link: "/profile",
+        read: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      await docSnap.ref.update({
+        subscriptionEndRemindersSent: admin.firestore.FieldValue.arrayUnion(daysLeft),
+      });
+      console.log("Subscription end reminder sent:", email, daysLeft, "days");
+    }
+
+    return null;
   });
 
 /**

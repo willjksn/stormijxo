@@ -16,9 +16,10 @@ import {
   writeBatch,
   updateDoc,
 } from "firebase/firestore";
-import { getFirebaseDb } from "../../../../lib/firebase";
+import { getFirebaseDb, getFirebaseAuth } from "../../../../lib/firebase";
 import { ALLOWED_ADMIN_EMAILS } from "../../../../lib/auth-redirect";
 import { MemberProfileCard } from "../../components/MemberProfileCard";
+import { TREATS_COLLECTION, type TreatDoc } from "../../../../lib/treats";
 
 type SpendEntry = { monthlyCents: number; storeItems: string[] };
 type TipperEntry = {
@@ -42,6 +43,9 @@ type UserRow = {
   monthlySpendCents: number;
   storeItems: string[];
   authOnly?: boolean;
+  freeTreatRedeems?: number;
+  /** Per-treat redeem counts (treatId -> number). */
+  treatRedeems?: Record<string, number>;
 };
 
 type TipperRow = {
@@ -124,13 +128,26 @@ export default function AdminUsersPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalEmail, setModalEmail] = useState("");
   const [modalDisplayName, setModalDisplayName] = useState("");
+  const [modalPassword, setModalPassword] = useState("");
   const [modalStatus, setModalStatus] = useState("");
   const [modalSubmitting, setModalSubmitting] = useState(false);
-  const [recoverEmail, setRecoverEmail] = useState("");
-  const [recovering, setRecovering] = useState(false);
-  const [recoverStatus, setRecoverStatus] = useState("");
   const [profileCardUserId, setProfileCardUserId] = useState<string | null>(null);
   const profileCardAnchorRef = useRef<HTMLButtonElement | null>(null);
+
+  const [manageUser, setManageUser] = useState<UserRow | null>(null);
+  const [manageTab, setManageTab] = useState<"manage" | "reward">("manage");
+  const [manageNewPassword, setManageNewPassword] = useState("");
+  const [manageRedeemsCount, setManageRedeemsCount] = useState(1);
+  const [manageStatus, setManageStatus] = useState("");
+  const [manageDisplayName, setManageDisplayName] = useState("");
+  const [manageMessage, setManageMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [manageLoading, setManageLoading] = useState(false);
+  const [managePasswordVisible, setManagePasswordVisible] = useState(false);
+
+  const [activeTreats, setActiveTreats] = useState<TreatDoc[]>([]);
+  const [manageTreatId, setManageTreatId] = useState("");
+  const [manageTreatCount, setManageTreatCount] = useState(1);
+  const [manageTreatReason, setManageTreatReason] = useState("");
 
   useEffect(() => {
     if (!db) {
@@ -233,6 +250,8 @@ export default function AdminUsersPage() {
             accessEndsAt,
             monthlySpendCents: 0,
             storeItems: [],
+            freeTreatRedeems: typeof d.freeTreatRedeems === "number" ? d.freeTreatRedeems : 0,
+            treatRedeems: d.treatRedeems && typeof d.treatRedeems === "object" ? (d.treatRedeems as Record<string, number>) : {},
           });
         });
         setMembers(list);
@@ -307,6 +326,34 @@ export default function AdminUsersPage() {
       setLoading(false);
     });
   }, [db]);
+
+  useEffect(() => {
+    if (!db) return;
+    getDocs(collection(db, TREATS_COLLECTION))
+      .then((snap) => {
+        const list: TreatDoc[] = [];
+        snap.forEach((d) => {
+          const data = d.data();
+          list.push({
+            id: d.id,
+            name: (data.name ?? "").toString(),
+            price: typeof data.price === "number" ? data.price : 0,
+            description: (data.description ?? "").toString(),
+            quantityLeft: typeof data.quantityLeft === "number" ? data.quantityLeft : 0,
+            order: typeof data.order === "number" ? data.order : 0,
+          });
+        });
+        list.sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+        setActiveTreats(list);
+      })
+      .catch(() => setActiveTreats([]));
+  }, [db]);
+
+  useEffect(() => {
+    if (manageUser && activeTreats.length > 0 && !manageTreatId) {
+      setManageTreatId(activeTreats[0]!.id);
+    }
+  }, [manageUser, activeTreats, manageTreatId]);
 
   const merged = useMemo(() => {
     const byEmail = new Map<string, UserRow>();
@@ -418,21 +465,44 @@ export default function AdminUsersPage() {
     setModalSubmitting(true);
     setModalStatus("Creating…");
     try {
-      await addDoc(collection(db, "members"), {
-        email,
+      const membersRef = collection(db, "members");
+      const docRef = await addDoc(membersRef, {
+        email: email.toLowerCase(),
         displayName: modalDisplayName.trim() || null,
         note: modalDisplayName.trim() || null,
         instagram_handle: null,
         status: "active",
         joinedAt: serverTimestamp(),
       });
-      setModalStatus("User created successfully.");
+      const password = modalPassword.trim();
+      if (password.length >= 6) {
+        const token = await getAuthToken();
+        const res = await fetch("/api/admin/create-user", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            email: email.toLowerCase(),
+            password,
+            memberId: docRef.id,
+            displayName: modalDisplayName.trim() || null,
+          }),
+        });
+        const data = (await res.json().catch(() => ({}))) as { error?: string; ok?: boolean; message?: string };
+        if (res.ok && data.ok) {
+          setModalStatus("User created.");
+        } else {
+          setModalStatus(data.error || "Member created but Auth user failed.");
+        }
+      } else {
+        setModalStatus("Member created.");
+      }
       setModalEmail("");
       setModalDisplayName("");
+      setModalPassword("");
       setTimeout(() => {
         setModalOpen(false);
         setModalStatus("");
-      }, 1500);
+      }, 2500);
     } catch (err) {
       setModalStatus("Could not create user: " + (err as Error).message);
     } finally {
@@ -440,56 +510,189 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleDelete = (id: string, type: string) => {
+  const handleDelete = async (id: string, type: string) => {
     if (id.startsWith("allowlist-") || id.startsWith("auth-")) {
       alert("This admin is managed in Firebase Authentication. Remove them there if needed.");
       return;
     }
     if (!confirm("Remove this user? This cannot be undone.")) return;
     if (!db) return;
-    if (type === "admin")
+    if (type === "admin") {
       deleteDoc(doc(db, "admin_users", id)).catch((err: Error) => alert("Could not remove: " + (err?.message ?? "unknown")));
-    else
-      deleteDoc(doc(db, "members", id)).catch((err: Error) => alert("Could not remove: " + (err?.message ?? "unknown")));
+      return;
+    }
+    try {
+      const token = await getAuthToken();
+      const res = await fetch("/api/admin/delete-member", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ memberId: id }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        alert(data.error ?? "Could not remove user.");
+      }
+    } catch (err) {
+      alert("Could not remove: " + (err as Error).message);
+    }
   };
 
-  const handleRecoverMember = async () => {
-    const email = recoverEmail.trim().toLowerCase();
-    if (!email) {
-      setRecoverStatus("Enter an email first.");
+  function openManage(u: UserRow, tab: "manage" | "reward") {
+    setManageUser(u);
+    setManageTab(tab);
+    setManageNewPassword("");
+    setManageTreatId(activeTreats[0]?.id ?? "");
+    setManageTreatCount(1);
+    setManageTreatReason("");
+    setManageStatus(u.status || "active");
+    setManageDisplayName(u.name || "");
+    setManageMessage(null);
+    setManagePasswordVisible(false);
+  }
+
+  function closeManage() {
+    setManageUser(null);
+    setManageMessage(null);
+  }
+
+  async function getAuthToken(): Promise<string> {
+    const auth = getFirebaseAuth();
+    const user = auth?.currentUser;
+    if (!user) throw new Error("Not signed in.");
+    return user.getIdToken(true);
+  }
+
+  async function handleSendPasswordResetEmail() {
+    if (!manageUser?.email) return;
+    const auth = getFirebaseAuth();
+    if (!auth) {
+      setManageMessage({ type: "error", text: "Auth not available." });
       return;
     }
-    if (!db) {
-      setRecoverStatus("Firebase is not connected.");
-      return;
-    }
-    setRecovering(true);
-    setRecoverStatus("Recovering…");
+    setManageLoading(true);
+    setManageMessage(null);
     try {
-      const existing = await getDocs(query(collection(db, "members"), where("email", "==", email), limit(1)));
-      if (!existing.empty) {
-        await updateDoc(existing.docs[0].ref, {
-          status: "active",
-          reactivatedAt: serverTimestamp(),
-          source: "admin_recover",
-        });
-        setRecoverStatus("Member recovered and marked active.");
-      } else {
-        await addDoc(collection(db, "members"), {
-          email,
-          status: "active",
-          joinedAt: serverTimestamp(),
-          source: "admin_recover",
-        });
-        setRecoverStatus("Member created from recovery.");
-      }
-      setRecoverEmail("");
+      const { sendPasswordResetEmail } = await import("firebase/auth");
+      await sendPasswordResetEmail(auth, manageUser.email);
+      setManageMessage({ type: "success", text: `Reset email sent to ${manageUser.email}.` });
     } catch (err) {
-      setRecoverStatus("Could not recover: " + ((err as Error)?.message || "unknown error"));
+      setManageMessage({ type: "error", text: (err as Error).message });
     } finally {
-      setRecovering(false);
+      setManageLoading(false);
     }
-  };
+  }
+  async function handleChangePassword() {
+    if (!manageUser?.email) return;
+    const pwd = manageNewPassword.trim();
+    if (pwd.length < 6) {
+      setManageMessage({ type: "error", text: "Password must be at least 6 characters." });
+      return;
+    }
+    setManageLoading(true);
+    setManageMessage(null);
+    try {
+      const token = await getAuthToken();
+      const res = await fetch("/api/admin/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ email: manageUser.email, newPassword: pwd }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; ok?: boolean };
+      if (res.ok && data.ok) {
+        setManageMessage({ type: "success", text: "Password updated." });
+        setManageNewPassword("");
+      } else {
+        setManageMessage({ type: "error", text: data.error || "Failed to update password." });
+      }
+    } catch (err) {
+      setManageMessage({ type: "error", text: (err as Error).message });
+    } finally {
+      setManageLoading(false);
+    }
+  }
+
+  async function handleGrantMonth() {
+    if (!manageUser) return;
+    setManageLoading(true);
+    setManageMessage(null);
+    try {
+      const token = await getAuthToken();
+      const res = await fetch("/api/admin/grant-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(manageUser.type === "member" ? { memberId: manageUser.id } : { email: manageUser.email }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; ok?: boolean; message?: string };
+      if (res.ok && data.ok) {
+        setManageMessage({ type: "success", text: data.message || "One free month granted." });
+      } else {
+        setManageMessage({ type: "error", text: data.error || "Failed to grant month." });
+      }
+    } catch (err) {
+      setManageMessage({ type: "error", text: (err as Error).message });
+    } finally {
+      setManageLoading(false);
+    }
+  }
+
+  async function handleGrantTreatRedeem() {
+    if (!manageUser || manageUser.type !== "member") return;
+    const treatId = manageTreatId.trim();
+    if (!treatId) {
+      setManageMessage({ type: "error", text: "Select a treat." });
+      return;
+    }
+    const count = Math.max(1, Math.floor(manageTreatCount));
+    setManageLoading(true);
+    setManageMessage(null);
+    try {
+      const token = await getAuthToken();
+      const res = await fetch("/api/admin/grant-treat-redeems", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          memberId: manageUser.id,
+          treatId,
+          count,
+          reason: manageTreatReason.trim() || undefined,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; ok?: boolean; message?: string; treatRedeems?: Record<string, number> };
+      if (res.ok && data.ok) {
+        setManageMessage({ type: "success", text: data.message || "Treat redeem granted. Member will get a notification." });
+        if (data.treatRedeems && manageUser) {
+          setManageUser({ ...manageUser, treatRedeems: data.treatRedeems });
+        }
+        setManageTreatCount(1);
+        setManageTreatReason("");
+      } else {
+        setManageMessage({ type: "error", text: data.error || "Failed to grant." });
+      }
+    } catch (err) {
+      setManageMessage({ type: "error", text: (err as Error).message });
+    } finally {
+      setManageLoading(false);
+    }
+  }
+
+  async function handleUpdateMemberFields() {
+    if (!manageUser || manageUser.type !== "member" || manageUser.id.startsWith("allowlist-") || !db) return;
+    setManageLoading(true);
+    setManageMessage(null);
+    try {
+      await updateDoc(doc(db, "members", manageUser.id), {
+        status: manageStatus || "active",
+        displayName: manageDisplayName.trim() || null,
+        note: manageDisplayName.trim() || null,
+        updatedAt: serverTimestamp(),
+      });
+      setManageMessage({ type: "success", text: "Member updated." });
+    } catch (err) {
+      setManageMessage({ type: "error", text: (err as Error).message });
+    } finally {
+      setManageLoading(false);
+    }
+  }
 
   return (
     <>
@@ -506,25 +709,6 @@ export default function AdminUsersPage() {
                   </svg>
                   Add User
                 </button>
-                <div className="um-search-wrap" style={{ minWidth: 280 }}>
-                  <input
-                    type="email"
-                    className="um-search"
-                    placeholder="Recover paid member by email…"
-                    aria-label="Recover paid member by email"
-                    value={recoverEmail}
-                    onChange={(e) => setRecoverEmail(e.target.value)}
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="um-btn-add"
-                  onClick={handleRecoverMember}
-                  disabled={recovering}
-                  title="Create/reactivate a member row so they appear in-app immediately"
-                >
-                  {recovering ? "Recovering…" : "Recover Member"}
-                </button>
                 <div className="um-search-wrap">
                   <span className="um-search-icon" aria-hidden="true">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
@@ -539,17 +723,6 @@ export default function AdminUsersPage() {
                   />
                 </div>
               </div>
-              {recoverStatus && (
-                <p
-                  className={
-                    "um-modal-status" +
-                    (recoverStatus.startsWith("Could not") || recoverStatus.startsWith("Enter") ? " error" : " success")
-                  }
-                  style={{ margin: "0.5rem 0 0" }}
-                >
-                  {recoverStatus}
-                </p>
-              )}
             </div>
             {loading && <div id="users-loading" className="loading">Loading…</div>}
             {!loading && !showTable && (
@@ -626,8 +799,7 @@ export default function AdminUsersPage() {
                         <td>{u.storeItems?.length ? u.storeItems.join(", ") : "—"}</td>
                         <td>
                           <div className="um-actions">
-                            <button type="button" className="link manage" onClick={() => alert("Manage user (placeholder)")}>Manage</button>
-                            <button type="button" className="link reward" onClick={() => alert("Grant Reward (placeholder)")}>Grant Reward</button>
+                            <button type="button" className="link manage" onClick={() => openManage(u, "manage")}>Manage</button>
                             {!u.authOnly && (
                               <button type="button" className="link danger" onClick={() => handleDelete(u.id, u.type)}>
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
@@ -673,11 +845,17 @@ export default function AdminUsersPage() {
                         <td>{formatDate(u.signupDate)}</td>
                         <td><span className="um-remaining">{remainingAccessText(u.accessEndsAt ?? null, u.status)}</span></td>
                         <td><span className="um-spend">{u.monthlySpendCents > 0 ? "$" + (u.monthlySpendCents / 100).toFixed(2) : "—"}</span></td>
-                        <td>{u.storeItems?.length ? u.storeItems.join(", ") : "—"}</td>
+                        <td>
+                          {u.storeItems?.length ? u.storeItems.join(", ") : "—"}
+                          {(() => {
+                            const tr = u.treatRedeems ?? {};
+                            const total = Object.values(tr).reduce((s, n) => s + n, 0) + (u.freeTreatRedeems ?? 0);
+                            return total > 0 ? <span className="um-free-redeems" title="Free treat redeems"> · {total} free redeem(s)</span> : null;
+                          })()}
+                        </td>
                         <td>
                           <div className="um-actions" style={{ position: "relative" }}>
-                            <button type="button" className="link manage" onClick={() => alert("Manage user (placeholder)")}>Manage</button>
-                            <button type="button" className="link reward" onClick={() => alert("Grant Reward (placeholder)")}>Grant Reward</button>
+                            <button type="button" className="link manage" onClick={() => openManage(u, "manage")}>Manage</button>
                             <button type="button" className="link danger" onClick={() => handleDelete(u.id, u.type)}>
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
                               Delete
@@ -758,7 +936,6 @@ export default function AdminUsersPage() {
         <div className="um-modal" onClick={(e) => e.stopPropagation()}>
           <div className="um-modal-header">
             <h2>Add New User</h2>
-            <p>Add a new member. Welcome email can include login instructions if you use invite links.</p>
           </div>
           <form onSubmit={handleAddUser}>
             <div className="um-modal-body">
@@ -774,22 +951,242 @@ export default function AdminUsersPage() {
                 />
               </div>
               <div className="um-field">
-                <label htmlFor="um-new-user-display-name">Display Name (optional)</label>
+                <label htmlFor="um-new-user-display-name">Display name</label>
                 <input
                   id="um-new-user-display-name"
                   type="text"
                   value={modalDisplayName}
                   onChange={(e) => setModalDisplayName(e.target.value)}
-                  placeholder="John Doe"
+                  placeholder="Optional"
                 />
               </div>
-              <p className={`um-modal-status${modalStatus.includes("success") ? " success" : modalStatus.includes("Could not") ? " error" : ""}`}>{modalStatus}</p>
+              <div className="um-field">
+                <label htmlFor="um-new-user-password">Password</label>
+                <input
+                  id="um-new-user-password"
+                  type="password"
+                  value={modalPassword}
+                  onChange={(e) => setModalPassword(e.target.value)}
+                  placeholder="Optional (min 6 to enable login)"
+                  minLength={6}
+                  autoComplete="new-password"
+                />
+              </div>
+              <p className={`um-modal-status${modalStatus.includes("success") || modalStatus.includes("created") ? " success" : modalStatus.includes("Could not") ? " error" : ""}`}>{modalStatus}</p>
             </div>
             <div className="um-modal-footer">
               <button type="button" className="btn btn-secondary" onClick={() => setModalOpen(false)} disabled={modalSubmitting}>Cancel</button>
               <button type="submit" className="btn btn-primary" disabled={modalSubmitting}>{modalSubmitting ? "Creating…" : "Create User"}</button>
             </div>
           </form>
+        </div>
+      </div>
+
+      {/* Manage User modal — echoflux-style layout, app colors */}
+      <div
+        className={`um-modal-overlay um-manage-overlay${manageUser ? " open" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="manage-modal-title"
+        onClick={() => !manageLoading && closeManage()}
+      >
+        <div className="um-modal um-manage-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="um-modal-header um-manage-header">
+            <h2 id="manage-modal-title" className="um-manage-title">Manage User</h2>
+          </div>
+          <div className="um-modal-body um-manage-body">
+            {/* User info block */}
+            <div className="um-manage-user-block">
+              <div className="um-manage-avatar">
+                {manageUser?.avatarUrl ? (
+                  <img src={manageUser.avatarUrl} alt="" />
+                ) : (
+                  (manageUser?.name?.replace(/^@/, "").charAt(0) ?? manageUser?.email?.charAt(0) ?? "?").toUpperCase()
+                )}
+              </div>
+              <div className="um-manage-user-info">
+                <div className="um-manage-user-name">{manageUser?.name ?? "—"}</div>
+                <div className="um-manage-user-email">{manageUser?.email ?? "—"}</div>
+              </div>
+            </div>
+
+            {/* Change Password */}
+            <section className="um-manage-section-block">
+              <h3 className="um-manage-section-title">Change password</h3>
+              <div className="um-manage-password-row">
+                <input
+                  id="um-manage-password"
+                  type={managePasswordVisible ? "text" : "password"}
+                  value={manageNewPassword}
+                  onChange={(e) => setManageNewPassword(e.target.value)}
+                  placeholder="New password (min 6 chars)"
+                  minLength={6}
+                  className="um-manage-input"
+                />
+                <button
+                  type="button"
+                  className="um-manage-link-btn"
+                  onClick={() => setManagePasswordVisible(!managePasswordVisible)}
+                >
+                  {managePasswordVisible ? "Hide" : "Show"}
+                </button>
+                <button
+                  type="button"
+                  className="um-manage-btn-secondary"
+                  onClick={handleChangePassword}
+                  disabled={manageLoading}
+                >
+                  Set password
+                </button>
+              </div>
+              <button
+                type="button"
+                className="um-manage-btn-primary"
+                onClick={handleSendPasswordResetEmail}
+                disabled={manageLoading}
+              >
+                Send password reset email
+              </button>
+              <p className="um-manage-hint">
+                Sends an email to {manageUser?.email ?? "this address"} with a link to set a new password.
+              </p>
+            </section>
+
+            {/* Subscription plan (look) */}
+            {manageUser?.type === "member" && (
+              <section className="um-manage-section-block">
+                <h3 className="um-manage-section-title">Subscription plan</h3>
+                <select
+                  id="um-manage-status"
+                  className="um-manage-select"
+                  value={manageStatus}
+                  onChange={(e) => setManageStatus(e.target.value)}
+                >
+                  <option value="active">Active</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+                <p className="um-manage-hint">
+                  Changing status here overrides current subscription state. Use for complimentary access or partners.
+                </p>
+                <div className="um-manage-field">
+                  <label htmlFor="um-manage-displayname">Display name / note</label>
+                  <input
+                    id="um-manage-displayname"
+                    type="text"
+                    className="um-manage-input"
+                    value={manageDisplayName}
+                    onChange={(e) => setManageDisplayName(e.target.value)}
+                    placeholder="Display name"
+                  />
+                </div>
+              </section>
+            )}
+
+            {/* Grant treat redeem — select treat, quantity, optional reason */}
+            <section className="um-manage-section-block um-manage-treat-grant">
+              <h3 className="um-manage-section-title">Grant treat redeem</h3>
+              <p className="um-manage-hint">Select a treat and how many to grant. The member will receive an in-app notification.</p>
+              {manageUser?.type !== "member" ? (
+                <p className="um-manage-hint">Only available for members.</p>
+              ) : (
+                <div className="um-manage-treat-row">
+                  <div className="um-manage-field um-manage-field-treat">
+                    <label htmlFor="um-manage-treat-select">Treat</label>
+                    <select
+                      id="um-manage-treat-select"
+                      className="um-manage-select"
+                      value={manageTreatId}
+                      onChange={(e) => setManageTreatId(e.target.value)}
+                    >
+                      <option value="">Select a treat…</option>
+                      {activeTreats.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="um-manage-field um-manage-field-qty">
+                    <label htmlFor="um-manage-treat-qty">Quantity</label>
+                    <input
+                      id="um-manage-treat-qty"
+                      type="number"
+                      min={1}
+                      max={99}
+                      value={manageTreatCount}
+                      onChange={(e) => setManageTreatCount(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                      className="um-manage-input"
+                    />
+                  </div>
+                </div>
+              )}
+              {manageUser?.type === "member" && (
+                <>
+                  <div className="um-manage-field">
+                    <label htmlFor="um-manage-treat-reason">Reason (optional)</label>
+                    <input
+                      id="um-manage-treat-reason"
+                      type="text"
+                      className="um-manage-input"
+                      value={manageTreatReason}
+                      onChange={(e) => setManageTreatReason(e.target.value)}
+                      placeholder="e.g., Special promotion, customer support"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="um-manage-btn-reward"
+                    onClick={handleGrantTreatRedeem}
+                    disabled={manageLoading || !manageTreatId}
+                  >
+                    {manageLoading ? "Granting…" : "Grant treat redeem"}
+                  </button>
+                </>
+              )}
+            </section>
+
+            {/* Reward summary card */}
+            <section className="um-manage-summary-card">
+              <h3 className="um-manage-section-title">Reward summary</h3>
+              {manageUser?.type === "member" && (() => {
+                const redeems = manageUser.treatRedeems ?? {};
+                const entries = Object.entries(redeems).filter(([, n]) => n > 0);
+                const hasAccess = manageUser.accessEndsAt;
+                if (entries.length === 0 && !hasAccess) {
+                  return <p className="um-manage-summary-empty">No admin-granted rewards yet.</p>;
+                }
+                return (
+                  <ul className="um-manage-summary-list">
+                    {hasAccess && (
+                      <li>Access until {manageUser.accessEndsAt!.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</li>
+                    )}
+                    {entries.map(([treatId, n]) => {
+                      const treat = activeTreats.find((t) => t.id === treatId);
+                      return <li key={treatId}>{n} × {treat?.name ?? treatId}</li>;
+                    })}
+                  </ul>
+                );
+              })()}
+              {manageUser?.type !== "member" && <p className="um-manage-summary-empty">N/A for non-members.</p>}
+            </section>
+
+            {manageMessage && (
+              <p className={`um-modal-status ${manageMessage.type === "success" ? "success" : "error"}`}>
+                {manageMessage.text}
+              </p>
+            )}
+          </div>
+          <div className="um-modal-footer um-manage-footer">
+            <button type="button" className="um-manage-btn-secondary" onClick={closeManage} disabled={manageLoading}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="um-manage-btn-primary"
+              onClick={handleUpdateMemberFields}
+              disabled={manageLoading || manageUser?.type !== "member" || manageUser?.id.startsWith("allowlist-")}
+            >
+              Save changes
+            </button>
+          </div>
         </div>
       </div>
     </>

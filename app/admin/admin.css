@@ -297,10 +297,104 @@
 .um-modal-body .um-field { margin-bottom: 1rem; }
 .um-modal-body label { display: block; margin-bottom: 0.35rem; font-size: 0.9rem; font-weight: 500; color: var(--text); }
 .um-modal-body input { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: var(--bg-card); color: var(--text); box-sizing: border-box; }
+.um-modal-body input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.um-modal-body input::placeholder { color: var(--text-muted); }
+/* Override browser autofill mustard/yellow so inputs match app */
+.um-modal-body input:-webkit-autofill,
+.um-modal-body input:-webkit-autofill:hover,
+.um-modal-body input:-webkit-autofill:focus { -webkit-text-fill-color: var(--text); -webkit-box-shadow: 0 0 0 100px var(--bg-card) inset; box-shadow: 0 0 0 100px var(--bg-card) inset; caret-color: var(--text); }
 .um-modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.75rem; }
 .um-modal-status { margin-top: 0.75rem; font-size: 0.9rem; min-height: 1.25rem; }
 .um-modal-status.error { color: #b91c1c; }
 .um-modal-status.success { color: #15803d; }
+
+.um-manage-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
+.um-manage-tabs button { padding: 0.5rem 1rem; font-size: 0.9rem; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 8px; cursor: pointer; font-family: inherit; }
+.um-manage-tabs button.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.um-manage-section { margin-top: 0; }
+.um-manage-h3 { margin: 1.25rem 0 0.5rem; font-size: 1rem; font-weight: 600; color: var(--text); }
+.um-manage-h3:first-child { margin-top: 0; }
+.um-manage-note { margin: 0 0 0.75rem; font-size: 0.85rem; color: var(--text-muted); }
+.um-field-inline { display: flex; align-items: center; gap: 0.75rem; }
+.um-field-inline input { width: 6rem; }
+.um-free-redeems { font-size: 0.85rem; color: var(--text-muted); margin-left: 0.25rem; }
+
+/* Manage User modal — echoflux-style layout, app colors */
+.um-manage-overlay.open { display: flex; }
+.um-manage-modal { max-width: 440px; }
+.um-manage-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); }
+.um-manage-title { margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--text); }
+.um-manage-body { padding: 1.25rem 1.5rem; }
+.um-manage-user-block { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border); }
+.um-manage-avatar { width: 48px; height: 48px; border-radius: 50%; overflow: hidden; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 1.15rem; flex-shrink: 0; }
+.um-manage-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.um-manage-user-info { min-width: 0; }
+.um-manage-user-name { font-weight: 600; font-size: 1rem; color: var(--text); margin-bottom: 0.2rem; }
+.um-manage-user-email { font-size: 0.875rem; color: var(--text-muted); }
+.um-manage-section-block { margin-bottom: 1.5rem; }
+.um-manage-section-title { margin: 0 0 0.6rem; font-size: 0.95rem; font-weight: 600; color: var(--text); }
+.um-manage-password-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+.um-manage-password-row .um-manage-input { flex: 1; min-width: 140px; }
+.um-manage-link-btn { background: none; border: none; color: var(--accent); font-size: 0.875rem; cursor: pointer; padding: 0.35rem 0.5rem; font-family: inherit; }
+.um-manage-link-btn:hover { text-decoration: underline; }
+.um-manage-input { width: 100%; padding: 0.55rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: var(--bg); color: var(--text); box-sizing: border-box; }
+.um-manage-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.um-manage-input-narrow { width: 4.5rem; }
+.um-manage-btn-secondary { padding: 0.5rem 0.9rem; font-size: 0.875rem; font-weight: 500; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); cursor: pointer; font-family: inherit; }
+.um-manage-btn-secondary:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.um-manage-btn-secondary:disabled { opacity: 0.6; cursor: not-allowed; }
+.um-manage-btn-primary { display: block; width: 100%; padding: 0.65rem 1rem; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 600; border: none; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; font-family: inherit; }
+.um-manage-btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.um-manage-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.um-manage-btn-reward { display: block; width: 100%; padding: 0.65rem 1rem; margin-bottom: 0.75rem; font-size: 0.9rem; font-weight: 600; border: none; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; font-family: inherit; }
+.um-manage-btn-reward:hover:not(:disabled) { background: var(--accent-hover); }
+.um-manage-btn-reward:disabled { opacity: 0.6; cursor: not-allowed; }
+.um-manage-redeem-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+.um-manage-hint { margin: 0 0 0.5rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; }
+.um-manage-select { width: 100%; padding: 0.55rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: var(--bg); color: var(--text); margin-bottom: 0.5rem; font-family: inherit; }
+.um-manage-field { margin-top: 0.75rem; }
+.um-manage-field label { display: block; margin-bottom: 0.35rem; font-size: 0.875rem; font-weight: 500; color: var(--text); }
+.um-manage-summary-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 0.5rem; }
+.um-manage-summary-list { margin: 0; padding-left: 1.25rem; font-size: 0.9rem; color: var(--text); }
+.um-manage-summary-list li { margin-bottom: 0.25rem; }
+.um-manage-summary-empty { margin: 0; font-size: 0.875rem; color: var(--text-muted); }
+.um-manage-footer { display: flex; justify-content: flex-end; gap: 0.75rem; }
+
+/* Grant treat redeem row in Manage card */
+.um-manage-treat-grant { margin-bottom: 1.25rem; }
+.um-manage-treat-row { display: grid; grid-template-columns: 1fr auto; gap: 0.75rem 1rem; align-items: end; margin-bottom: 0.75rem; }
+.um-manage-treat-row .um-manage-select { margin-bottom: 0; }
+.um-manage-treat-row .um-manage-input { margin-bottom: 0; }
+.um-manage-field-treat { min-width: 0; }
+.um-manage-field-qty { width: 5rem; }
+.um-manage-field-qty .um-manage-input { width: 100%; }
+.um-manage-treat-grant .um-manage-select { border: 1px solid var(--border); }
+.um-manage-treat-grant .um-manage-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+
+/* Grant Referral Reward modal — reference-style */
+.um-grant-overlay.open { display: flex; }
+.um-grant-modal { max-width: 420px; }
+.um-grant-header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); }
+.um-grant-title { margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--text); }
+.um-grant-close { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; border: none; background: transparent; color: var(--text-muted); border-radius: 8px; cursor: pointer; }
+.um-grant-close:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
+.um-grant-close:disabled { opacity: 0.6; cursor: not-allowed; }
+.um-grant-body { padding: 1.25rem 1.5rem; }
+.um-grant-field { margin-bottom: 1.25rem; }
+.um-grant-label { display: block; margin-bottom: 0.4rem; font-size: 0.875rem; font-weight: 600; color: var(--text); }
+.um-grant-user-display { padding: 0.65rem 0.85rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+.um-grant-user-name { font-weight: 600; font-size: 0.95rem; color: var(--text); margin-bottom: 0.2rem; }
+.um-grant-user-email { font-size: 0.85rem; color: var(--text-muted); }
+.um-grant-select { width: 100%; padding: 0.55rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: var(--bg); color: var(--text); font-family: inherit; }
+.um-grant-select:focus { outline: none; border-color: var(--accent); }
+.um-grant-input { width: 100%; padding: 0.55rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: var(--bg); color: var(--text); box-sizing: border-box; }
+.um-grant-input:focus { outline: none; border-color: var(--accent); }
+.um-grant-hint { margin: 0.35rem 0 0; font-size: 0.8rem; color: var(--text-muted); line-height: 1.35; }
+.um-grant-textarea { width: 100%; padding: 0.55rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: var(--bg); color: var(--text); font-family: inherit; resize: vertical; min-height: 72px; box-sizing: border-box; }
+.um-grant-textarea:focus { outline: none; border-color: var(--accent); }
+.um-grant-textarea::placeholder { color: var(--text-muted); }
+.um-grant-footer { display: flex; justify-content: flex-end; gap: 0.75rem; }
+.um-grant-submit { flex-shrink: 0; }
 .loading { color: var(--text-muted); padding: 1.5rem; text-align: center; font-size: 0.9rem; }
 .um-section-empty { padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.875rem; }
 .admin-main h1 { font-size: 1.35rem; margin-bottom: 0.5rem; }
