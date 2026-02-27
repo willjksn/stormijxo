@@ -1,13 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseStorage } from "../../../../lib/firebase";
 import {
   listMediaLibrary,
   listMediaLibraryCounts,
   uploadToMediaLibrary,
-  deleteMediaLibrary,
   type MediaItem,
 } from "../../../../lib/media-library";
 import { LazyMediaImage } from "../../../components/LazyMediaImage";
@@ -17,6 +16,19 @@ const MEDIA_CONFIG_DOC = "config";
 const GENERAL_ID = "general";
 
 type FolderMeta = { id: string; name: string };
+
+function storagePathFromUrl(url: string): string | null {
+  const marker = "/o/";
+  const idx = url.indexOf(marker);
+  if (idx < 0) return null;
+  const encoded = url.slice(idx + marker.length).split("?")[0];
+  if (!encoded) return null;
+  try {
+    return decodeURIComponent(encoded);
+  } catch {
+    return null;
+  }
+}
 
 function slug(name: string): string {
   return name
@@ -169,11 +181,50 @@ export default function AdminMediaPage() {
     else setSelectedPaths(new Set(filteredItems.map((i) => i.path)));
   };
 
+  const getInUseMediaPaths = useCallback(async (): Promise<Set<string>> => {
+    const inUse = new Set<string>();
+    if (!db) return inUse;
+    const postsSnap = await getDocs(collection(db, "posts"));
+    postsSnap.forEach((postDoc) => {
+      const data = postDoc.data() as Record<string, unknown>;
+      const mediaUrls = Array.isArray(data.mediaUrls) ? (data.mediaUrls as unknown[]) : [];
+      mediaUrls.forEach((urlRaw) => {
+        if (typeof urlRaw !== "string") return;
+        const path = storagePathFromUrl(urlRaw);
+        if (path) inUse.add(path);
+      });
+    });
+    const contentSnap = await getDoc(doc(db, "site_config", "content"));
+    if (contentSnap.exists()) {
+      const content = contentSnap.data() as Record<string, unknown>;
+      [
+        content.tipPageHeroImageUrl,
+        content.aboutStormiJImageUrl,
+        content.aboutStormiJVideoUrl,
+      ].forEach((urlRaw) => {
+        if (typeof urlRaw !== "string") return;
+        const path = storagePathFromUrl(urlRaw);
+        if (path) inUse.add(path);
+      });
+    }
+    return inUse;
+  }, [db]);
+
   const handleDeleteSelected = async () => {
     if (!storage || selectedPaths.size === 0) return;
     try {
-      await deleteMediaLibrary(storage, Array.from(selectedPaths));
-      setMessage({ type: "success", text: `${selectedPaths.size} item(s) deleted.` });
+      const selected = Array.from(selectedPaths);
+      const inUsePaths = await getInUseMediaPaths();
+      const blockedCount = selected.filter((path) => inUsePaths.has(path)).length;
+      const deletable = selected.filter((path) => !inUsePaths.has(path));
+      if (deletable.length === 0) {
+        setMessage({ type: "error", text: "Selected media is currently used by feed/content and cannot be deleted." });
+        return;
+      }
+      // Keep feed/content safe by never deleting files still referenced in posts/site content.
+      await import("../../../../lib/media-library").then(({ deleteMediaLibrary }) => deleteMediaLibrary(storage, deletable));
+      const suffix = blockedCount > 0 ? ` ${blockedCount} in-use item(s) were kept.` : "";
+      setMessage({ type: "success", text: `${deletable.length} item(s) deleted.${suffix}` });
       setSelectedPaths(new Set());
       loadLibrary();
       loadFolderCounts();
@@ -227,7 +278,17 @@ export default function AdminMediaPage() {
     if (currentFolderId === GENERAL_ID || !db || !storage) return;
     const itemsInFolder = library.filter((i) => i.folderId === currentFolderId);
     try {
-      if (itemsInFolder.length > 0) await deleteMediaLibrary(storage, itemsInFolder.map((i) => i.path));
+      const inUsePaths = await getInUseMediaPaths();
+      const hasInUse = itemsInFolder.some((i) => inUsePaths.has(i.path));
+      if (hasInUse) {
+        setMessage({ type: "error", text: "This folder contains media used by feed/content. Remove those references first." });
+        return;
+      }
+      if (itemsInFolder.length > 0) {
+        await import("../../../../lib/media-library").then(({ deleteMediaLibrary }) =>
+          deleteMediaLibrary(storage, itemsInFolder.map((i) => i.path))
+        );
+      }
       const customFolders = folders.filter((f) => f.id !== GENERAL_ID && f.id !== currentFolderId);
       await setDoc(doc(db, MEDIA_COLLECTION, MEDIA_CONFIG_DOC), { folders: customFolders }, { merge: true });
       setFolders([{ id: GENERAL_ID, name: "General" }, ...customFolders]);

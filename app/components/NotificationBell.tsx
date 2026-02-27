@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { collection, getDocs, query, where, orderBy, limit, doc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, where, orderBy, limit, doc, updateDoc } from "firebase/firestore";
 import { getFirebaseDb } from "../../lib/firebase";
 import { NOTIFICATIONS_COLLECTION, notificationFromDoc, type NotificationDoc } from "../../lib/notifications";
+import { PURCHASES_COLLECTION } from "../../lib/purchases";
 
 type NotificationBellProps = {
   variant: "admin" | "member";
@@ -22,13 +23,14 @@ function BellIcon() {
 
 export function NotificationBell({ variant, userEmail }: NotificationBellProps) {
   const [list, setList] = useState<NotificationDoc[]>([]);
+  const [pendingPurchasesCount, setPendingPurchasesCount] = useState(0);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const db = getFirebaseDb();
 
   const load = useCallback(() => {
-    if (!db) return;
+    if (!db) return null;
     setLoading(true);
     const q =
       variant === "admin"
@@ -49,23 +51,52 @@ export function NotificationBell({ variant, userEmail }: NotificationBellProps) 
     if (!q) {
       setLoading(false);
       setList([]);
-      return;
+      return null;
     }
-    getDocs(q)
-      .then((snap) => {
+    return onSnapshot(
+      q,
+      (snap) => {
         const items: NotificationDoc[] = [];
         snap.forEach((d) => {
           items.push(notificationFromDoc(d.id, d.data() as Record<string, unknown>));
         });
         setList(items);
-      })
-      .catch(() => setList([]))
-      .finally(() => setLoading(false));
+        setLoading(false);
+      },
+      () => {
+        setList([]);
+        setLoading(false);
+      }
+    );
   }, [db, variant, userEmail]);
 
   useEffect(() => {
-    load();
+    const unsub = load();
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
   }, [load]);
+
+  useEffect(() => {
+    if (!db || variant !== "admin") {
+      setPendingPurchasesCount(0);
+      return;
+    }
+    return onSnapshot(
+      collection(db, PURCHASES_COLLECTION),
+      (snap) => {
+        let count = 0;
+        snap.forEach((d) => {
+          const data = d.data() as Record<string, unknown>;
+          if (data.treatId == null) return;
+          if (data.scheduleStatus === "scheduled") return;
+          count += 1;
+        });
+        setPendingPurchasesCount(count);
+      },
+      () => setPendingPurchasesCount(0)
+    );
+  }, [db, variant]);
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
@@ -75,7 +106,7 @@ export function NotificationBell({ variant, userEmail }: NotificationBellProps) 
     return () => document.removeEventListener("click", close, true);
   }, []);
 
-  const unreadCount = list.filter((n) => !n.read).length;
+  const unreadCount = list.filter((n) => !n.read).length + (variant === "admin" ? pendingPurchasesCount : 0);
 
   const markRead = useCallback(
     async (id: string) => {
@@ -118,10 +149,24 @@ export function NotificationBell({ variant, userEmail }: NotificationBellProps) 
           </div>
           {loading && list.length === 0 ? (
             <p className="notification-bell-empty">Loading…</p>
-          ) : list.length === 0 ? (
+          ) : list.length === 0 && !(variant === "admin" && pendingPurchasesCount > 0) ? (
             <p className="notification-bell-empty">No notifications</p>
           ) : (
             <ul className="notification-bell-list">
+              {variant === "admin" && pendingPurchasesCount > 0 && (
+                <li>
+                  <Link
+                    href="/admin/purchases"
+                    className="notification-bell-item unread"
+                    onClick={() => setOpen(false)}
+                  >
+                    <span className="notification-bell-item-title">New purchases</span>
+                    <span className="notification-bell-item-body">
+                      {pendingPurchasesCount} purchase{pendingPurchasesCount === 1 ? "" : "s"} need scheduling.
+                    </span>
+                  </Link>
+                </li>
+              )}
               {list.map((n) => (
                 <li key={n.id}>
                   {n.link ? (

@@ -31,13 +31,15 @@ export function AdminToolsNav() {
     const db = getFirebaseDb();
     if (!db) return;
     const unsubPurchases = onSnapshot(
-      query(collection(db, PURCHASES_COLLECTION), where("scheduleStatus", "==", "pending")),
+      collection(db, PURCHASES_COLLECTION),
       (snap) => {
         if (!mountedRef.current) return;
         let count = 0;
         snap.forEach((d) => {
           const data = d.data() as Record<string, unknown>;
-          if (data.treatId != null) count += 1;
+          if (data.treatId == null) return;
+          if (data.scheduleStatus === "scheduled") return;
+          count += 1;
         });
         setUnscheduledPurchasesCount(count);
       },
@@ -46,7 +48,7 @@ export function AdminToolsNav() {
       }
     );
     const unsubRequests = onSnapshot(
-      query(collection(db, "conversations"), where("firstMessageFromMember", "==", true)),
+      query(collection(db, "notifications"), where("forAdmin", "==", true), where("type", "==", "dm"), where("read", "==", false)),
       (snap) => {
         if (mountedRef.current) setRequestsCount(snap.size);
       },

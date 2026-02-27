@@ -6,6 +6,7 @@ import {
   ref,
   list,
   getDownloadURL,
+  getMetadata,
   uploadBytesResumable,
   deleteObject,
   type ListResult,
@@ -89,7 +90,12 @@ export async function listMediaLibrary(
     const url = await getDownloadURLWithRetry(itemRef);
     if (!url) return null;
     const name = itemRef.name;
-    const isVideo = /\.(mp4|webm|mov|ogg)(\?|$)/i.test(name) || itemRef.fullPath.toLowerCase().includes("video");
+    const metadata = await getMetadata(itemRef).catch(() => null);
+    const contentType = metadata?.contentType?.toLowerCase() ?? "";
+    const isVideo =
+      contentType.startsWith("video/") ||
+      /\.(mp4|webm|mov|ogg|m4v|mkv|avi|wmv|mpeg|mpg)(\?|$)/i.test(name) ||
+      itemRef.fullPath.toLowerCase().includes("video");
     return { url, path: itemRef.fullPath, name, isVideo, folderId: folderId || "general" } satisfies MediaItem;
   });
   return items.filter((item): item is MediaItem => item !== null).reverse();

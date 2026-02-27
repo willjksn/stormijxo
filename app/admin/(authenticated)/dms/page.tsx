@@ -628,7 +628,7 @@ export default function AdminDmsPage() {
         overflowY: "auto",
       }}
     >
-      <div className="chat-page" style={{ flex: 1, minHeight: 0, minWidth: 0, display: "flex", flexDirection: "row" }}>
+      <div className="chat-page" style={{ flex: 1, minHeight: 0, minWidth: 0, display: "flex" }}>
         <aside className="chat-sidebar">
           <div className="chat-sidebar-header">
             <h2 className="chat-sidebar-title">Chat</h2>
