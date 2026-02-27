@@ -33,7 +33,7 @@ export function LoginForm() {
   useEffect(() => {
     if (authLoading) return;
     if (user) {
-      getPostLoginPath(getFirebaseDb(), user.email ?? null, redirect).then((path) =>
+      getPostLoginPath(getFirebaseDb(), user.email ?? null, user.uid, redirect).then((path) =>
         router.replace(path)
       );
     }
@@ -51,7 +51,7 @@ export function LoginForm() {
     }
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-      const path = await getPostLoginPath(getFirebaseDb(), cred.user.email ?? null, redirect);
+      const path = await getPostLoginPath(getFirebaseDb(), cred.user.email ?? null, cred.user.uid, redirect);
       router.replace(path);
     } catch (err) {
       setError(getAuthErrorMessage(err, "Log in failed."));
@@ -90,7 +90,7 @@ export function LoginForm() {
           });
         }
       }
-      const path = await getPostLoginPath(db, firebaseUser.email ?? null, redirect);
+      const path = await getPostLoginPath(db, firebaseUser.email ?? null, firebaseUser.uid, redirect);
       router.replace(path);
     } catch (err) {
       setError(getAuthErrorMessage(err, "Sign in with Google failed."));

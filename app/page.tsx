@@ -164,7 +164,7 @@ export default function LandingPage() {
                 <button type="button" className="btn btn-tip btn-tip-custom" id="tip-custom-btn">Tip</button>
               </div>
             </div>
-            <p id="tip-error" className="tip-error" style={{ display: "none" }} />
+            <p id="tip-error" className="tip-error" role="alert" style={{ display: "none" }} />
           </div>
         </section>
 
@@ -197,8 +197,8 @@ export default function LandingPage() {
       <Script id="landing-tip-checkout" strategy="afterInteractive">{`
         (function() {
           var tipUrl = "/api/landing-tip";
-          var cancelUrl = window.location.href;
           var base = window.location.origin;
+          var cancelUrl = base + "/#pricing";
           var successUrl = base + "/success?tip=1";
           var errEl = document.getElementById("tip-error");
           var tipHandleInput = document.getElementById("tip-instagram-handle");

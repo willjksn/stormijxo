@@ -28,8 +28,12 @@ export async function POST(req: NextRequest) {
   };
   try {
     body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  } catch (e) {
+    console.error("landing-tip 400: JSON parse failed", e);
+    return NextResponse.json({ error: "Invalid request. Please try again." }, { status: 400 });
+  }
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
   const rawAmount = body.amountCents ?? body.amount;
@@ -41,8 +45,9 @@ export async function POST(req: NextRequest) {
         : NaN;
   const amountCents = Number.isFinite(parsedAmount) ? parsedAmount : 0;
   if (!Number.isInteger(amountCents) || amountCents < 100 || amountCents > 100000) {
+    console.error("landing-tip 400: invalid amount", { rawAmount, parsedAmount, amountCents, bodyKeys: Object.keys(body || {}) });
     return NextResponse.json(
-      { error: "Amount must be between 100 and 100000 cents ($1-$1000)." },
+      { error: "Amount must be between $1 and $1000. Please select a preset or enter a valid amount." },
       { status: 400 }
     );
   }

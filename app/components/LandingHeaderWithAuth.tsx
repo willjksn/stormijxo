@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "../contexts/AuthContext";
@@ -12,6 +12,15 @@ export function LandingHeaderWithAuth() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect");
+  const authIntent = searchParams.get("auth");
+
+  useEffect(() => {
+    if (user) return;
+    if (authIntent === "signup" || authIntent === "login") {
+      setModalTab(authIntent);
+      setModalOpen(true);
+    }
+  }, [authIntent, user]);
 
   const openSignup = () => {
     setModalTab("signup");

@@ -127,13 +127,41 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath }: AuthMod
     setError(msg);
   }, []);
 
-  const goAfterLogin = useCallback(
-    async (user: { email: string | null }) => {
+  const startMembershipCheckout = useCallback(
+    async (opts: { email?: string | null; uid?: string | null }) => {
+      const base = typeof window !== "undefined" ? window.location.origin : "";
+      const res = await fetch("/api/landing-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          base_url: base,
+          success_url: `${base}/success`,
+          cancel_url: `${base}/?auth=signup&redirect=%2Fhome`,
+          ...(opts.email ? { customer_email: opts.email } : {}),
+          ...(opts.uid ? { uid: opts.uid } : {}),
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      throw new Error(data.error || "Could not start checkout.");
+    },
+    []
+  );
+
+  const goAfterLoginOrCheckout = useCallback(
+    async (user: { email: string | null; uid?: string | null }) => {
       const defaultPath = redirectPath && /^\/[a-z0-9/_-]*$/i.test(redirectPath) ? redirectPath : "/home";
-      const path = await getPostLoginPath(db, user.email ?? null, defaultPath);
+      const path = await getPostLoginPath(db, user.email ?? null, user.uid ?? null, defaultPath);
+      if (path.includes("pay=required")) {
+        await startMembershipCheckout({ email: user.email, uid: user.uid ?? null });
+        return;
+      }
       router.replace(path);
     },
-    [router, db, redirectPath]
+    [db, redirectPath, router, startMembershipCheckout]
   );
 
   const handleSignupSubmit = async (e: React.FormEvent) => {
@@ -166,7 +194,7 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath }: AuthMod
       const cred = await createUserWithEmailAndPassword(auth, signupEmail.trim(), signupPassword);
       await updateProfile(cred.user, { displayName: signupName.trim() });
       await createUserProfile(db, cred.user.uid, cred.user.email ?? null, signupName.trim(), signupUsername.trim());
-      await goAfterLogin(cred.user);
+      await startMembershipCheckout({ email: cred.user.email, uid: cred.user.uid });
     } catch (err) {
       showError(getAuthErrorMessage(err, "Sign up failed."));
     } finally {
@@ -184,7 +212,7 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath }: AuthMod
     setLoading(true);
     try {
       const cred = await signInWithEmailAndPassword(auth, loginEmail.trim(), loginPassword);
-      await goAfterLogin(cred.user);
+      await goAfterLoginOrCheckout(cred.user);
     } catch (err) {
       showError(getAuthErrorMessage(err, "Log in failed."));
     } finally {
@@ -208,13 +236,19 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath }: AuthMod
       const user = result.user;
       const userRef = doc(db, "users", user.uid);
       const snap = await getDoc(userRef);
+      let isNewUser = false;
       if (!snap.exists()) {
+        isNewUser = true;
         let username = (user.displayName || "").replace(/\s+/g, "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 24) || "user";
         const available = await checkUsernameAvailable(db, username);
         if (!available) username = "user_" + user.uid.slice(0, 10);
         await createUserProfile(db, user.uid, user.email ?? null, user.displayName ?? null, username);
       }
-      await goAfterLogin(user);
+      if (isNewUser) {
+        await startMembershipCheckout({ email: user.email, uid: user.uid });
+      } else {
+        await goAfterLoginOrCheckout(user);
+      }
     } catch (err) {
       showError(getAuthErrorMessage(err, "Sign in with Google failed."));
     } finally {
@@ -240,7 +274,7 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath }: AuthMod
         if (!available) username = "user_" + user.uid.slice(0, 10);
         await createUserProfile(db, user.uid, user.email ?? null, user.displayName ?? null, username);
       }
-      await goAfterLogin(user);
+      await goAfterLoginOrCheckout(user);
     } catch (err) {
       showError(getAuthErrorMessage(err, "Sign in with Google failed."));
     } finally {
@@ -409,7 +443,7 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath }: AuthMod
                 </label>
               </div>
               <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? "Signing up…" : "Sign Up"}
+                {loading ? "Opening checkout…" : "Continue"}
               </button>
               <div className="auth-modal-divider">or</div>
               <button type="button" className="btn-google" onClick={handleSignupGoogle} disabled={loading}>
