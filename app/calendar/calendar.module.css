@@ -831,6 +831,12 @@
   }
 }
 
+@media (max-width: 768px) {
+  .grid {
+    min-width: 760px;
+  }
+}
+
 @media (max-width: 640px) {
   .page {
     padding: 1rem 0.6rem;

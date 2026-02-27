@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { RequireAdmin } from "../components/RequireAdmin";
 import { AdminHeader } from "../components/AdminHeader";
 import { AdminTabs } from "../components/AdminTabs";
@@ -9,14 +9,14 @@ import { AdminToolsNav } from "../components/AdminToolsNav";
 
 function AdminAuthenticatedLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const panel = searchParams.get("panel");
   const isToolsSection =
-    (pathname === "/admin/dashboard" && panel === "tools") ||
+    pathname === "/admin/dashboard" ||
     pathname === "/admin/posts" ||
     pathname === "/admin/media" ||
     pathname === "/admin/content" ||
-    pathname === "/admin/treats";
+    pathname === "/admin/treats" ||
+    pathname === "/admin/purchases" ||
+    pathname === "/admin/dms";
 
   return (
     <div className="admin-page">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
-import { collection, getDocs, addDoc, doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs, addDoc, doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseStorage } from "../../../../lib/firebase";
 import {
   ensureConversation,
@@ -121,6 +121,8 @@ export default function AdminDmsPage() {
   const [addByUidValue, setAddByUidValue] = useState("");
   const [addByUidLoading, setAddByUidLoading] = useState(false);
   const [addByUidError, setAddByUidError] = useState<string | null>(null);
+  const [memberPhotoUrls, setMemberPhotoUrls] = useState<Record<string, string>>({});
+  const fetchedPhotoUidsRef = useRef<Set<string>>(new Set());
 
   const selected = conversations.find((c) => c.id === selectedId);
   const filteredConversations = useMemo(() => {
@@ -165,6 +167,34 @@ export default function AdminDmsPage() {
     const unsub = subscribeConversations(db, setConversations);
     return () => unsub();
   }, [db]);
+
+  useEffect(() => {
+    if (!db || conversations.length === 0) return;
+    const toFetch = conversations.map((c) => c.id).filter((uid) => !fetchedPhotoUidsRef.current.has(uid));
+    if (toFetch.length === 0) return;
+    toFetch.forEach((uid) => fetchedPhotoUidsRef.current.add(uid));
+    let cancelled = false;
+    Promise.all(
+      toFetch.slice(0, 25).map((uid) =>
+        getDoc(doc(db, "users", uid)).then((snap) => {
+          if (cancelled || !snap.exists()) return null;
+          const d = snap.data() as Record<string, unknown>;
+          const url = (d.avatarUrl ?? d.photoURL ?? null) != null ? String(d.avatarUrl ?? d.photoURL) : null;
+          return url ? { uid, url } : null;
+        })
+      )
+    ).then((results) => {
+      if (cancelled) return;
+      setMemberPhotoUrls((prev) => {
+        const next = { ...prev };
+        results.forEach((r) => {
+          if (r) next[r.uid] = r.url;
+        });
+        return next;
+      });
+    });
+    return () => { cancelled = true; };
+  }, [db, conversations]);
 
   const loadUserList = useCallback(() => {
     if (!db) return;
@@ -370,8 +400,18 @@ export default function AdminDmsPage() {
   }, [db, user, selectedId, selected?.memberEmail, text, storage, createNotificationForMember]);
 
   return (
-    <main className="admin-main admin-content-main" style={{ padding: "1rem", height: "calc(100vh - var(--header-height, 80px) - 2rem)", minHeight: 420, display: "flex", flexDirection: "column" }}>
-      <div className="chat-page">
+    <main
+      className="admin-main admin-content-main"
+      style={{
+        padding: "1rem",
+        display: "flex",
+        flexDirection: "column",
+        flex: "0 0 auto",
+        height: "calc(100vh - 150px)",
+        minHeight: 320,
+      }}
+    >
+      <div className="chat-page" style={{ flex: 1, minHeight: 0, minWidth: 0, display: "flex", flexDirection: "row" }}>
         <aside className="chat-sidebar">
           <div className="chat-sidebar-header">
             <h2 className="chat-sidebar-title">Chat</h2>
@@ -423,9 +463,15 @@ export default function AdminDmsPage() {
                     minWidth: 0,
                   }}
                 >
-                  <span className="chat-conversation-avatar">{getInitials(c.memberDisplayName, c.memberEmail)}</span>
+                  <span className="chat-conversation-avatar" style={memberPhotoUrls[c.id] ? { overflow: "hidden", padding: 0 } : undefined}>
+                    {memberPhotoUrls[c.id] ? (
+                      <img src={memberPhotoUrls[c.id]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", borderRadius: "50%" }} />
+                    ) : (
+                      getInitials(c.memberDisplayName, c.memberEmail)
+                    )}
+                  </span>
                   <div className="chat-conversation-body" style={{ flex: 1, minWidth: 0 }}>
-                    <p className="chat-conversation-name" style={{ margin: 0, fontWeight: 600, fontSize: "0.95rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.memberDisplayName || c.memberEmail || c.memberUid}</p>
+                    <p className="chat-conversation-name" style={{ margin: 0, fontWeight: 600, fontSize: "0.95rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.memberDisplayName || c.memberEmail || "Member"}</p>
                     <p className="chat-conversation-preview" style={{ margin: "0.15rem 0 0", fontSize: "0.85rem", color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.lastMessagePreview ? (c.lastMessagePreview.length > 40 ? c.lastMessagePreview.slice(0, 40) + "…" : c.lastMessagePreview) : "No messages yet"}</p>
                   </div>
                   <span className="chat-conversation-time" style={{ fontSize: "0.75rem", color: "var(--text-muted)", flexShrink: 0 }}>{formatRelativeTime(c.lastMessageAt)}</span>
@@ -476,8 +522,16 @@ export default function AdminDmsPage() {
           ) : (
             <>
               <div className="chat-thread-header">
-                <span className="chat-thread-avatar">{selected ? getInitials(selected.memberDisplayName, selected.memberEmail) : "?"}</span>
-                <h3 className="chat-thread-name" style={{ margin: 0 }}>{selected?.memberDisplayName || selected?.memberEmail || selectedId}</h3>
+                <span className="chat-thread-avatar" style={selected && memberPhotoUrls[selectedId ?? ""] ? { overflow: "hidden", padding: 0 } : undefined}>
+                  {selected && memberPhotoUrls[selectedId ?? ""] ? (
+                    <img src={memberPhotoUrls[selectedId ?? ""]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", borderRadius: "50%" }} />
+                  ) : selected ? (
+                    getInitials(selected.memberDisplayName, selected.memberEmail)
+                  ) : (
+                    "?"
+                  )}
+                </span>
+                <h3 className="chat-thread-name" style={{ margin: 0 }}>{selected?.memberDisplayName || selected?.memberEmail || "Member"}</h3>
                 <div className="chat-thread-actions" style={{ position: "relative" }}>
                   <button
                     type="button"
@@ -586,14 +640,16 @@ export default function AdminDmsPage() {
             <h2 id="new-conversation-title" style={{ margin: "0 0 1rem", fontSize: "1.2rem" }}>
               Start new conversation
             </h2>
-            <p style={{ margin: "0 0 1rem", fontSize: "0.9rem", color: "var(--text-muted)" }}>
-              Choose a member (they must have signed in at least once to appear here).
-            </p>
+            {conversations.length === 0 && (
+              <p style={{ margin: "0 0 1rem", fontSize: "0.9rem", color: "var(--text-muted)" }}>
+                Choose a member (they must have signed in at least once to appear here).
+              </p>
+            )}
             {userListLoading ? (
               <p style={{ margin: 0, color: "var(--text-muted)" }}>Loading…</p>
-            ) : userList.length === 0 ? (
+            ) : userList.length === 0 && conversations.length === 0 ? (
               <p style={{ margin: 0, color: "var(--text-muted)" }}>No members with accounts yet.</p>
-            ) : (
+            ) : userList.length === 0 ? null : (
               <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
                 {userList.map((u) => {
                   const alreadyHasConv = conversations.some((c) => c.id === u.uid);
@@ -628,7 +684,9 @@ export default function AdminDmsPage() {
             )}
             <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
               <p style={{ margin: "0 0 0.5rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                Or add by Firebase Auth UID (from Authentication in Firebase Console):
+                {conversations.length === 0
+                  ? "Or add by Firebase Auth UID (from Authentication in Firebase Console):"
+                  : "Add by UID:"}
               </p>
               <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
                 <input
