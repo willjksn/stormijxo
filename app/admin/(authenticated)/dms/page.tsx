@@ -406,9 +406,9 @@ export default function AdminDmsPage() {
         padding: "1rem",
         display: "flex",
         flexDirection: "column",
-        flex: "0 0 auto",
-        height: "calc(100vh - 150px)",
-        minHeight: 320,
+        flex: 1,
+        minHeight: 0,
+        overflow: "hidden",
       }}
     >
       <div className="chat-page" style={{ flex: 1, minHeight: 0, minWidth: 0, display: "flex", flexDirection: "row" }}>

@@ -51,7 +51,25 @@ export async function POST(req: NextRequest) {
 
   const postId = typeof body.postId === "string" ? body.postId.trim() : "";
   const uid = typeof body.uid === "string" ? body.uid.trim() : "";
+  // If request looks like admin user management (wrong endpoint), forward to correct handler.
   if (!postId || !uid) {
+    const memberId = typeof (body as { memberId?: string }).memberId === "string"
+      ? (body as { memberId?: string }).memberId.trim()
+      : "";
+    const email = typeof (body as { email?: string }).email === "string"
+      ? (body as { email?: string }).email.trim()
+      : "";
+    const newPassword = typeof (body as { newPassword?: string }).newPassword === "string"
+      ? (body as { newPassword?: string }).newPassword
+      : "";
+    if (memberId) {
+      const { POST: deleteMemberPost } = await import("../admin/delete-member/route");
+      return deleteMemberPost(req);
+    }
+    if (email && newPassword) {
+      const { POST: changePasswordPost } = await import("../admin/change-password/route");
+      return changePasswordPost(req);
+    }
     return NextResponse.json({ error: "Missing postId or uid." }, { status: 400 });
   }
 
