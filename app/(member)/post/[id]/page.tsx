@@ -69,15 +69,6 @@ function escapeHtml(text: string): string {
     .replace(/\n/g, "<br />");
 }
 
-/** Escape body and turn #hashtag into links to /tag/hashtag */
-function postBodyWithHashtags(body: string): string {
-  const escaped = escapeHtml(body);
-  return escaped.replace(
-    /#([a-zA-Z0-9_]+)/g,
-    (_, tag) => `<a href="/tag/${encodeURIComponent(tag)}" class="post-hashtag">#${tag}</a>`
-  );
-}
-
 function displayPublicName(nameLike: string): string {
   const n = (nameLike || "").toString().trim();
   if (!n) return "user";
@@ -385,12 +376,6 @@ export default function PostByIdPage({
             </div>
           )}
         </div>
-        {!showCaptionOnMedia && (
-          <div
-            className="post-body"
-            dangerouslySetInnerHTML={{ __html: postBodyWithHashtags(post.body) }}
-          />
-        )}
         {post.tipGoal && post.tipGoal.targetCents > 0 && (
           <div className="feed-card-tip-goal post-detail-tip-goal">
             <p className="feed-card-tip-goal-desc">{post.tipGoal.description}</p>

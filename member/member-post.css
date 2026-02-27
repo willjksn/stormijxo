@@ -1,5 +1,5 @@
 /* Member single post */
-.member-post-main { max-width: 640px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+.member-post-main { max-width: 620px; margin: 0 auto; padding: 1.5rem 1rem 3.25rem; }
 .post-loading { color: var(--text-muted); padding: 2rem 0; }
 .post-error { color: #c53030; padding: 2rem 0; }
 .post-back { margin-bottom: 1rem; }
@@ -58,12 +58,22 @@
   padding: 0;
 }
 .post-carousel-dot.active { background: var(--accent); }
-.post-media-item { position: relative; border-radius: 12px; overflow: hidden; }
+.post-media-item {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  max-height: min(74vh, 760px);
+  background: var(--bg);
+}
 .post-media-img {
   width: 100%;
+  height: auto;
+  max-height: min(74vh, 760px);
   border-radius: 12px;
   display: block;
   background: var(--border);
+  object-fit: contain;
+  object-position: center top;
 }
 .post-body {
   font-size: 1rem;

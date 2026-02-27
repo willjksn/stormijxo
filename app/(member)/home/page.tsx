@@ -53,6 +53,21 @@ const PencilIcon = () => (
   </svg>
 );
 
+const MediaImageIcon = () => (
+  <svg className="feed-card-count-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <rect x="3" y="5" width="18" height="14" rx="2" ry="2" />
+    <circle cx="8.5" cy="10" r="1.5" />
+    <path d="M21 15l-4.5-4.5a1 1 0 0 0-1.4 0L9 16.6" />
+  </svg>
+);
+
+const MediaVideoIcon = () => (
+  <svg className="feed-card-count-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <rect x="3" y="6" width="13" height="12" rx="2" ry="2" />
+    <path d="M16 10l5-3v10l-5-3z" />
+  </svg>
+);
+
 /** Format post date as relative time */
 function formatRelativeDate(dateInput: Date | string | { toDate?: () => Date } | null | undefined): string {
   let date: Date | null = null;
@@ -162,6 +177,22 @@ function FeedCard({
 }) {
   const firstUrl = post.mediaUrls?.[0];
   const isVideo = post.mediaTypes?.[0] === "video" || (firstUrl && /\.(mp4|webm|mov|ogg)(\?|$)/i.test(firstUrl));
+  const mediaTotals = useMemo(() => {
+    const items = Array.isArray(post.mediaUrls) ? post.mediaUrls : [];
+    return items.reduce(
+      (acc, url, index) => {
+        const explicitType = post.mediaTypes?.[index];
+        const detectedType =
+          explicitType === "video" || /\.(mp4|webm|mov|ogg)(\?|$)/i.test(url || "")
+            ? "video"
+            : "image";
+        if (detectedType === "video") acc.videos += 1;
+        else acc.images += 1;
+        return acc;
+      },
+      { images: 0, videos: 0 }
+    );
+  }, [post.mediaUrls, post.mediaTypes]);
   const dateStr = post.dateStr ?? (post.createdAt?.toDate ? formatRelativeDate(post.createdAt) : "");
   const captionStyle = post.captionStyle ?? "static";
   const showCaptionOnMedia = captionStyle !== "static" && post.body?.trim();
@@ -365,15 +396,28 @@ function FeedCard({
       <Link href={`/post/${post.id}`} className="feed-card-media-wrap">
         {firstUrl &&
           (isVideo ? (
-            <video src={firstUrl} muted playsInline className="feed-card-media" />
+            <video src={firstUrl} muted playsInline className="feed-card-media feed-card-media-video" preload="metadata" />
           ) : (
             <img src={firstUrl} alt="" className="feed-card-media" loading="lazy" decoding="async" />
           ))}
         {showCaptionOnMedia && (
           <FeedCardCaptionOverlay caption={post.body} style={captionStyle} size={post.overlayTextSize} />
         )}
-        {post.mediaUrls?.length > 1 && (
-          <span className="feed-card-count">+{post.mediaUrls.length - 1}</span>
+        {(mediaTotals.images + mediaTotals.videos) > 1 && (
+          <span className="feed-card-count">
+            {mediaTotals.images > 0 && (
+              <span className="feed-card-count-item">
+                <MediaImageIcon />
+                {mediaTotals.images} image{mediaTotals.images === 1 ? "" : "s"}
+              </span>
+            )}
+            {mediaTotals.videos > 0 && (
+              <span className="feed-card-count-item">
+                <MediaVideoIcon />
+                {mediaTotals.videos} video{mediaTotals.videos === 1 ? "" : "s"}
+              </span>
+            )}
+          </span>
         )}
       </Link>
 
@@ -506,7 +550,7 @@ function FeedCard({
               {firstUrl && (
                 <div className="feed-comments-modal-media-wrap">
                   {isVideo ? (
-                    <video src={firstUrl} controls playsInline className="feed-comments-modal-media" />
+                    <video src={firstUrl} controls playsInline className="feed-comments-modal-media feed-comments-modal-media-video" preload="metadata" />
                   ) : (
                     <img src={firstUrl} alt="" className="feed-comments-modal-media" />
                   )}
