@@ -1,22 +1,23 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, type CSSProperties, type RefObject } from "react";
 import dynamic from "next/dynamic";
 import type { EmojiClickData } from "emoji-picker-react";
+import { Theme } from "emoji-picker-react";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
 
-const inputStyle = {
+const inputStyle: CSSProperties = {
   width: "100%",
   padding: "0.5rem 2.25rem 0.5rem 0.75rem",
   borderRadius: 8,
   border: "1px solid var(--border)",
   boxSizing: "border-box",
 };
-const textareaStyle = {
+const textareaStyle: CSSProperties = {
   ...inputStyle,
   padding: "0.5rem 2.25rem 0.5rem 0.75rem",
-  resize: "vertical" as const,
+  resize: "vertical",
   minHeight: 60,
 };
 
@@ -40,7 +41,7 @@ type EmojiFieldProps = {
   rows?: number;
   id?: string;
   className?: string;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
 };
 
 export function EmojiField({
@@ -68,13 +69,13 @@ export function EmojiField({
   );
 
   const baseStyle = type === "textarea" ? textareaStyle : inputStyle;
-  const mergedStyle = style ? { ...baseStyle, ...style } : baseStyle;
+  const mergedStyle: CSSProperties = style ? { ...baseStyle, ...style } : baseStyle;
 
   return (
     <div style={{ position: "relative", display: "block", width: "100%", boxSizing: "border-box" }} className={className}>
       {type === "input" ? (
         <input
-          ref={ref as React.RefObject<HTMLInputElement>}
+          ref={ref as RefObject<HTMLInputElement>}
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -84,7 +85,7 @@ export function EmojiField({
         />
       ) : (
         <textarea
-          ref={ref as React.RefObject<HTMLTextAreaElement>}
+          ref={ref as RefObject<HTMLTextAreaElement>}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
@@ -149,7 +150,7 @@ export function EmojiField({
               open={true}
               width="100%"
               height={360}
-              theme="light"
+              theme={Theme.LIGHT}
               previewConfig={{ showPreview: false }}
             />
           </div>

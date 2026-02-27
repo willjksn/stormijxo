@@ -397,31 +397,11 @@
             if (noteEl) noteEl.textContent = "From your store. Add more products to see them here.";
             return;
           }
-          var demo = [
-            { product: "1-on-1 Chat", purchases: 12, revenue: 240 },
-            { product: "Video Call", purchases: 8, revenue: 400 },
-            { product: "Personal Message", purchases: 24, revenue: 120 },
-          ];
           tbody.innerHTML = "";
-          demo.forEach(function(r) {
-            var tr = document.createElement("tr");
-            tr.innerHTML = "<td>" + escapeHtml(r.product) + "</td><td>" + r.purchases + "</td><td class='purchase-revenue'>$" + r.revenue + ".00</td>";
-            tbody.appendChild(tr);
-          });
-          if (noteEl) noteEl.textContent = "Store coming soon (1-on-1, video calls, etc.). Real data will appear here when you add a purchases collection.";
+          if (noteEl) noteEl.textContent = "Treat purchases will appear here once members buy from the Treats page.";
         }).catch(function() {
-          var demo = [
-            { product: "1-on-1 Chat", purchases: 12, revenue: 240 },
-            { product: "Video Call", purchases: 8, revenue: 400 },
-            { product: "Personal Message", purchases: 24, revenue: 120 },
-          ];
           tbody.innerHTML = "";
-          demo.forEach(function(r) {
-            var tr = document.createElement("tr");
-            tr.innerHTML = "<td>" + escapeHtml(r.product) + "</td><td>" + r.purchases + "</td><td class='purchase-revenue'>$" + r.revenue + ".00</td>";
-            tbody.appendChild(tr);
-          });
-          if (noteEl) noteEl.textContent = "Store coming soon. Real data will appear when you add a purchases collection.";
+          if (noteEl) noteEl.textContent = "Treat purchases will appear here once members buy from the Treats page.";
         });
       }
 

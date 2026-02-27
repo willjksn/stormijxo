@@ -277,15 +277,7 @@ export default function AdminDashboardPage() {
           .map(([name, o]) => ({ name, count: o.count, cents: o.cents }))
           .sort((a, b) => b.cents - a.cents);
         setTopSpenders(sorted);
-        setTopPurchases(
-          purchasesList.length
-            ? purchasesList
-            : [
-                { name: "1-on-1 Chat", count: 12, cents: 24000 },
-                { name: "Video Call", count: 8, cents: 40000 },
-                { name: "Personal Message", count: 24, cents: 12000 },
-              ]
-        );
+        setTopPurchases(purchasesList);
         setMonthlyMetrics(monthly);
         setStats((s) => ({
           ...s,
@@ -590,11 +582,7 @@ export default function AdminDashboardPage() {
                         <div className={`top-spenders-card${spendersExpanded ? " expanded" : ""}`}>
                           <h2>Top spenders</h2>
                           <div className="top-spenders-list">
-                            {(topSpenders.length ? topSpenders : [
-                              { email: "alex.rivera@example.com", name: "Alex Rivera", totalCents: 12500 },
-                              { email: "jordan.lee@example.com", name: "Jordan Lee", totalCents: 8500 },
-                              { email: "sam.taylor@example.com", name: "Sam Taylor", totalCents: 5200 },
-                            ]).slice(0, spendersExpanded ? undefined : 3).map((o, i) => (
+                            {topSpenders.slice(0, spendersExpanded ? undefined : 3).map((o, i) => (
                               <div key={i} className={`top-spenders-item${i >= 3 ? " top-spenders-item-more" : ""}`}>
                                 <div className="spender-avatar">{(o.name || "?").charAt(0).toUpperCase()}</div>
                                 <div className="spender-info">
@@ -605,6 +593,9 @@ export default function AdminDashboardPage() {
                               </div>
                             ))}
                           </div>
+                          {topSpenders.length === 0 && (
+                            <p className="top-purchases-note" style={{ marginTop: "0.5rem" }}>Tips and store purchases will appear here once you have activity.</p>
+                          )}
                           {topSpenders.length > 3 && (
                             <button type="button" className="top-spenders-toggle" onClick={() => setSpendersExpanded((e) => !e)}>
                               {spendersExpanded ? "Show less" : "View more"}
