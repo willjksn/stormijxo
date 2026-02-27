@@ -162,6 +162,25 @@ module.exports = async (req, res) => {
       }
     }
 
+    if (!customerId && email) {
+      try {
+        const customerList = await stripe.customers.list({
+          email: rawEmail || email,
+          limit: 1,
+        });
+        const matched = customerList.data && customerList.data[0];
+        if (matched && matched.id) {
+          customerId = matched.id.trim();
+          await memberDoc.ref.set(
+            { stripeCustomerId: customerId, stripe_customer_id: customerId },
+            { merge: true }
+          );
+        }
+      } catch {
+        // Keep graceful fallback below.
+      }
+    }
+
     if (!customerId) {
       json(res, 409, {
         error: "No Stripe customer linked to this account yet. Please contact support and we can reconnect it.",

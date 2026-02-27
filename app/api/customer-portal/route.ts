@@ -170,6 +170,27 @@ export async function POST(req: NextRequest) {
         // Keep graceful fallback error below.
       }
     }
+    if (!customerId && email) {
+      try {
+        const customerList = await stripe.customers.list({
+          email: rawEmail || email,
+          limit: 1,
+        });
+        const matched = customerList.data?.[0];
+        if (matched?.id) {
+          customerId = matched.id.trim();
+          await memberDoc.ref.set(
+            {
+              stripeCustomerId: customerId,
+              stripe_customer_id: customerId,
+            },
+            { merge: true }
+          );
+        }
+      } catch {
+        // Keep graceful fallback error below.
+      }
+    }
     if (!customerId) {
       return NextResponse.json(
         { error: "No Stripe customer linked to this account yet. Please contact support and we can reconnect it." },
