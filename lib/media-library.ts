@@ -4,11 +4,12 @@
  */
 import {
   ref,
-  listAll,
+  list,
   getDownloadURL,
   uploadBytesResumable,
   deleteObject,
   type ListResult,
+  type StorageReference,
   type UploadTaskSnapshot,
 } from "firebase/storage";
 import type { FirebaseStorage } from "firebase/storage";
@@ -17,6 +18,65 @@ const MEDIA_PREFIX = "content/media";
 
 export type MediaItem = { url: string; path: string; name: string; isVideo: boolean; folderId: string };
 
+const LIST_PAGE_SIZE = 1000;
+const URL_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const urlCache = new Map<string, { url: string; expiresAt: number }>();
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function listAllItemsPaged(listRef: StorageReference): Promise<ListResult["items"]> {
+  const items: ListResult["items"] = [];
+  let pageToken: string | undefined = undefined;
+  do {
+    const page = await list(listRef, {
+      maxResults: LIST_PAGE_SIZE,
+      ...(pageToken ? { pageToken } : {}),
+    });
+    items.push(...page.items);
+    pageToken = page.nextPageToken;
+  } while (pageToken);
+  return items;
+}
+
+async function getDownloadURLWithRetry(itemRef: StorageReference): Promise<string | null> {
+  const cached = urlCache.get(itemRef.fullPath);
+  if (cached && cached.expiresAt > Date.now()) return cached.url;
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const url = await getDownloadURL(itemRef);
+      urlCache.set(itemRef.fullPath, {
+        url,
+        expiresAt: Date.now() + URL_CACHE_TTL_MS,
+      });
+      return url;
+    } catch {
+      if (attempt === maxAttempts) return null;
+      await sleep(120 * attempt);
+    }
+  }
+  return null;
+}
+
+async function mapWithConcurrency<TIn, TOut>(
+  input: TIn[],
+  concurrency: number,
+  mapper: (value: TIn, index: number) => Promise<TOut>
+): Promise<TOut[]> {
+  const out: TOut[] = new Array(input.length);
+  let index = 0;
+  const workers = Array.from({ length: Math.max(1, Math.min(concurrency, input.length)) }, async () => {
+    while (index < input.length) {
+      const current = index++;
+      out[current] = await mapper(input[current], current);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
 /** List items in a folder. folderId empty = root (General). */
 export async function listMediaLibrary(
   storage: FirebaseStorage,
@@ -24,19 +84,14 @@ export async function listMediaLibrary(
 ): Promise<MediaItem[]> {
   const path = folderId ? `${MEDIA_PREFIX}/${folderId}` : MEDIA_PREFIX;
   const listRef = ref(storage, path);
-  const result: ListResult = await listAll(listRef);
-  const items = await Promise.all(
-    result.items.map(async (itemRef) => {
-      try {
-        const url = await getDownloadURL(itemRef);
-        const name = itemRef.name;
-        const isVideo = /\.(mp4|webm|mov|ogg)(\?|$)/i.test(name) || itemRef.fullPath.toLowerCase().includes("video");
-        return { url, path: itemRef.fullPath, name, isVideo, folderId: folderId || "general" } satisfies MediaItem;
-      } catch {
-        return null;
-      }
-    })
-  );
+  const refs = await listAllItemsPaged(listRef);
+  const items = await mapWithConcurrency(refs, 12, async (itemRef) => {
+    const url = await getDownloadURLWithRetry(itemRef);
+    if (!url) return null;
+    const name = itemRef.name;
+    const isVideo = /\.(mp4|webm|mov|ogg)(\?|$)/i.test(name) || itemRef.fullPath.toLowerCase().includes("video");
+    return { url, path: itemRef.fullPath, name, isVideo, folderId: folderId || "general" } satisfies MediaItem;
+  });
   return items.filter((item): item is MediaItem => item !== null).reverse();
 }
 
@@ -67,8 +122,8 @@ export async function listMediaLibraryCounts(
   const listResults = await Promise.all(
     uniqueFolders.map(async (fid) => {
       const path = fid ? `${MEDIA_PREFIX}/${fid}` : MEDIA_PREFIX;
-      const result = await listAll(ref(storage, path));
-      return { folderId: fid || "general", count: result.items.length };
+      const refs = await listAllItemsPaged(ref(storage, path));
+      return { folderId: fid || "general", count: refs.length };
     })
   );
 
