@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Script from "next/script";
 import { Suspense } from "react";
 import { LandingHeaderWithAuth } from "./components/LandingHeaderWithAuth";
 import { LandingCtaCount } from "./components/LandingContent";
@@ -147,9 +146,7 @@ export default function LandingPage() {
         </p>
       </footer>
 
-      <Script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js" strategy="afterInteractive" />
-      <Script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js" strategy="afterInteractive" />
-      <Script src="/firebase-config.js" strategy="afterInteractive" />
+      {/* Firebase: config comes from NEXT_PUBLIC_FIREBASE_* env at build time (lib/firebase.ts) */}
     </>
   );
 }

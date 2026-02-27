@@ -5,6 +5,7 @@
     "dev": "next dev",
     "build": "npm run generate-firebase-config && next build",
     "start": "next start",
+    "verify:smoke": "npm run build",
     "logo-transparent": "node scripts/make-logo-transparent.js",
     "generate-firebase-config": "node scripts/generate-firebase-config.js"
   },
