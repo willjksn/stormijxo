@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "../../contexts/AuthContext";
 import { NotificationBell } from "../../components/NotificationBell";
 
@@ -13,11 +14,13 @@ function useInitial(displayName: string | null, email: string | null): string {
 }
 
 export function AdminHeader() {
+  const pathname = usePathname();
   const { user, signOut } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const initial = useInitial(user?.displayName ?? null, user?.email ?? null);
   const photoURL = user?.photoURL ?? null;
+  const isDashboard = pathname === "/admin/dashboard";
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
@@ -42,9 +45,18 @@ export function AdminHeader() {
 
   return (
     <header className="admin-header">
-      <Link href="/admin/dashboard" className="admin-header-title">
-        Admin Dashboard
-      </Link>
+      {isDashboard ? (
+        <Link href="/admin/dashboard" className="admin-header-title">
+          Admin Dashboard
+        </Link>
+      ) : (
+        <div className="admin-header-left-with-bell" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <Link href="/admin/dashboard" className="admin-header-title" style={{ fontSize: "1rem" }}>
+            Admin
+          </Link>
+          <NotificationBell variant="admin" userEmail={user?.email ?? null} />
+        </div>
+      )}
       <div className="admin-header-right">
         <Link href="/home" className="header-link" title="Home">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -63,7 +75,7 @@ export function AdminHeader() {
           </svg>
           <span>Treats</span>
         </Link>
-        <NotificationBell variant="admin" userEmail={user?.email ?? null} />
+        {isDashboard && <NotificationBell variant="admin" userEmail={user?.email ?? null} />}
         <div className={`admin-header-profile${dropdownOpen ? " open" : ""}`} ref={wrapRef}>
           <button
             type="button"

@@ -173,12 +173,10 @@ export function MemberHeader({ active }: MemberHeaderProps) {
               </Link>
             )
           )}
-          <span className="member-nav-bell">
-            <NotificationBell variant="member" userEmail={user?.email ?? null} />
-          </span>
         </nav>
       </div>
       <div className="header-right header-profile-wrap" ref={wrapRef}>
+        <NotificationBell variant="member" userEmail={user?.email ?? null} />
         {showAdmin && (
           <Link href="/admin/dashboard" className="header-admin-btn" prefetch>
             Admin

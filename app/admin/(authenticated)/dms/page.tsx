@@ -108,6 +108,7 @@ export default function AdminDmsPage() {
   const [showNewConversation, setShowNewConversation] = useState(false);
   const [userList, setUserList] = useState<UserOption[]>([]);
   const [userListLoading, setUserListLoading] = useState(false);
+  const [userListError, setUserListError] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageDoc[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -199,6 +200,7 @@ export default function AdminDmsPage() {
   const loadUserList = useCallback(() => {
     if (!db) return;
     setUserListLoading(true);
+    setUserListError(null);
     Promise.all([
       getDocsFromServer(collection(db, "users")),
       getDocsFromServer(collection(db, "members")),
@@ -246,7 +248,10 @@ export default function AdminDmsPage() {
         });
         setUserList(list);
       })
-      .catch(() => setUserList([]))
+      .catch((e) => {
+        setUserList([]);
+        setUserListError((e instanceof Error ? e.message : String(e)) || "Could not load members. Check admin access or try Refresh.");
+      })
       .finally(() => setUserListLoading(false));
   }, [db]);
 
@@ -695,6 +700,11 @@ export default function AdminDmsPage() {
                 {userListLoading ? "Loading…" : "Refresh list"}
               </button>
             </div>
+            {userListError && (
+              <p style={{ margin: "0 0 1rem", padding: "0.75rem", background: "rgba(200,0,0,0.1)", color: "var(--text)", borderRadius: 8, fontSize: "0.9rem" }}>
+                {userListError}
+              </p>
+            )}
             {conversations.length === 0 && (
               <p style={{ margin: "0 0 1rem", fontSize: "0.9rem", color: "var(--text-muted)" }}>
                 Choose a member (they must have signed in at least once to appear here).

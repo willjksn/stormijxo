@@ -147,7 +147,7 @@ export async function ensureConversation(
       memberDisplayName: memberDisplayName?.trim() ?? null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      lastMessageAt: null,
+      lastMessageAt: serverTimestamp(),
       lastMessagePreview: null,
     });
   }

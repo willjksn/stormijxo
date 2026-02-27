@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, getDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { getFirebaseDb } from "../../../lib/firebase";
 import {
   ensureConversation,
@@ -21,6 +21,23 @@ function formatMessageDate(d: Date): string {
   return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
+function useInitials(displayName: string | null, email: string | null): string {
+  if (displayName?.trim()) {
+    const parts = displayName.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      const init = (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      if (/[A-Z0-9]/i.test(init)) return init.slice(0, 2);
+    }
+    const first = parts[0][0]?.toUpperCase();
+    if (first) return first.slice(0, 2);
+  }
+  if (email?.trim()) {
+    const c = email.trim()[0].toUpperCase();
+    if (/[A-Z0-9]/i.test(c)) return c;
+  }
+  return "?";
+}
+
 function CheckIcon() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -35,7 +52,13 @@ export default function MemberDmsPage() {
   const [messages, setMessages] = useState<MessageDoc[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [convError, setConvError] = useState<string | null>(null);
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const initials = useInitials(user?.displayName ?? null, user?.email ?? null);
+  const avatarUrl = profileAvatarUrl ?? user?.photoURL ?? null;
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -43,17 +66,33 @@ export default function MemberDmsPage() {
 
   useEffect(() => {
     if (!db || !user?.uid) return;
+    setConvError(null);
     let unsub: (() => void) | null = null;
-    ensureConversation(db, user.uid, user.email ?? null, user.displayName ?? null).then(() => {
-      unsub = subscribeMessages(db, user.uid, (list) => {
-        setMessages(list);
-        setTimeout(scrollToBottom, 100);
+    ensureConversation(db, user.uid, user.email ?? null, user.displayName ?? null)
+      .then(() => {
+        unsub = subscribeMessages(db, user.uid, (list) => {
+          setMessages(list);
+          setTimeout(scrollToBottom, 100);
+        });
+      })
+      .catch((e) => {
+        setConvError((e instanceof Error ? e.message : String(e)) || "Could not load messages.");
       });
-    });
     return () => {
       if (unsub) unsub();
     };
   }, [db, user?.uid, user?.email, user?.displayName, scrollToBottom]);
+
+  useEffect(() => {
+    if (!db || !user?.uid) return;
+    getDoc(doc(db, "users", user.uid)).then((snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        const url = (data?.avatarUrl ?? null) as string | null;
+        setProfileAvatarUrl(url || null);
+      }
+    }).catch(() => {});
+  }, [db, user?.uid]);
 
   const createNotificationForAdmin = useCallback(
     async (body: string) => {
@@ -74,6 +113,7 @@ export default function MemberDmsPage() {
   const handleSend = useCallback(async () => {
     if (!db || !user || !text.trim()) return;
     setSending(true);
+    setError(null);
     try {
       await sendMessage(db, user.uid, user.uid, user.email ?? null, text.trim());
       await createNotificationForAdmin(
@@ -81,7 +121,8 @@ export default function MemberDmsPage() {
       );
       setText("");
     } catch (e) {
-      console.error(e);
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(msg || "Failed to send.");
     } finally {
       setSending(false);
     }
@@ -117,9 +158,20 @@ export default function MemberDmsPage() {
       <div className="chat-page" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
         <div className="chat-thread" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
           <div className="chat-thread-header">
-            <span className="chat-thread-avatar">C</span>
+            {avatarUrl ? (
+              <span className="chat-thread-avatar">
+                <img src={avatarUrl} alt="" />
+              </span>
+            ) : (
+              <span className="chat-thread-avatar" aria-hidden>{initials}</span>
+            )}
             <h1 className="chat-thread-name" style={{ margin: 0, fontSize: "1.1rem" }}>Messages</h1>
           </div>
+          {convError && (
+            <p style={{ padding: "0.75rem 1rem", margin: 0, background: "rgba(200,0,0,0.1)", color: "var(--text)", borderRadius: 8, fontSize: "0.9rem" }}>
+              {convError}
+            </p>
+          )}
           <div className="chat-messages">
             {messages.length === 0 && !sending && (
               <p className="chat-empty-state">No messages yet. Say hi below.</p>
@@ -164,6 +216,11 @@ export default function MemberDmsPage() {
             />
             <button type="button" className="send-btn" onClick={handleSend} disabled={sending || !text.trim()}>{sending ? "…" : "Send"}</button>
           </div>
+          {error && (
+            <p style={{ padding: "0.5rem 1rem", margin: 0, fontSize: "0.85rem", color: "var(--text)", background: "rgba(200,0,0,0.1)", borderRadius: 8 }}>
+              {error}
+            </p>
+          )}
         </div>
       </div>
     </main>
