@@ -12,6 +12,7 @@ import {
   addDoc,
   serverTimestamp,
   Timestamp,
+  where,
 } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseAuth } from "../../../../lib/firebase";
 import {
@@ -80,6 +81,19 @@ export default function AdminPurchasesPage() {
   useEffect(() => {
     loadPurchases();
   }, [loadPurchases]);
+
+  useEffect(() => {
+    if (!db) return;
+    const unreadAdminPurchasesQ = query(
+      collection(db, "notifications"),
+      where("forAdmin", "==", true),
+      where("type", "==", "treat_scheduled"),
+      where("read", "==", false)
+    );
+    getDocs(unreadAdminPurchasesQ)
+      .then((snap) => Promise.all(snap.docs.map((d) => updateDoc(doc(db, "notifications", d.id), { read: true }))))
+      .catch(() => {});
+  }, [db]);
 
   const showMsg = (type: "ok" | "error", text: string) => {
     setMessage({ type, text });

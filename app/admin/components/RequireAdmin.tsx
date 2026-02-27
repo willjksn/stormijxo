@@ -19,6 +19,7 @@ export function RequireAdmin({ children, header }: RequireAdminProps) {
   const { user, loading: authLoading } = useAuth();
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [adminDocEnsured, setAdminDocEnsured] = useState(false);
+  const [adminDocError, setAdminDocError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -38,6 +39,8 @@ export function RequireAdmin({ children, header }: RequireAdminProps) {
   useEffect(() => {
     if (!user || allowed !== true) return;
     let cancelled = false;
+    setAdminDocError(null);
+    setAdminDocEnsured(false);
     const db = getFirebaseDb();
     if (!db || !user.uid) {
       setAdminDocEnsured(true);
@@ -86,12 +89,16 @@ export function RequireAdmin({ children, header }: RequireAdminProps) {
       }
       const apiOk = await ensureByApi();
       if (cancelled) return;
-      if (apiOk) setDone();
+      if (apiOk) {
+        setDone();
+        return;
+      }
+      if (!cancelled) {
+        setAdminDocError("Could not verify admin access setup. Please refresh and try again.");
+      }
     })();
-    const t = setTimeout(setDone, 9000);
     return () => {
       cancelled = true;
-      clearTimeout(t);
     };
   }, [user, allowed]);
 
@@ -102,9 +109,61 @@ export function RequireAdmin({ children, header }: RequireAdminProps) {
     }
   }, [authLoading, user, allowed, router]);
 
-  const loading = authLoading || (user && allowed === null) || (allowed === true && !adminDocEnsured);
+  const loading =
+    authLoading ||
+    (user && allowed === null) ||
+    (allowed === true && !adminDocEnsured && !adminDocError);
   if (!user || allowed === false) {
     return null;
+  }
+
+  if (adminDocError && header) {
+    return (
+      <>
+        {header}
+        <main
+          className="admin-main"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.75rem",
+            minHeight: "50vh",
+            color: "var(--text-muted)",
+            textAlign: "center",
+            padding: "1rem",
+          }}
+        >
+          <p style={{ margin: 0 }}>{adminDocError}</p>
+          <button type="button" className="btn btn-secondary" onClick={() => window.location.reload()}>
+            Reload
+          </button>
+        </main>
+      </>
+    );
+  }
+  if (adminDocError) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "0.75rem",
+          minHeight: "100vh",
+          color: "var(--text-muted)",
+          textAlign: "center",
+          padding: "1rem",
+        }}
+      >
+        <p style={{ margin: 0 }}>{adminDocError}</p>
+        <button type="button" className="btn btn-secondary" onClick={() => window.location.reload()}>
+          Reload
+        </button>
+      </div>
+    );
   }
 
   if (loading && header) {

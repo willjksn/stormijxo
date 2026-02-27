@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
-import { collection, doc, getDoc, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, getDoc, addDoc, serverTimestamp, query, where, getDocs, updateDoc } from "firebase/firestore";
 import { getFirebaseDb } from "../../../lib/firebase";
 import {
   ensureConversation,
@@ -93,6 +93,19 @@ export default function MemberDmsPage() {
       }
     }).catch(() => {});
   }, [db, user?.uid]);
+
+  useEffect(() => {
+    if (!db || !user?.email) return;
+    const unreadMemberDmQ = query(
+      collection(db, NOTIFICATIONS_COLLECTION),
+      where("forMemberEmail", "==", user.email.trim().toLowerCase()),
+      where("type", "==", "dm"),
+      where("read", "==", false)
+    );
+    getDocs(unreadMemberDmQ)
+      .then((snap) => Promise.all(snap.docs.map((d) => updateDoc(doc(db, NOTIFICATIONS_COLLECTION, d.id), { read: true }))))
+      .catch(() => {});
+  }, [db, user?.email]);
 
   const createNotificationForAdmin = useCallback(
     async (body: string) => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, doc, getDocs, query, where, updateDoc } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseAuth } from "../../../lib/firebase";
 import { TREATS_COLLECTION, DEFAULT_TREATS, type TreatDoc } from "../../../lib/treats";
 import { PURCHASES_COLLECTION, purchaseFromDoc, type PurchaseDoc } from "../../../lib/purchases";
@@ -66,6 +66,19 @@ export default function TreatsPage() {
   useEffect(() => {
     loadScheduled();
   }, [loadScheduled]);
+
+  useEffect(() => {
+    if (!db || !auth?.currentUser?.email) return;
+    const unreadTreatNotificationsQ = query(
+      collection(db, "notifications"),
+      where("forMemberEmail", "==", auth.currentUser.email.trim().toLowerCase()),
+      where("type", "==", "treat_scheduled"),
+      where("read", "==", false)
+    );
+    getDocs(unreadTreatNotificationsQ)
+      .then((snap) => Promise.all(snap.docs.map((d) => updateDoc(doc(db, "notifications", d.id), { read: true }))))
+      .catch(() => {});
+  }, [db, auth?.currentUser?.email]);
 
   useEffect(() => {
     if (!db) {

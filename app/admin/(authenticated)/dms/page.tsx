@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
-import { collection, getDocs, getDocsFromServer, addDoc, doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { collection, getDocsFromServer, addDoc, doc, getDoc, serverTimestamp, query, where, getDocs, updateDoc } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseStorage } from "../../../../lib/firebase";
 import {
   ensureConversation,
@@ -113,15 +113,13 @@ export default function AdminDmsPage() {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterAll, setFilterAll] = useState(true);
   const [profileOpenForId, setProfileOpenForId] = useState<string | null>(null);
   const profileCardAnchorRef = useRef<HTMLButtonElement | null>(null);
-  const [addByUidValue, setAddByUidValue] = useState("");
-  const [addByUidLoading, setAddByUidLoading] = useState(false);
-  const [addByUidError, setAddByUidError] = useState<string | null>(null);
   const [memberPhotoUrls, setMemberPhotoUrls] = useState<Record<string, string>>({});
   const fetchedPhotoUidsRef = useRef<Set<string>>(new Set());
 
@@ -206,41 +204,54 @@ export default function AdminDmsPage() {
       getDocsFromServer(collection(db, "members")),
     ])
       .then(([usersSnap, membersSnap]) => {
-        const byUid = new Map<string, UserOption>();
+        const byEmail = new Map<string, UserOption>();
         usersSnap.forEach((d) => {
           const data = d.data();
-          byUid.set(d.id, {
-            uid: d.id,
-            email: data.email != null ? String(data.email) : null,
-            displayName: data.displayName != null ? String(data.displayName) : null,
-          });
+          const emailRaw = data.email != null ? String(data.email).trim().toLowerCase() : "";
+          if (!emailRaw) return;
+          const displayNameRaw = data.displayName != null ? String(data.displayName).trim() : "";
+          const existing = byEmail.get(emailRaw);
+          if (!existing) {
+            byEmail.set(emailRaw, {
+              uid: d.id,
+              email: emailRaw,
+              displayName: displayNameRaw || emailRaw,
+            });
+            return;
+          }
+          if ((!existing.displayName || existing.displayName === existing.email) && displayNameRaw) {
+            byEmail.set(emailRaw, { ...existing, displayName: displayNameRaw });
+          }
+          if ((!existing.uid || existing.uid.startsWith("member-")) && d.id) {
+            byEmail.set(emailRaw, { ...byEmail.get(emailRaw)!, uid: d.id });
+          }
         });
         membersSnap.forEach((d) => {
           const data = d.data();
           const uid = (data.uid ?? data.userId ?? "").toString().trim();
-          const email = data.email != null ? String(data.email).trim() : "";
+          const email = data.email != null ? String(data.email).trim().toLowerCase() : "";
           const displayName = (data.displayName ?? data.instagram_handle ?? data.note ?? data.email ?? null) != null
-            ? String(data.displayName ?? data.instagram_handle ?? data.note ?? data.email)
+            ? String(data.displayName ?? data.instagram_handle ?? data.note ?? data.email).trim()
             : null;
-          if (uid) {
-            if (byUid.has(uid)) return;
-            byUid.set(uid, {
-              uid,
-              email: data.email != null ? String(data.email) : null,
-              displayName,
+          if (!email) return;
+          const existing = byEmail.get(email);
+          const memberKey = uid || ("member-" + d.id);
+          if (!existing) {
+            byEmail.set(email, {
+              uid: memberKey,
+              email,
+              displayName: displayName || email,
+              memberId: uid ? undefined : d.id,
             });
-          } else if (email) {
-            const key = "member-" + d.id;
-            if (byUid.has(key)) return;
-            byUid.set(key, {
-              uid: key,
-              email: data.email != null ? String(data.email) : null,
-              displayName,
-              memberId: d.id,
-            });
+            return;
           }
+          const next: UserOption = { ...existing };
+          if ((!next.displayName || next.displayName === next.email) && displayName) next.displayName = displayName;
+          if ((next.uid.startsWith("member-") || !next.uid) && uid) next.uid = uid;
+          if (!uid) next.memberId = existing.memberId ?? d.id;
+          byEmail.set(email, next);
         });
-        const list = Array.from(byUid.values());
+        const list = Array.from(byEmail.values());
         list.sort((a, b) => {
           const na = (a.displayName || a.email || a.uid).toLowerCase();
           const nb = (b.displayName || b.email || b.uid).toLowerCase();
@@ -253,6 +264,19 @@ export default function AdminDmsPage() {
         setUserListError((e instanceof Error ? e.message : String(e)) || "Could not load members. Check admin access or try Refresh.");
       })
       .finally(() => setUserListLoading(false));
+  }, [db]);
+
+  useEffect(() => {
+    if (!db) return;
+    const q = query(
+      collection(db, NOTIFICATIONS_COLLECTION),
+      where("forAdmin", "==", true),
+      where("type", "==", "dm"),
+      where("read", "==", false)
+    );
+    getDocs(q)
+      .then((snap) => Promise.all(snap.docs.map((d) => updateDoc(doc(db, NOTIFICATIONS_COLLECTION, d.id), { read: true }))))
+      .catch(() => {});
   }, [db]);
 
   const handleStartNewConversation = useCallback(
@@ -311,54 +335,6 @@ export default function AdminDmsPage() {
     [db, user]
   );
 
-  const handleStartByUid = useCallback(
-    async (uidRaw: string) => {
-      if (!db) return;
-      const uid = uidRaw.trim();
-      if (!uid) {
-        setAddByUidError("Enter a UID.");
-        return;
-      }
-      setAddByUidError(null);
-      setAddByUidLoading(true);
-      try {
-        const userRef = doc(db, "users", uid);
-        await setDoc(userRef, { email: null, displayName: null }, { merge: true });
-        await ensureConversation(db, uid, null, null);
-        setShowNewConversation(false);
-        setAddByUidValue("");
-        setSelectedId(uid);
-        setConversations((prev) => {
-          if (prev.some((c) => c.id === uid)) return prev;
-          return [
-            ...prev,
-            {
-              id: uid,
-              memberUid: uid,
-              memberEmail: null,
-              memberDisplayName: null,
-              createdAt: null,
-              updatedAt: null,
-              lastMessageAt: null,
-              lastMessagePreview: null,
-            },
-          ];
-        });
-        setUserList((prev) => {
-          if (prev.some((u) => u.uid === uid)) return prev;
-          return [...prev, { uid, email: null, displayName: null }].sort((a, b) =>
-            (a.displayName || a.email || a.uid).toLowerCase().localeCompare((b.displayName || b.email || b.uid).toLowerCase())
-          );
-        });
-      } catch (e) {
-        setAddByUidError((e as Error)?.message ?? "Failed to start conversation.");
-      } finally {
-        setAddByUidLoading(false);
-      }
-    },
-    [db]
-  );
-
   useEffect(() => {
     if (!db || !selectedId) {
       setMessages([]);
@@ -393,6 +369,7 @@ export default function AdminDmsPage() {
     const hasFiles = fileInputRef.current?.files?.length;
     if (!hasText && !hasFiles) return;
     setSending(true);
+    setSendError(null);
     try {
       if (storage && hasFiles) {
         setUploading(true);
@@ -429,6 +406,9 @@ export default function AdminDmsPage() {
         await createNotificationForMember(selected?.memberEmail ?? null, "You received a new message.");
         return;
       }
+      if (!storage && hasFiles) {
+        throw new Error("File upload is not available right now. Please refresh and try again.");
+      }
       await sendMessage(db, selectedId, user.uid, user.email ?? null, text.trim());
       await createNotificationForMember(
         selected?.memberEmail ?? null,
@@ -437,8 +417,10 @@ export default function AdminDmsPage() {
       setText("");
     } catch (e) {
       console.error(e);
+      setSendError((e as Error)?.message ?? "Failed to send/upload message.");
     } finally {
       setSending(false);
+      setUploading(false);
     }
   }, [db, user, selectedId, selected?.memberEmail, text, storage, createNotificationForMember]);
 
@@ -519,41 +501,7 @@ export default function AdminDmsPage() {
                   </div>
                   <span className="chat-conversation-time" style={{ fontSize: "0.75rem", color: "var(--text-muted)", flexShrink: 0 }}>{formatRelativeTime(c.lastMessageAt)}</span>
                 </button>
-                <button
-                  type="button"
-                  ref={profileOpenForId === c.id ? profileCardAnchorRef : undefined}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    profileCardAnchorRef.current = e.currentTarget;
-                    setProfileOpenForId(profileOpenForId === c.id ? null : c.id);
-                  }}
-                  title="View profile"
-                  aria-label="View member profile"
-                  style={{
-                    width: 32,
-                    height: 32,
-                    padding: 0,
-                    border: "none",
-                    borderRadius: "50%",
-                    background: "transparent",
-                    color: "var(--text-muted)",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <ThreeDotsIcon />
-                </button>
-                {profileOpenForId === c.id && (
-                  <MemberProfileCard
-                    member={{ uid: c.id, email: c.memberEmail, displayName: c.memberDisplayName }}
-                    anchorRef={profileCardAnchorRef}
-                    open={true}
-                    onClose={() => setProfileOpenForId(null)}
-                  />
-                )}
+                {/* Profile menu intentionally only in right thread header */}
               </div>
             ))}
           </div>
@@ -632,7 +580,6 @@ export default function AdminDmsPage() {
               </div>
               <div className="chat-input-bar">
                 <input type="file" ref={fileInputRef} accept="image/*,video/*" multiple style={{ display: "none" }} />
-                <button type="button" className="icon-btn" onClick={() => fileInputRef.current?.click()} disabled={sending || uploading} title="Attach"><PlusIcon /></button>
                 <button type="button" className="icon-btn" onClick={() => fileInputRef.current?.click()} disabled={sending || uploading} title="Photo / video"><ImageIcon /></button>
                 <input
                   type="text"
@@ -644,6 +591,11 @@ export default function AdminDmsPage() {
                 />
                 <button type="button" className="send-btn" onClick={handleSend} disabled={sending || uploading || (!text.trim() && !fileInputRef.current?.files?.length)}>{sending ? "…" : "Send"}</button>
               </div>
+              {sendError && (
+                <p style={{ margin: 0, padding: "0.5rem 1rem", color: "var(--error, #c53030)", fontSize: "0.85rem" }}>
+                  {sendError}
+                </p>
+              )}
             </>
           )}
         </div>
@@ -717,7 +669,12 @@ export default function AdminDmsPage() {
             ) : userList.length === 0 ? null : (
               <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
                 {userList.map((u) => {
-                  const alreadyHasConv = conversations.some((c) => c.id === u.uid);
+                  const userEmailNorm = (u.email || "").trim().toLowerCase();
+                  const alreadyHasConv =
+                    conversations.some((c) => c.id === u.uid) ||
+                    (userEmailNorm
+                      ? conversations.some((c) => (c.memberEmail || "").trim().toLowerCase() === userEmailNorm)
+                      : false);
                   return (
                     <li key={u.uid} style={{ borderBottom: "1px solid var(--border)" }}>
                       <button
@@ -734,8 +691,8 @@ export default function AdminDmsPage() {
                           font: "inherit",
                         }}
                       >
-                        <span style={{ fontWeight: 600 }}>{u.displayName || u.email || u.uid}</span>
-                        {u.email && u.displayName && (
+                        <span style={{ fontWeight: 600 }}>{u.displayName || u.email || "Member"}</span>
+                        {u.email && (
                           <span style={{ display: "block", fontSize: "0.85rem", color: "var(--text-muted)" }}>{u.email}</span>
                         )}
                         {alreadyHasConv && (
@@ -747,47 +704,6 @@ export default function AdminDmsPage() {
                 })}
               </ul>
             )}
-            <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
-              <p style={{ margin: "0 0 0.5rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                {conversations.length === 0
-                  ? "Or add by Firebase Auth UID (from Authentication in Firebase Console):"
-                  : "Add by UID:"}
-              </p>
-              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
-                <input
-                  type="text"
-                  value={addByUidValue}
-                  onChange={(e) => { setAddByUidValue(e.target.value); setAddByUidError(null); }}
-                  placeholder="e.g. 4C0mktzFPLOFjLwjYzpoc53DWTi2"
-                  style={{
-                    flex: 1,
-                    minWidth: 180,
-                    padding: "0.5rem 0.75rem",
-                    border: "1px solid var(--border)",
-                    borderRadius: 8,
-                    fontSize: "0.9rem",
-                    fontFamily: "monospace",
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleStartByUid(addByUidValue);
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={addByUidLoading || !addByUidValue.trim()}
-                  onClick={() => handleStartByUid(addByUidValue)}
-                >
-                  {addByUidLoading ? "Opening…" : "Start conversation"}
-                </button>
-              </div>
-              {addByUidError && (
-                <p style={{ margin: "0.35rem 0 0", fontSize: "0.85rem", color: "var(--error, #c00)" }}>{addByUidError}</p>
-              )}
-            </div>
             <div style={{ marginTop: "1rem" }}>
               <button type="button" className="btn btn-secondary" onClick={() => setShowNewConversation(false)}>
                 Cancel
