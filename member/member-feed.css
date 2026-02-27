@@ -238,6 +238,107 @@
 .feed-card-action-btn.bookmarked .bookmark-outline { display: none; }
 .feed-card-action-btn.bookmarked .bookmark-filled { display: block; }
 .feed-card-action-btn.bookmark-btn { margin-left: auto; }
+.feed-card-send-tip {
+  display: inline-flex; align-items: center; gap: 0.2rem;
+  text-decoration: none; color: var(--text-muted);
+  padding: 0.35rem 0.5rem; border-radius: 10px;
+  background: rgba(212, 85, 139, 0.06);
+  border: 1px solid rgba(212, 85, 139, 0.12);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  font-family: inherit;
+}
+.feed-card-send-tip:hover:not(:disabled) { color: var(--accent); background: var(--accent-soft); border-color: rgba(212, 85, 139, 0.35); }
+.feed-card-send-tip:disabled { cursor: not-allowed; opacity: 0.8; }
+.feed-card-tip-icon { width: 18px; height: 18px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+.feed-card-tip-dollar { font-size: 0.8rem; font-weight: 700; line-height: 1; }
+.feed-card-send-tip-text { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.03em; }
+
+/* Tip modal */
+.tip-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  background: rgba(26, 18, 23, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.tip-modal {
+  width: min(400px, 95vw);
+  background: linear-gradient(180deg, #fff 0%, #fef8f9 52%, #fdf4f6 100%);
+  border: 1px solid rgba(201, 112, 130, 0.24);
+  border-radius: 18px;
+  box-shadow: 0 22px 44px rgba(45, 31, 36, 0.24), 0 8px 20px rgba(201, 112, 130, 0.14);
+  overflow: hidden;
+}
+.tip-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(201, 112, 130, 0.12);
+}
+.tip-modal-title { font-size: 1.2rem; font-weight: 600; margin: 0; color: var(--text); }
+.tip-modal-close {
+  width: 36px; height: 36px;
+  border: none; background: transparent;
+  font-size: 1.5rem; line-height: 1; color: var(--text-muted);
+  cursor: pointer; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  transition: color 0.2s, background 0.2s;
+}
+.tip-modal-close:hover { color: var(--accent); background: var(--accent-soft); }
+.tip-modal-body { padding: 1.5rem; }
+.tip-modal-presets {
+  display: flex; flex-wrap: wrap; gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.tip-modal-preset-btn {
+  padding: 0.5rem 1rem; font-size: 0.95rem; font-weight: 500;
+  color: var(--text-muted); background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px; cursor: pointer; font-family: inherit;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.tip-modal-preset-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.tip-modal-preset-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tip-modal-custom { margin-bottom: 1.25rem; }
+.tip-modal-custom-label {
+  display: block; font-size: 0.9rem; font-weight: 500; color: var(--text);
+  margin-bottom: 0.35rem;
+}
+.tip-modal-custom-input {
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  font-size: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-family: inherit;
+  background: var(--bg);
+  color: var(--text);
+}
+.tip-modal-custom-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(212, 85, 139, 0.2);
+}
+.tip-modal-cta {
+  width: 100%;
+  padding: 0.85rem 1.5rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+.tip-modal-cta:hover:not(:disabled) { background: var(--accent-hover); }
+.tip-modal-cta:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* Card body */
 .feed-card-body {

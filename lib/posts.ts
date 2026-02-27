@@ -22,6 +22,8 @@ export type PostDoc = {
   overlayTextSize?: number;
   hideComments?: boolean;
   hideLikes?: boolean;
+  /** When false, hides the Send Tip button in the post action bar. Default true. */
+  showTipButton?: boolean;
   /** Optional poll: question + options (members can vote) */
   poll?: { question: string; options: string[] };
   /** Optional tip goal: show tips for this post with a target (e.g. "If I raise $500 I'll...") */

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseStorage } from "../../../../lib/firebase";
 import {
@@ -43,6 +43,8 @@ export default function AdminMediaPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [renameFolderId, setRenameFolderId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const addFolderButtonRef = useRef<HTMLButtonElement | null>(null);
+  const addFolderPanelRef = useRef<HTMLDivElement | null>(null);
 
   const loadFolders = useCallback(async () => {
     if (!db) return;
@@ -86,6 +88,32 @@ export default function AdminMediaPage() {
     const t = setTimeout(() => setMessage(null), 3000);
     return () => clearTimeout(t);
   }, [message]);
+
+  useEffect(() => {
+    if (!showAddFolder) return;
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (addFolderButtonRef.current?.contains(target)) return;
+      if (addFolderPanelRef.current?.contains(target)) return;
+      setShowAddFolder(false);
+      setAddFolderName("");
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowAddFolder(false);
+        setAddFolderName("");
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [showAddFolder]);
 
   const byFolder =
     currentFolderId === GENERAL_ID
@@ -230,12 +258,13 @@ export default function AdminMediaPage() {
                 className="admin-media-folder-add"
                 onClick={() => setShowAddFolder((v) => !v)}
                 aria-label="Add folder"
+                ref={addFolderButtonRef}
               >
                 +
               </button>
             </div>
             {showAddFolder && (
-              <div className="admin-media-folder-new">
+              <div className="admin-media-folder-new" ref={addFolderPanelRef}>
                 <input
                   type="text"
                   value={addFolderName}

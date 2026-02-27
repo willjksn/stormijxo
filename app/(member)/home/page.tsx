@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, useMemo, useRef } from "react";
+import { TipModal } from "../../components/TipModal";
 import { collection, getDocs, query, orderBy, limit, doc, runTransaction, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { getFirebaseDb } from "../../../lib/firebase";
 import { useAuth } from "../../contexts/AuthContext";
@@ -66,6 +67,10 @@ const MediaVideoIcon = () => (
     <rect x="3" y="6" width="13" height="12" rx="2" ry="2" />
     <path d="M16 10l5-3v10l-5-3z" />
   </svg>
+);
+
+const TipIcon = () => (
+  <span className="feed-card-tip-icon feed-card-tip-dollar" aria-hidden>$</span>
 );
 
 /** Format post date as relative time */
@@ -221,6 +226,7 @@ function FeedCard({
     (post.lockedContent?.priceCents ?? 0) >= 100 &&
     !unlockedPostIds.includes(post.id);
   const [unlockLoading, setUnlockLoading] = useState(false);
+  const [tipModalOpen, setTipModalOpen] = useState(false);
 
   const visibleEmojis = useMemo(() => {
     const q = emojiQuery.trim().toLowerCase();
@@ -472,6 +478,25 @@ function FeedCard({
               <CommentIcon />
               <span className="feed-card-action-count">{commentsForViewer.length}</span>
             </button>
+          )}
+          {post.showTipButton !== false && (
+            <>
+              <button
+                type="button"
+                className="feed-card-action-group feed-card-action-link feed-card-send-tip"
+                aria-label="Send tip"
+                onClick={() => setTipModalOpen(true)}
+              >
+                <TipIcon />
+                <span className="feed-card-send-tip-text">SEND TIP</span>
+              </button>
+              <TipModal
+                isOpen={tipModalOpen}
+                onClose={() => setTipModalOpen(false)}
+                postId={post.id}
+                cancelPath="/home"
+              />
+            </>
           )}
           <button
             type="button"

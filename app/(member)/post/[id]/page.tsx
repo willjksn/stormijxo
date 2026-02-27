@@ -4,6 +4,7 @@ import { use, useEffect, useState, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { doc, getDoc, runTransaction } from "firebase/firestore";
+import { TipModal } from "../../../components/TipModal";
 import { getFirebaseDb } from "../../../../lib/firebase";
 import { useAuth } from "../../../contexts/AuthContext";
 import { isAdminEmail } from "../../../../lib/auth-redirect";
@@ -34,6 +35,7 @@ type PostData = {
   hideLikes?: boolean;
   tipGoal?: { description: string; targetCents: number; raisedCents: number };
   lockedContent?: { enabled?: boolean; priceCents?: number };
+  showTipButton?: boolean;
 };
 
 const COMMENT_EMOJI_CATEGORIES = {
@@ -101,6 +103,7 @@ export default function PostByIdPage({
   const [emojiCategory, setEmojiCategory] = useState<CommentEmojiCategory>("all");
   const [unlockedPostIds, setUnlockedPostIds] = useState<string[]>([]);
   const [unlockLoading, setUnlockLoading] = useState(false);
+  const [tipModalOpen, setTipModalOpen] = useState(false);
   const db = getFirebaseDb();
   const { user } = useAuth();
   const commentInputRef = useRef<HTMLInputElement | null>(null);
@@ -196,6 +199,7 @@ export default function PostByIdPage({
           hideLikes: !!d.hideLikes,
           tipGoal: d.tipGoal as PostData["tipGoal"] | undefined,
           lockedContent: d.lockedContent as PostData["lockedContent"] | undefined,
+          showTipButton: d.showTipButton !== false,
         });
         setStatus("ok");
       })
@@ -454,14 +458,32 @@ export default function PostByIdPage({
             <p className="feed-card-tip-goal-raised">
               ${(post.tipGoal.raisedCents / 100).toFixed(2)} of ${(post.tipGoal.targetCents / 100).toFixed(2)} raised
             </p>
-            <Link
-              href={`/tip?postId=${encodeURIComponent(id)}`}
+            <button
+              type="button"
               className="post-tip-for-post-btn"
+              onClick={() => setTipModalOpen(true)}
             >
               Tip for this post
-            </Link>
+            </button>
           </div>
         )}
+        {post.showTipButton !== false && !(post.tipGoal && post.tipGoal.targetCents > 0) && (
+          <div className="post-detail-send-tip-wrap">
+            <button
+              type="button"
+              className="post-detail-send-tip-link"
+              onClick={() => setTipModalOpen(true)}
+            >
+              Send Tip
+            </button>
+          </div>
+        )}
+        <TipModal
+          isOpen={tipModalOpen}
+          onClose={() => setTipModalOpen(false)}
+          postId={id}
+          cancelPath={`/post/${encodeURIComponent(id)}`}
+        />
         {!post.hideComments && (
           <div className="post-comments" id="comments">
             <h3>Comments</h3>

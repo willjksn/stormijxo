@@ -164,6 +164,7 @@ export default function AdminPostsPage() {
   const [overlayTextSize, setOverlayTextSize] = useState<number>(18);
   const [hideComments, setHideComments] = useState(false);
   const [hideLikes, setHideLikes] = useState(false);
+  const [showTipButton, setShowTipButton] = useState(true);
   const [emojiOpenFor, setEmojiOpenFor] = useState<"caption" | "pollQuestion" | "tipGoal" | "overlayText" | null>(null);
   const [emojiQuery, setEmojiQuery] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -321,6 +322,7 @@ export default function AdminPostsPage() {
         setOverlaySectionOpen(hasOverlay);
         setHideComments(!!d.hideComments);
         setHideLikes(!!d.hideLikes);
+        setShowTipButton(d.showTipButton !== false);
         const p = d.poll as { question: string; options: string[] } | undefined;
         if (p?.question && Array.isArray(p.options) && p.options.length >= 2) {
           setPoll({ question: p.question, options: p.options });
@@ -557,6 +559,7 @@ export default function AdminPostsPage() {
         captionStyle: overlayAnimation,
         hideComments,
         hideLikes,
+        showTipButton,
         status,
         calendarDate,
         scheduledAt: scheduledAt ?? null,
@@ -1212,6 +1215,14 @@ export default function AdminPostsPage() {
                 aria-pressed={hideLikes}
               >
                 Hide likes
+              </button>
+              <button
+                type="button"
+                className={`admin-posts-option-btn${showTipButton ? " active" : ""}`}
+                onClick={() => setShowTipButton((v) => !v)}
+                aria-pressed={showTipButton}
+              >
+                Show Send Tip button
               </button>
             </div>
           </section>
