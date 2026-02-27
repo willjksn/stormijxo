@@ -32,6 +32,10 @@ export async function requireAdminAuth(
 
   const email = (decoded.email || "").toLowerCase();
   if (ALLOWED_ADMIN_EMAILS.includes(email)) {
+    await db.collection("admin_users").doc(decoded.uid).set(
+      { email: decoded.email || email, role: "admin" },
+      { merge: true }
+    );
     return { decoded, admin };
   }
 

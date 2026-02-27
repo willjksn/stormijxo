@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../contexts/AuthContext";
 import { getFirebaseDb } from "../../../lib/firebase";
+import { getFirebaseAuth } from "../../../lib/firebase";
 import { canAccessAdmin } from "../../../lib/auth-redirect";
 
 type RequireAdminProps = {
@@ -16,6 +17,7 @@ export function RequireAdmin({ children, header }: RequireAdminProps) {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [adminDocEnsured, setAdminDocEnsured] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -33,13 +35,44 @@ export function RequireAdmin({ children, header }: RequireAdminProps) {
   }, [user, authLoading, router]);
 
   useEffect(() => {
+    if (!user || allowed !== true) return;
+    let cancelled = false;
+    const auth = getFirebaseAuth();
+    if (!auth?.currentUser) {
+      setAdminDocEnsured(true);
+      return;
+    }
+    auth.currentUser
+      .getIdToken(true)
+      .then((token) =>
+        fetch("/api/admin/ensure-admin-doc", {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      )
+      .then((res) => {
+        if (!cancelled) setAdminDocEnsured(true);
+      })
+      .catch(() => {
+        if (!cancelled) setAdminDocEnsured(true);
+      });
+    const t = setTimeout(() => {
+      if (!cancelled) setAdminDocEnsured(true);
+    }, 3000);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [user, allowed]);
+
+  useEffect(() => {
     if (authLoading || (user && allowed === null)) return;
     if (!user || allowed === false) {
       router.replace("/");
     }
   }, [authLoading, user, allowed, router]);
 
-  const loading = authLoading || (user && allowed === null);
+  const loading = authLoading || (user && allowed === null) || (allowed === true && !adminDocEnsured);
   if (!user || allowed === false) {
     return null;
   }

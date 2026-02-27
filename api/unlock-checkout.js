@@ -83,29 +83,12 @@ module.exports = async (req, res) => {
     const isCreateUser = requestPath.includes("create-user");
 
     if (isCreateUser && email && password && password.length >= 6) {
-      const proto = (req.headers && (req.headers["x-forwarded-proto"] || req.headers["x-forwarded-protocol"])) || "https";
-      const host = (req.headers && (req.headers["x-forwarded-host"] || req.headers["host"])) || process.env.VERCEL_URL || process.env.PUBLIC_APP_URL || "stormijxo.com";
-      const origin = host.startsWith("http") ? host : `${proto}://${host}`;
-      const authHeader = (req.headers && (req.headers.authorization || req.headers.Authorization)) || "";
       try {
-        const r = await fetch(origin.replace(/\/$/, "") + "/api/admin/create-user", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: authHeader },
-          body: JSON.stringify({
-            email,
-            password,
-            memberId: memberId || undefined,
-            displayName: body.displayName != null ? String(body.displayName).trim() : undefined,
-          }),
-        });
-        const data = await r.json().catch(() => ({}));
-        res.statusCode = r.status;
-        res.setHeader("Content-Type", "application/json; charset=utf-8");
-        res.end(JSON.stringify(data));
-        return;
+        const createUserHandler = require("./admin/create-user");
+        return createUserHandler(req, res);
       } catch (proxyErr) {
-        console.error("unlock-checkout create-user proxy error:", proxyErr);
-        json(res, 502, { error: "Could not reach create-user API. Try again." });
+        console.error("unlock-checkout create-user require error:", proxyErr);
+        json(res, 502, { error: "Could not run create-user. Try again." });
         return;
       }
     }
