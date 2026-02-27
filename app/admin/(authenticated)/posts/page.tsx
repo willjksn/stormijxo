@@ -625,7 +625,9 @@ export default function AdminPostsPage() {
       if (editId) {
         await updateDoc(doc(db, "posts", editId), { ...payload, updatedAt: serverTimestamp() });
       } else {
-        await addDoc(collection(db, "posts"), { ...payload, createdAt: serverTimestamp() });
+        const docRef = await addDoc(collection(db, "posts"), { ...payload, createdAt: serverTimestamp() });
+        await loadRecentPosts();
+        router.push(`/admin/posts?edit=${docRef.id}`);
       }
       setMessage({
         type: "success",
@@ -663,7 +665,7 @@ export default function AdminPostsPage() {
       setShowScheduleModal(false);
       setScheduleDate("");
       setScheduleTime("12:00");
-      loadRecentPosts();
+      if (editId) loadRecentPosts();
     } catch (err) {
       setMessage({ type: "error", text: (err as Error).message || "Failed to save" });
     } finally {
@@ -935,10 +937,9 @@ export default function AdminPostsPage() {
                   <button
                     type="button"
                     className="btn btn-primary"
-                    onClick={() => savePost("draft")}
-                    disabled={publishLoading || !canSavePost}
+                    onClick={() => setMessage({ type: "success", text: "Use 'Save as draft' or 'Publish now' below to save the post." })}
                   >
-                    Save
+                    Done
                   </button>
                   <button
                     type="button"
@@ -1024,10 +1025,9 @@ export default function AdminPostsPage() {
                   <button
                     type="button"
                     className="btn btn-primary"
-                    onClick={() => savePost("draft")}
-                    disabled={publishLoading || !canSavePost}
+                    onClick={() => setMessage({ type: "success", text: "Use 'Save as draft' or 'Publish now' below to save the post." })}
                   >
-                    Save
+                    Done
                   </button>
                   <button
                     type="button"
@@ -1070,10 +1070,9 @@ export default function AdminPostsPage() {
                   <button
                     type="button"
                     className="btn btn-primary"
-                    onClick={() => savePost("draft")}
-                    disabled={publishLoading || !canSavePost}
+                    onClick={() => setMessage({ type: "success", text: "Use 'Save as draft' or 'Publish now' below to save the post." })}
                   >
-                    Save
+                    Done
                   </button>
                   {editId && (
                     <button
@@ -1212,10 +1211,9 @@ export default function AdminPostsPage() {
                   <button
                     type="button"
                     className="btn btn-primary"
-                    onClick={() => savePost("draft")}
-                    disabled={publishLoading || !(selectedMedia.length > 0 || caption.trim() || (poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2))}
+                    onClick={() => setMessage({ type: "success", text: "Use 'Save as draft' or 'Publish now' below to save the post." })}
                   >
-                    Save
+                    Done
                   </button>
                   <button
                     type="button"
