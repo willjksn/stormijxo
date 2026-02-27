@@ -2,15 +2,137 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getFirebaseDb } from "../../lib/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  query,
+  runTransaction,
+  where,
+} from "firebase/firestore";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { getFirebaseAuth } from "../../lib/firebase";
+
+type PendingSignup = {
+  name: string;
+  username: string;
+  email: string;
+  password: string;
+  createdAt: number;
+};
+
+async function createUserProfile(
+  db: NonNullable<ReturnType<typeof getFirebaseDb>>,
+  uid: string,
+  email: string | null,
+  displayName: string | null,
+  username: string
+) {
+  const u = username.trim().toLowerCase();
+  if (!u) throw new Error("Username is required.");
+  const userRef = doc(db, "users", uid);
+  const usernameRef = doc(db, "usernames", u);
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(usernameRef);
+    if (snap.exists()) throw new Error("Username already in use.");
+    transaction.set(usernameRef, { uid, createdAt: serverTimestamp() });
+    transaction.set(userRef, {
+      email,
+      displayName,
+      username: u,
+      createdAt: serverTimestamp(),
+    });
+  });
+}
 
 export function SuccessContent() {
   const searchParams = useSearchParams();
   const isTip = searchParams.get("tip") === "1";
+  const isSignupFlow = searchParams.get("signup") === "1";
+  const signupEmail = (searchParams.get("email") || "").trim().toLowerCase();
   const [submitted, setSubmitted] = useState(false);
+  const [accountStatus, setAccountStatus] = useState<"idle" | "creating" | "done" | "error">("idle");
+  const [accountError, setAccountError] = useState("");
   const db = getFirebaseDb();
+  const auth = getFirebaseAuth();
+
+  useEffect(() => {
+    if (!isSignupFlow) return;
+    if (!db || !auth) {
+      setAccountStatus("error");
+      setAccountError("Could not initialize signup. Please return to landing and try again.");
+      return;
+    }
+
+    let active = true;
+    const finalizeAccount = async () => {
+      setAccountStatus("creating");
+      setAccountError("");
+      try {
+        const raw = sessionStorage.getItem("pendingSignup");
+        if (!raw) throw new Error("Signup session expired. Please sign up again.");
+        const pending = JSON.parse(raw) as PendingSignup;
+        if (!pending?.email || !pending?.password || !pending?.username || !pending?.name) {
+          throw new Error("Signup data is incomplete. Please sign up again.");
+        }
+        const pendingEmail = pending.email.trim().toLowerCase();
+        if (signupEmail && pendingEmail !== signupEmail) {
+          throw new Error("This payment does not match your signup details. Please try again.");
+        }
+        const freshnessMs = Date.now() - (pending.createdAt || 0);
+        if (freshnessMs > 1000 * 60 * 60) {
+          throw new Error("Signup session expired. Please sign up again.");
+        }
+
+        let uid = "";
+        try {
+          const cred = await createUserWithEmailAndPassword(auth, pendingEmail, pending.password);
+          uid = cred.user.uid;
+          await updateProfile(cred.user, { displayName: pending.name.trim() });
+          await createUserProfile(db, cred.user.uid, cred.user.email ?? null, pending.name.trim(), pending.username.trim());
+        } catch (e) {
+          const code = (e as { code?: string })?.code || "";
+          if (code !== "auth/email-already-in-use") throw e;
+          const existing = await signInWithEmailAndPassword(auth, pendingEmail, pending.password);
+          uid = existing.user.uid;
+        }
+
+        const existingMembership = await getDocs(
+          query(collection(db, "members"), where("email", "==", pendingEmail), limit(1))
+        );
+        if (existingMembership.empty) {
+          await addDoc(collection(db, "members"), {
+            email: pendingEmail,
+            status: "active",
+            joinedAt: serverTimestamp(),
+            uid: uid || null,
+            userId: uid || null,
+            source: "stripe_signup_success",
+          });
+        }
+
+        sessionStorage.removeItem("pendingSignup");
+        if (!active) return;
+        setAccountStatus("done");
+        window.location.href = "/home";
+      } catch (e) {
+        if (!active) return;
+        setAccountStatus("error");
+        setAccountError((e as Error)?.message || "Could not finish account setup.");
+      }
+    };
+
+    finalizeAccount();
+    return () => {
+      active = false;
+    };
+  }, [isSignupFlow, signupEmail, db, auth]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -37,6 +159,28 @@ export function SuccessContent() {
         <Link href="/" className="btn btn-primary">
           Back to home
         </Link>
+      </section>
+    );
+  }
+
+  if (isSignupFlow) {
+    return (
+      <section className="success-content" id="success-signup-finalize">
+        <h1>Payment received.</h1>
+        <p className="success-lead">
+          {accountStatus === "creating" && "Finishing your account..."}
+          {accountStatus === "done" && "Account created. Taking you to the app..."}
+          {accountStatus === "error" && "Could not finish account setup."}
+          {accountStatus === "idle" && "Preparing your account..."}
+        </p>
+        {accountStatus === "error" && (
+          <>
+            <p className="success-note">{accountError}</p>
+            <Link href="/?auth=signup&redirect=%2Fhome" className="btn btn-primary">
+              Back to signup
+            </Link>
+          </>
+        )}
       </section>
     );
   }

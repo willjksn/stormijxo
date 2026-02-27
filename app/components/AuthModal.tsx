@@ -128,15 +128,15 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath }: AuthMod
   }, []);
 
   const startMembershipCheckout = useCallback(
-    async (opts: { email?: string | null; uid?: string | null }) => {
+    async (opts: { email?: string | null; uid?: string | null; successUrl?: string; cancelUrl?: string }) => {
       const base = typeof window !== "undefined" ? window.location.origin : "";
       const res = await fetch("/api/landing-subscription", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           base_url: base,
-          success_url: `${base}/success`,
-          cancel_url: `${base}/?auth=signup&redirect=%2Fhome`,
+          success_url: opts.successUrl || `${base}/success`,
+          cancel_url: opts.cancelUrl || `${base}/?auth=signup&redirect=%2Fhome`,
           ...(opts.email ? { customer_email: opts.email } : {}),
           ...(opts.uid ? { uid: opts.uid } : {}),
         }),
@@ -166,7 +166,7 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath }: AuthMod
 
   const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth || !db) {
+    if (!db) {
       showError("Firebase is not configured.");
       return;
     }
@@ -191,10 +191,23 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath }: AuthMod
     }
     setLoading(true);
     try {
-      const cred = await createUserWithEmailAndPassword(auth, signupEmail.trim(), signupPassword);
-      await updateProfile(cred.user, { displayName: signupName.trim() });
-      await createUserProfile(db, cred.user.uid, cred.user.email ?? null, signupName.trim(), signupUsername.trim());
-      await startMembershipCheckout({ email: cred.user.email, uid: cred.user.uid });
+      const email = signupEmail.trim().toLowerCase();
+      sessionStorage.setItem(
+        "pendingSignup",
+        JSON.stringify({
+          name: signupName.trim(),
+          username: signupUsername.trim(),
+          email,
+          password: signupPassword,
+          createdAt: Date.now(),
+        })
+      );
+      const base = typeof window !== "undefined" ? window.location.origin : "";
+      await startMembershipCheckout({
+        email,
+        successUrl: `${base}/success?signup=1&email=${encodeURIComponent(email)}`,
+        cancelUrl: `${base}/?auth=signup&redirect=%2Fhome`,
+      });
     } catch (err) {
       showError(getAuthErrorMessage(err, "Sign up failed."));
     } finally {
