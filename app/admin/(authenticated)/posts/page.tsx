@@ -13,6 +13,7 @@ import {
   limit,
   Timestamp,
   updateDoc,
+  deleteDoc,
 } from "firebase/firestore";
 import { doc, getDoc } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseStorage } from "../../../../lib/firebase";
@@ -20,6 +21,7 @@ import { listMediaLibrary, uploadToMediaLibrary, type MediaItem } from "../../..
 import { useAuth } from "../../../contexts/AuthContext";
 import { LazyMediaImage } from "../../../components/LazyMediaImage";
 import type { PostStatus } from "../../../../lib/posts";
+import { useRouter } from "next/navigation";
 
 const OVERLAY_ANIMATIONS = [
   { id: "static", label: "Static" },
@@ -145,6 +147,7 @@ export default function AdminPostsPage() {
   const db = getFirebaseDb();
   const storage = getFirebaseStorage();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const editId = searchParams.get("edit") || null;
 
   const [library, setLibrary] = useState<MediaItem[]>([]);
@@ -416,6 +419,12 @@ export default function AdminPostsPage() {
     };
   }, [emojiOpenFor]);
 
+  useEffect(() => {
+    if (!message || message.type !== "success") return;
+    const timer = window.setTimeout(() => setMessage(null), 3200);
+    return () => window.clearTimeout(timer);
+  }, [message]);
+
   function getCalendarDateAndTime(): { calendarDate: string; calendarTime: string; scheduledAt?: Timestamp; publishedAt?: Timestamp } {
     const now = new Date();
     const y = now.getFullYear();
@@ -671,6 +680,49 @@ export default function AdminPostsPage() {
     savePost("draft");
   };
 
+  const handleUnlockPostNow = async () => {
+    if (!db || !editId) {
+      setLockEnabled(false);
+      setLockPriceDollars("");
+      return;
+    }
+    setPublishLoading(true);
+    setMessage(null);
+    try {
+      await updateDoc(doc(db, "posts", editId), {
+        lockedContent: { enabled: false, priceCents: 0 },
+        updatedAt: serverTimestamp(),
+      });
+      setLockEnabled(false);
+      setLockPriceDollars("");
+      setMessage({ type: "success", text: "Post unlocked." });
+    } catch (err) {
+      setMessage({ type: "error", text: (err as Error).message || "Could not unlock post." });
+    } finally {
+      setPublishLoading(false);
+    }
+  };
+
+  const handleDeletePost = async () => {
+    if (!db || !editId) return;
+    if (!confirm("Delete this post? This cannot be undone.")) return;
+    setPublishLoading(true);
+    setMessage(null);
+    try {
+      await deleteDoc(doc(db, "posts", editId));
+      setMessage({ type: "success", text: "Post deleted." });
+      router.push("/admin/posts");
+    } catch (err) {
+      setMessage({ type: "error", text: (err as Error).message || "Could not delete post." });
+    } finally {
+      setPublishLoading(false);
+    }
+  };
+
+  const handleExitEditing = () => {
+    router.push("/admin/posts");
+  };
+
   if (editLoading) {
     return (
       <main className="admin-main admin-posts-main" style={{ maxWidth: 720, margin: "0 auto" }}>
@@ -690,7 +742,14 @@ export default function AdminPostsPage() {
       <div className="admin-posts-one-card">
         <h1>Post</h1>
         <p className="admin-posts-intro">Create and schedule member feed posts. Add media, write a caption, and publish now or schedule for later.</p>
-        {editId && <p className="admin-posts-edit-badge">Editing post</p>}
+        {editId && (
+          <div className="admin-posts-edit-badge-wrap">
+            <p className="admin-posts-edit-badge">Editing post</p>
+            <button type="button" className="btn btn-secondary" onClick={handleExitEditing}>
+              Exit editing
+            </button>
+          </div>
+        )}
 
         {message && (
           <p className={`admin-posts-message admin-posts-message-${message.type}`} role="alert">
@@ -985,6 +1044,16 @@ export default function AdminPostsPage() {
                   >
                     Save
                   </button>
+                  {editId && (
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={handleUnlockPostNow}
+                      disabled={publishLoading}
+                    >
+                      Unlock post
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="btn btn-secondary admin-posts-poll-remove"
@@ -1157,6 +1226,11 @@ export default function AdminPostsPage() {
             <button type="button" className="btn btn-secondary" onClick={handleSaveDraft} disabled={publishLoading || !canSavePost}>
               Save as draft
             </button>
+            {editId && (
+              <button type="button" className="btn btn-secondary" onClick={handleDeletePost} disabled={publishLoading}>
+                Delete post
+              </button>
+            )}
           </div>
         </form>
 

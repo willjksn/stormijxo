@@ -1991,7 +1991,23 @@ main:not([class]) .section-title::after {
 .admin-posts-card-section:last-of-type { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
 .admin-posts-recent.admin-posts-card-section { border-bottom: none; padding-top: 1rem; }
 .admin-posts-card-heading { font-size: 1.05rem; margin: 0 0 0.5rem; color: var(--text); font-weight: 600; letter-spacing: -0.01em; }
-.admin-posts-edit-badge { font-size: 0.8rem; font-weight: 600; color: var(--accent); margin: 0 0 0.75rem; padding: 0.35rem 0.6rem; background: var(--accent-soft); border-radius: 8px; display: inline-block; }
+.admin-posts-edit-badge-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0 0 0.75rem;
+  flex-wrap: wrap;
+}
+.admin-posts-edit-badge {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 0;
+  padding: 0.35rem 0.6rem;
+  background: var(--accent-soft);
+  border-radius: 8px;
+  display: inline-block;
+}
 .admin-posts-main .intro { color: var(--text-muted); margin-bottom: 1rem; }
 .admin-posts-message { margin: 0 0 1rem; padding: 0.5rem 0.75rem; border-radius: 8px; font-size: 0.9rem; }
 .admin-posts-message-error { background: rgba(197, 48, 48, 0.1); color: #c53030; }
