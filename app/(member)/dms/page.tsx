@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import { collection, doc, getDoc, addDoc, serverTimestamp, query, where, getDocs, updateDoc } from "firebase/firestore";
-import { getFirebaseDb } from "../../../lib/firebase";
+import { getFirebaseDb, getFirebaseStorage } from "../../../lib/firebase";
 import {
   ensureConversation,
   subscribeMessages,
   sendMessage,
+  uploadDmFile,
   type MessageDoc,
 } from "../../../lib/dms";
 import { NOTIFICATIONS_COLLECTION } from "../../../lib/notifications";
@@ -46,16 +47,36 @@ function CheckIcon() {
   );
 }
 
+function MicIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <line x1="12" y1="19" x2="12" y2="23" />
+      <line x1="8" y1="23" x2="16" y2="23" />
+    </svg>
+  );
+}
+
 export default function MemberDmsPage() {
   const { user } = useAuth();
   const db = getFirebaseDb();
+  const storage = getFirebaseStorage();
   const [messages, setMessages] = useState<MessageDoc[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [convError, setConvError] = useState<string | null>(null);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingCountdown, setRecordingCountdown] = useState<number | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<{ url: string; type: "image" | "video" } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaRecorderStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
+  const countdownIntervalRef = useRef<number | null>(null);
+  const recentRecordingStopAtRef = useRef(0);
 
   const initials = useInitials(user?.displayName ?? null, user?.email ?? null);
   const avatarUrl = profileAvatarUrl ?? user?.photoURL ?? null;
@@ -122,6 +143,96 @@ export default function MemberDmsPage() {
     },
     [db]
   );
+
+  const stopRecordingTracks = useCallback(() => {
+    mediaRecorderStreamRef.current?.getTracks().forEach((t) => t.stop());
+    mediaRecorderStreamRef.current = null;
+    mediaRecorderRef.current = null;
+    audioChunksRef.current = [];
+  }, []);
+
+  const clearCountdown = useCallback(() => {
+    if (countdownIntervalRef.current != null) {
+      window.clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    setRecordingCountdown(null);
+  }, []);
+
+  const toggleVoiceRecording = useCallback(async () => {
+    if (!db || !user || !storage) {
+      setError("Voice recording is not available right now.");
+      return;
+    }
+    if (!isRecording) {
+      if (Date.now() - recentRecordingStopAtRef.current < 1200) return;
+      if (recordingCountdown != null) {
+        clearCountdown();
+        return;
+      }
+      try {
+        setRecordingCountdown(3);
+        setError(null);
+        let remaining = 3;
+        countdownIntervalRef.current = window.setInterval(async () => {
+          remaining -= 1;
+          if (remaining > 0) {
+            setRecordingCountdown(remaining);
+            return;
+          }
+          clearCountdown();
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+              ? "audio/webm;codecs=opus"
+              : "";
+            const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+            mediaRecorderStreamRef.current = stream;
+            mediaRecorderRef.current = recorder;
+            audioChunksRef.current = [];
+            recorder.ondataavailable = (event) => {
+              if (event.data && event.data.size > 0) audioChunksRef.current.push(event.data);
+            };
+            recorder.onstop = async () => {
+              try {
+                const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+                if (!blob.size) throw new Error("No audio captured.");
+                const ext = recorder.mimeType.includes("ogg") ? "ogg" : "webm";
+                const file = new File([blob], `voice-note-${Date.now()}.${ext}`, { type: recorder.mimeType || "audio/webm" });
+                const audioUrl = await uploadDmFile(storage, user.uid, `voice-${Date.now()}`, file);
+                await sendMessage(db, user.uid, user.uid, user.email ?? null, "", [], [], [audioUrl]);
+                await createNotificationForAdmin("New voice message from member.");
+                setError(null);
+              } catch (e) {
+                setError((e as Error)?.message ?? "Failed to send voice message.");
+              } finally {
+                stopRecordingTracks();
+                setIsRecording(false);
+              }
+            };
+            recorder.start();
+            setIsRecording(true);
+          } catch (e) {
+            setError((e as Error)?.message ?? "Microphone access denied.");
+            stopRecordingTracks();
+          }
+        }, 1000);
+      } catch (e) {
+        setError((e as Error)?.message ?? "Microphone access denied.");
+        stopRecordingTracks();
+      }
+      return;
+    }
+    recentRecordingStopAtRef.current = Date.now();
+    mediaRecorderRef.current?.stop();
+  }, [db, user, storage, isRecording, recordingCountdown, createNotificationForAdmin, stopRecordingTracks, clearCountdown]);
+
+  useEffect(() => {
+    return () => {
+      clearCountdown();
+      stopRecordingTracks();
+    };
+  }, [stopRecordingTracks, clearCountdown]);
 
   const handleSend = useCallback(async () => {
     if (!db || !user || !text.trim()) return;
@@ -198,13 +309,43 @@ export default function MemberDmsPage() {
                   {item.message.imageUrls.length > 0 && (
                     <div className="chat-bubble-images">
                       {item.message.imageUrls.map((url) => (
-                        <a key={url} href={url} target="_blank" rel="noopener noreferrer"><img src={url} alt="" /></a>
+                        <button
+                          key={url}
+                          type="button"
+                          onClick={() => setMediaPreview({ url, type: "image" })}
+                          style={{ border: "none", background: "transparent", padding: 0, cursor: "zoom-in" }}
+                        >
+                          <img src={url} alt="" onContextMenu={(e) => e.preventDefault()} draggable={false} />
+                        </button>
                       ))}
                     </div>
                   )}
                   {item.message.videoUrls.length > 0 && (
                     <div className="chat-bubble-videos">
-                      {item.message.videoUrls.map((url) => <video key={url} src={url} controls />)}
+                      {item.message.videoUrls.map((url) => (
+                        <video
+                          key={url}
+                          src={url}
+                          controls
+                          controlsList="nodownload noplaybackrate noremoteplayback"
+                          disablePictureInPicture
+                          onContextMenu={(e) => e.preventDefault()}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {item.message.audioUrls.length > 0 && (
+                    <div className="chat-bubble-videos">
+                      {item.message.audioUrls.map((url) => (
+                        <audio
+                          key={url}
+                          src={url}
+                          controls
+                          controlsList="nodownload noplaybackrate noremoteplayback"
+                          onContextMenu={(e) => e.preventDefault()}
+                          style={{ width: "100%" }}
+                        />
+                      ))}
                     </div>
                   )}
                   {item.message.createdAt && (
@@ -227,8 +368,28 @@ export default function MemberDmsPage() {
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
             />
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={toggleVoiceRecording}
+              disabled={sending}
+              title={isRecording ? "Stop recording" : "Record voice message"}
+              style={isRecording ? { color: "var(--error, #c53030)" } : undefined}
+            >
+              <MicIcon />
+            </button>
             <button type="button" className="send-btn" onClick={handleSend} disabled={sending || !text.trim()}>{sending ? "…" : "Send"}</button>
           </div>
+          {isRecording && (
+            <p style={{ padding: "0.25rem 1rem", margin: 0, fontSize: "0.85rem", color: "var(--error, #c53030)" }}>
+              Recording voice… tap mic again to send.
+            </p>
+          )}
+          {recordingCountdown != null && (
+            <p style={{ padding: "0.25rem 1rem", margin: 0, fontSize: "0.85rem", color: "var(--text-muted)" }}>
+              Recording starts in {recordingCountdown}…
+            </p>
+          )}
           {error && (
             <p style={{ padding: "0.5rem 1rem", margin: 0, fontSize: "0.85rem", color: "var(--text)", background: "rgba(200,0,0,0.1)", borderRadius: 8 }}>
               {error}
@@ -236,6 +397,44 @@ export default function MemberDmsPage() {
           )}
         </div>
       </div>
+      {mediaPreview && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setMediaPreview(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 120,
+            padding: "1rem",
+          }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: "min(760px, 92vw)", width: "100%" }}>
+            {mediaPreview.type === "image" ? (
+              <img
+                src={mediaPreview.url}
+                alt=""
+                onContextMenu={(e) => e.preventDefault()}
+                draggable={false}
+                style={{ width: "100%", maxHeight: "70vh", objectFit: "contain", borderRadius: 10, display: "block", background: "#111" }}
+              />
+            ) : (
+              <video
+                src={mediaPreview.url}
+                controls
+                controlsList="nodownload noplaybackrate noremoteplayback"
+                disablePictureInPicture
+                onContextMenu={(e) => e.preventDefault()}
+                style={{ width: "100%", maxHeight: "70vh", borderRadius: 10, display: "block", background: "#111" }}
+              />
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

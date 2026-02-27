@@ -18,7 +18,7 @@ import {
   onSnapshot,
   type Unsubscribe,
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import type { Firestore } from "firebase/firestore";
 import type { FirebaseStorage } from "firebase/storage";
 
@@ -46,6 +46,7 @@ export type MessageDoc = {
   text: string;
   imageUrls: string[];
   videoUrls: string[];
+  audioUrls: string[];
   createdAt: Date | null;
 };
 
@@ -70,6 +71,7 @@ export function messageFromDoc(id: string, data: Record<string, unknown>): Messa
   const createdAt = (data.createdAt as { toDate?: () => Date })?.toDate?.() ?? null;
   const imageUrls = Array.isArray(data.imageUrls) ? (data.imageUrls as string[]) : [];
   const videoUrls = Array.isArray(data.videoUrls) ? (data.videoUrls as string[]) : [];
+  const audioUrls = Array.isArray(data.audioUrls) ? (data.audioUrls as string[]) : [];
   return {
     id,
     senderId: (data.senderId as string) ?? "",
@@ -77,6 +79,7 @@ export function messageFromDoc(id: string, data: Record<string, unknown>): Messa
     text: (data.text as string) ?? "",
     imageUrls,
     videoUrls,
+    audioUrls,
     createdAt,
   };
 }
@@ -177,8 +180,14 @@ export async function uploadDmFile(
   const ext = file.name.split(".").pop() || "bin";
   const path = `${DM_STORAGE_PREFIX}/${conversationId}/${messageId}/${Date.now()}.${ext}`;
   const storageRef = ref(storage, path);
-  await uploadBytes(storageRef, file);
-  return getDownloadURL(storageRef);
+  const task = uploadBytesResumable(storageRef, file, {
+    contentType: file.type || undefined,
+    customMetadata: { originalName: file.name },
+  });
+  await new Promise<void>((resolve, reject) => {
+    task.on("state_changed", undefined, reject, () => resolve());
+  });
+  return getDownloadURL(task.snapshot.ref);
 }
 
 export async function sendMessage(
@@ -188,7 +197,8 @@ export async function sendMessage(
   senderEmail: string | null,
   text: string,
   imageUrls: string[] = [],
-  videoUrls: string[] = []
+  videoUrls: string[] = [],
+  audioUrls: string[] = []
 ): Promise<string> {
   const messagesRef = collection(db, CONVERSATIONS_COLLECTION, conversationId, MESSAGES_SUBCOLLECTION);
   const docRef = await addDoc(messagesRef, {
@@ -197,6 +207,7 @@ export async function sendMessage(
     text: (text || "").trim(),
     imageUrls,
     videoUrls,
+    audioUrls,
     createdAt: serverTimestamp(),
   });
   const preview = (text || "").trim().slice(0, 80) + ((text || "").length > 80 ? "\u2026" : "");

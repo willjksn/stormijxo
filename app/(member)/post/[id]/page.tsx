@@ -26,6 +26,7 @@ type PostData = {
   body: string;
   mediaUrls: string[];
   mediaTypes?: ("image" | "video")[];
+  audioUrls?: string[];
   altTexts?: string[];
   dateStr: string;
   comments: PostComment[];
@@ -75,8 +76,8 @@ function escapeHtml(text: string): string {
 function displayPublicName(nameLike: string): string {
   const n = (nameLike || "").toString().trim();
   if (!n) return "user";
-  if (isAdminEmail(n.includes("@") ? n : null)) return "stormij";
-  if (/^will\b/i.test(n) || /will[\s_.-]*jackson/i.test(n)) return "stormij";
+  if (isAdminEmail(n.includes("@") ? n : null)) return "stormij_xo";
+  if (/^will\b/i.test(n) || /will[\s_.-]*jackson/i.test(n)) return "stormij_xo";
   return n;
 }
 
@@ -190,6 +191,7 @@ export default function PostByIdPage({
           body: (d.body as string) || "",
           mediaUrls: (d.mediaUrls as string[]) || [],
           mediaTypes: (d.mediaTypes as PostData["mediaTypes"]) || [],
+          audioUrls: (d.audioUrls as string[]) || [],
           altTexts: (d.altTexts as string[]) || [],
           dateStr,
           comments: (d.comments as PostData["comments"]) || [],
@@ -216,7 +218,7 @@ export default function PostByIdPage({
       const postRef = doc(db, "posts", id);
       const username =
         isAdminEmail(user.email ?? null)
-          ? "stormij"
+          ? "stormij_xo"
           : (user.displayName || user.email?.split("@")[0] || "member").toString().trim().slice(0, 60);
       await runTransaction(db, async (tx) => {
         const snap = await tx.get(postRef);
@@ -282,7 +284,7 @@ export default function PostByIdPage({
         if (!existing[commentIndex]) throw new Error("Comment not found.");
         const comment = existing[commentIndex] as PostComment;
         const replies = Array.isArray(comment.replies) ? [...comment.replies] : [];
-        replies.push({ author: "stormij", text: text.slice(0, 500) });
+        replies.push({ author: "stormij_xo", text: text.slice(0, 500) });
         existing[commentIndex] = { ...comment, replies };
         tx.update(postRef, { comments: existing });
       });
@@ -291,7 +293,7 @@ export default function PostByIdPage({
         const comments = [...prev.comments];
         const c = comments[commentIndex]!;
         const replies = Array.isArray(c.replies) ? [...c.replies] : [];
-        replies.push({ author: "stormij", text: text.slice(0, 500) });
+        replies.push({ author: "stormij_xo", text: text.slice(0, 500) });
         comments[commentIndex] = { ...c, replies };
         return { ...prev, comments };
       });
@@ -328,6 +330,7 @@ export default function PostByIdPage({
   }
 
   const urls = post.mediaUrls || [];
+  const audioUrls = post.audioUrls || [];
   const altTexts = post.altTexts ?? [];
   const startIdx = imgIndex >= 0 && imgIndex < urls.length ? imgIndex : 0;
   const mediaTypes = post.mediaTypes ?? [];
@@ -384,13 +387,24 @@ export default function PostByIdPage({
             <div className="post-media-carousel">
               <div className="post-media-item">
                 {visibleIsVideo ? (
-                  <video src={visibleUrl} controls playsInline className={`post-media-img${isLockedForViewer ? " post-media-img-locked" : ""}`} key={visibleIndex} />
+                  <video
+                    src={visibleUrl}
+                    controls
+                    playsInline
+                    controlsList="nodownload noplaybackrate noremoteplayback"
+                    disablePictureInPicture
+                    onContextMenu={(e) => e.preventDefault()}
+                    className={`post-media-img${isLockedForViewer ? " post-media-img-locked" : ""}`}
+                    key={visibleIndex}
+                  />
                 ) : (
                   <img
                     src={visibleUrl}
                     alt={altTexts[visibleIndex]?.trim() || ""}
                     className={`post-media-img${isLockedForViewer ? " post-media-img-locked" : ""}`}
                     loading="eager"
+                    onContextMenu={(e) => e.preventDefault()}
+                    draggable={false}
                     key={visibleIndex}
                   />
                 )}
@@ -443,6 +457,20 @@ export default function PostByIdPage({
             </div>
           )}
         </div>
+        {audioUrls.length > 0 && (
+          <div style={{ marginTop: "0.75rem", display: "grid", gap: "0.5rem" }}>
+            {audioUrls.map((url, idx) => (
+              <audio
+                key={`audio-${idx}`}
+                src={url}
+                controls
+                controlsList="nodownload noplaybackrate noremoteplayback"
+                onContextMenu={(e) => e.preventDefault()}
+                style={{ width: "100%" }}
+              />
+            ))}
+          </div>
+        )}
         {post.tipGoal && post.tipGoal.targetCents > 0 && (
           <div className="feed-card-tip-goal post-detail-tip-goal">
             <p className="feed-card-tip-goal-desc">{post.tipGoal.description}</p>
@@ -575,7 +603,7 @@ export default function PostByIdPage({
                     <div className="post-comment-replies">
                       {c.replies.map((r, ridx) => (
                         <div key={ridx} className="post-comment-reply">
-                          <span className="post-comment-username">{escapeHtml(displayPublicName((r.author ?? "stormij").slice(0, 100)))}</span>{" "}
+                          <span className="post-comment-username">{escapeHtml(displayPublicName((r.author ?? "stormij_xo").slice(0, 100)))}</span>{" "}
                           <span dangerouslySetInnerHTML={{ __html: escapeHtml((r.text ?? "").slice(0, 2000)) }} />
                         </div>
                       ))}
@@ -597,7 +625,7 @@ export default function PostByIdPage({
                           className="post-reply-input"
                           value={replyDrafts[i] ?? ""}
                           onChange={(e) => setReplyDrafts((s) => ({ ...s, [i]: e.target.value }))}
-                          placeholder="Reply as stormij..."
+                          placeholder="Reply as stormij_xo..."
                           maxLength={500}
                         />
                         <button

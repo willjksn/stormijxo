@@ -154,6 +154,7 @@ export default function AdminPostsPage() {
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [editLoading, setEditLoading] = useState(!!editId);
   const [selectedMedia, setSelectedMedia] = useState<{ url: string; isVideo: boolean; alt?: string }[]>([]);
+  const [selectedAudioUrls, setSelectedAudioUrls] = useState<string[]>([]);
   const [caption, setCaption] = useState("");
   const [overlayAnimation, setOverlayAnimation] = useState<(typeof OVERLAY_ANIMATIONS)[number]["id"]>("static");
   const [overlayText, setOverlayText] = useState("");
@@ -168,6 +169,8 @@ export default function AdminPostsPage() {
   const [emojiOpenFor, setEmojiOpenFor] = useState<"caption" | "pollQuestion" | "tipGoal" | "overlayText" | null>(null);
   const [emojiQuery, setEmojiQuery] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [recordingCountdown, setRecordingCountdown] = useState<number | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [publishLoading, setPublishLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -198,10 +201,16 @@ export default function AdminPostsPage() {
   const tipEmojiWrapRef = useRef<HTMLDivElement | null>(null);
   const overlayEmojiWrapRef = useRef<HTMLDivElement | null>(null);
   const prevEditIdRef = useRef<string | null>(null);
+  const voiceRecorderRef = useRef<MediaRecorder | null>(null);
+  const voiceStreamRef = useRef<MediaStream | null>(null);
+  const voiceChunksRef = useRef<BlobPart[]>([]);
+  const voiceCountdownIntervalRef = useRef<number | null>(null);
+  const recentRecordingStopAtRef = useRef(0);
 
   const clearPostForm = useCallback(() => {
     setCaption("");
     setSelectedMedia([]);
+    setSelectedAudioUrls([]);
     setOverlayAnimation("static");
     setOverlayText("");
     setOverlayTextColor("#ffffff");
@@ -310,8 +319,9 @@ export default function AdminPostsPage() {
     try {
       const raw = typeof window !== "undefined" ? sessionStorage.getItem(DRAFT_STORAGE_KEY) : null;
       if (raw) {
-        const d = JSON.parse(raw) as { media?: { url: string; isVideo: boolean; alt?: string }[]; caption?: string };
+        const d = JSON.parse(raw) as { media?: { url: string; isVideo: boolean; alt?: string }[]; audio?: string[]; caption?: string };
         if (Array.isArray(d.media) && d.media.length > 0) setSelectedMedia(d.media);
+        if (Array.isArray(d.audio) && d.audio.length > 0) setSelectedAudioUrls(d.audio.map((v) => String(v)));
         if (typeof d.caption === "string") setCaption(d.caption);
       }
     } catch {
@@ -322,18 +332,18 @@ export default function AdminPostsPage() {
   useEffect(() => {
     if (editId) return;
     try {
-      if (selectedMedia.length === 0 && !caption.trim()) {
+      if (selectedMedia.length === 0 && selectedAudioUrls.length === 0 && !caption.trim()) {
         sessionStorage.removeItem(DRAFT_STORAGE_KEY);
       } else {
         sessionStorage.setItem(
           DRAFT_STORAGE_KEY,
-          JSON.stringify({ media: selectedMedia, caption: caption || "" })
+          JSON.stringify({ media: selectedMedia, audio: selectedAudioUrls, caption: caption || "" })
         );
       }
     } catch {
       // ignore quota or private mode
     }
-  }, [editId, selectedMedia, caption]);
+  }, [editId, selectedMedia, selectedAudioUrls, caption]);
 
   useEffect(() => {
     if (!editId || !db) {
@@ -402,6 +412,8 @@ export default function AdminPostsPage() {
             alt: alts[i] ?? "",
           }))
         );
+        const audio = Array.isArray(d.audioUrls) ? (d.audioUrls as string[]) : [];
+        setSelectedAudioUrls(audio);
       })
       .catch(() => {})
       .finally(() => setEditLoading(false));
@@ -499,6 +511,100 @@ export default function AdminPostsPage() {
     setSelectedMedia((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const removeSelectedAudio = (index: number) => {
+    setSelectedAudioUrls((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const stopVoiceTracks = useCallback(() => {
+    voiceStreamRef.current?.getTracks().forEach((t) => t.stop());
+    voiceStreamRef.current = null;
+    voiceRecorderRef.current = null;
+    voiceChunksRef.current = [];
+  }, []);
+
+  const clearVoiceCountdown = useCallback(() => {
+    if (voiceCountdownIntervalRef.current != null) {
+      window.clearInterval(voiceCountdownIntervalRef.current);
+      voiceCountdownIntervalRef.current = null;
+    }
+    setRecordingCountdown(null);
+  }, []);
+
+  const toggleVoiceRecording = useCallback(async () => {
+    if (!storage) {
+      setMessage({ type: "error", text: "Storage is not available right now." });
+      return;
+    }
+    if (!isRecordingVoice) {
+      if (Date.now() - recentRecordingStopAtRef.current < 1200) return;
+      if (recordingCountdown != null) {
+        clearVoiceCountdown();
+        return;
+      }
+      try {
+        setRecordingCountdown(3);
+        let remaining = 3;
+        voiceCountdownIntervalRef.current = window.setInterval(async () => {
+          remaining -= 1;
+          if (remaining > 0) {
+            setRecordingCountdown(remaining);
+            return;
+          }
+          clearVoiceCountdown();
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+              ? "audio/webm;codecs=opus"
+              : "";
+            const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+            voiceStreamRef.current = stream;
+            voiceRecorderRef.current = recorder;
+            voiceChunksRef.current = [];
+            recorder.ondataavailable = (event) => {
+              if (event.data && event.data.size > 0) voiceChunksRef.current.push(event.data);
+            };
+            recorder.onstop = async () => {
+              try {
+                setUploading(true);
+                const blob = new Blob(voiceChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+                if (!blob.size) throw new Error("No audio captured.");
+                const ext = recorder.mimeType.includes("ogg") ? "ogg" : "webm";
+                const file = new File([blob], `post-voice-${Date.now()}.${ext}`, { type: recorder.mimeType || "audio/webm" });
+                const url = await uploadToMediaLibrary(storage, file, setUploadProgress);
+                setSelectedAudioUrls((prev) => [...prev, url]);
+              } catch (err) {
+                setMessage({ type: "error", text: (err as Error).message || "Voice upload failed" });
+              } finally {
+                setUploading(false);
+                setUploadProgress(0);
+                setIsRecordingVoice(false);
+                stopVoiceTracks();
+              }
+            };
+            recorder.start();
+            setIsRecordingVoice(true);
+          } catch (err) {
+            setMessage({ type: "error", text: (err as Error).message || "Microphone access denied" });
+            stopVoiceTracks();
+          }
+        }, 1000);
+      } catch (err) {
+        setMessage({ type: "error", text: (err as Error).message || "Microphone access denied" });
+        stopVoiceTracks();
+      }
+      return;
+    }
+    recentRecordingStopAtRef.current = Date.now();
+    voiceRecorderRef.current?.stop();
+  }, [storage, isRecordingVoice, recordingCountdown, stopVoiceTracks, clearVoiceCountdown]);
+
+  useEffect(() => {
+    return () => {
+      clearVoiceCountdown();
+      stopVoiceTracks();
+    };
+  }, [stopVoiceTracks, clearVoiceCountdown]);
+
   const setAltAt = (index: number, alt: string) => {
     setSelectedMedia((prev) => prev.map((m, i) => (i === index ? { ...m, alt } : m)));
   };
@@ -549,9 +655,10 @@ export default function AdminPostsPage() {
   async function savePost(action: "publish" | "schedule" | "draft") {
     if (!db) return;
     const hasMedia = selectedMedia.length > 0;
+    const hasAudio = selectedAudioUrls.length > 0;
     const hasCaption = caption.trim().length > 0;
     const hasPoll = !!(poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2);
-    const hasAnySavableContent = hasMedia || hasCaption || hasPoll || !!editId;
+    const hasAnySavableContent = hasMedia || hasAudio || hasCaption || hasPoll || !!editId;
     if (!hasAnySavableContent) {
       setMessage({ type: "error", text: "Add media, a caption, or a poll." });
       return;
@@ -606,6 +713,7 @@ export default function AdminPostsPage() {
         body: caption,
         mediaUrls: selectedMedia.map((m) => m.url),
         mediaTypes: selectedMedia.map((m) => (m.isVideo ? "video" : "image")),
+        audioUrls: selectedAudioUrls,
         captionStyle: overlayAnimation,
         hideComments,
         hideLikes,
@@ -683,6 +791,7 @@ export default function AdminPostsPage() {
         } catch {}
         setCaption("");
         setSelectedMedia([]);
+        setSelectedAudioUrls([]);
         setOverlayAnimation("static");
         setOverlayText("");
         setOverlayTextColor("#ffffff");
@@ -719,9 +828,10 @@ export default function AdminPostsPage() {
   const handleScheduleClick = (e: React.FormEvent) => {
     e.preventDefault();
     const hasMedia = selectedMedia.length > 0;
+    const hasAudio = selectedAudioUrls.length > 0;
     const hasCaption = caption.trim().length > 0;
     const hasPoll = !!(poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2);
-    const hasAnySavableContent = hasMedia || hasCaption || hasPoll || !!editId;
+    const hasAnySavableContent = hasMedia || hasAudio || hasCaption || hasPoll || !!editId;
     if (!hasAnySavableContent) {
       setMessage({ type: "error", text: "Add media, a caption, or a poll." });
       return;
@@ -794,9 +904,10 @@ export default function AdminPostsPage() {
   }
 
   const hasMedia = selectedMedia.length > 0;
+  const hasAudio = selectedAudioUrls.length > 0;
   const hasCaption = caption.trim().length > 0;
   const hasPoll = !!(poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2);
-  const canSavePost = hasMedia || hasCaption || hasPoll || !!editId;
+  const canSavePost = hasMedia || hasAudio || hasCaption || hasPoll || !!editId;
 
   return (
     <main className="admin-main admin-posts-main">
@@ -834,15 +945,42 @@ export default function AdminPostsPage() {
                 </div>
               </div>
             ))}
+            {selectedAudioUrls.map((url, i) => (
+              <div key={`audio-${i}`} className="admin-posts-thumb-wrap">
+                <div className="admin-posts-thumb" style={{ padding: "0.6rem" }}>
+                  <audio
+                    src={url}
+                    controls
+                    controlsList="nodownload noplaybackrate noremoteplayback"
+                    onContextMenu={(e) => e.preventDefault()}
+                    style={{ width: "100%" }}
+                  />
+                  <button type="button" className="admin-posts-thumb-remove" onClick={() => removeSelectedAudio(i)} aria-label="Remove">×</button>
+                </div>
+              </div>
+            ))}
             <div className="admin-posts-media-buttons">
               <label className="admin-posts-btn-upload">
                 <input type="file" accept="image/*,video/*" onChange={handleUpload} disabled={uploading} className="sr-only" />
                 {uploading ? `Uploading… ${Math.round(uploadProgress)}%` : "Upload from device"}
               </label>
+              <button type="button" className="admin-posts-btn-library" onClick={toggleVoiceRecording} disabled={uploading}>
+                {isRecordingVoice ? "Stop voice recording" : "Record voice"}
+              </button>
               <button type="button" className="admin-posts-btn-library" onClick={() => { loadLibrary(); setShowLibraryModal(true); }}>
                 From library
               </button>
             </div>
+            {isRecordingVoice && (
+              <p className="admin-posts-hint" style={{ marginTop: "0.5rem", color: "var(--error, #c53030)" }}>
+                Recording voice… tap “Stop voice recording” to add it.
+              </p>
+            )}
+            {recordingCountdown != null && (
+              <p className="admin-posts-hint" style={{ marginTop: "0.5rem" }}>
+                Recording starts in {recordingCountdown}…
+              </p>
+            )}
           </div>
           </section>
 

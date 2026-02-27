@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
-import { collection, getDocsFromServer, addDoc, doc, getDoc, serverTimestamp, query, where, getDocs, updateDoc } from "firebase/firestore";
+import { collection, getDocsFromServer, addDoc, doc, getDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, orderBy, limit } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseStorage } from "../../../../lib/firebase";
 import {
   ensureConversation,
@@ -72,12 +72,35 @@ function ImageIcon() {
   );
 }
 
+function MicIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <line x1="12" y1="19" x2="12" y2="23" />
+      <line x1="8" y1="23" x2="16" y2="23" />
+    </svg>
+  );
+}
+
 function ThreeDotsIcon() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="1" />
       <circle cx="19" cy="12" r="1" />
       <circle cx="5" cy="12" r="1" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
     </svg>
   );
 }
@@ -106,7 +129,15 @@ export default function AdminDmsPage() {
   const [uploading, setUploading] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [selectedFilesCount, setSelectedFilesCount] = useState(0);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingCountdown, setRecordingCountdown] = useState<number | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<{ url: string; type: "image" | "video" } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaRecorderStreamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
+  const countdownIntervalRef = useRef<number | null>(null);
+  const recentRecordingStopAtRef = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterAll, setFilterAll] = useState(true);
@@ -271,6 +302,26 @@ export default function AdminDmsPage() {
       .catch(() => {});
   }, [db]);
 
+  // Clear "Messages" request badge once admin opens DMs.
+  useEffect(() => {
+    if (!db) return;
+    const requestsQ = query(
+      collection(db, "conversations"),
+      where("firstMessageFromMember", "==", true)
+    );
+    getDocs(requestsQ)
+      .then((snap) =>
+        Promise.all(
+          snap.docs.map((d) =>
+            updateDoc(doc(db, "conversations", d.id), {
+              firstMessageFromMember: false,
+            })
+          )
+        )
+      )
+      .catch(() => {});
+  }, [db]);
+
   const handleStartNewConversation = useCallback(
     async (userOption: UserOption) => {
       if (!db) return;
@@ -355,6 +406,148 @@ export default function AdminDmsPage() {
     [db]
   );
 
+  const stopRecordingTracks = useCallback(() => {
+    mediaRecorderStreamRef.current?.getTracks().forEach((t) => t.stop());
+    mediaRecorderStreamRef.current = null;
+    mediaRecorderRef.current = null;
+    audioChunksRef.current = [];
+  }, []);
+
+  const clearCountdown = useCallback(() => {
+    if (countdownIntervalRef.current != null) {
+      window.clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    setRecordingCountdown(null);
+  }, []);
+
+  const refreshConversationPreview = useCallback(async (conversationId: string) => {
+    if (!db) return;
+    const latestSnap = await getDocs(
+      query(collection(db, "conversations", conversationId, "messages"), orderBy("createdAt", "desc"), limit(1))
+    );
+    if (latestSnap.empty) {
+      await updateDoc(doc(db, "conversations", conversationId), {
+        lastMessagePreview: null,
+        lastMessageAt: null,
+        updatedAt: serverTimestamp(),
+      });
+      return;
+    }
+    const latest = latestSnap.docs[0].data() as Record<string, unknown>;
+    const latestText = typeof latest.text === "string" ? latest.text.trim() : "";
+    const hasAttachment =
+      (Array.isArray(latest.imageUrls) && latest.imageUrls.length > 0) ||
+      (Array.isArray(latest.videoUrls) && latest.videoUrls.length > 0) ||
+      (Array.isArray(latest.audioUrls) && latest.audioUrls.length > 0);
+    await updateDoc(doc(db, "conversations", conversationId), {
+      lastMessagePreview: latestText || (hasAttachment ? "(attachment)" : ""),
+      lastMessageAt: latest.createdAt ?? serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  }, [db]);
+
+  const toggleVoiceRecording = useCallback(async () => {
+    if (!db || !user || !selectedId || !storage) {
+      setSendError("Voice recording is not available right now.");
+      return;
+    }
+    if (!isRecording) {
+      if (Date.now() - recentRecordingStopAtRef.current < 1200) return;
+      if (recordingCountdown != null) {
+        clearCountdown();
+        return;
+      }
+      try {
+        setRecordingCountdown(3);
+        setSendError(null);
+        let remaining = 3;
+        countdownIntervalRef.current = window.setInterval(async () => {
+          remaining -= 1;
+          if (remaining > 0) {
+            setRecordingCountdown(remaining);
+            return;
+          }
+          clearCountdown();
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+              ? "audio/webm;codecs=opus"
+              : "";
+            const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+            mediaRecorderStreamRef.current = stream;
+            mediaRecorderRef.current = recorder;
+            audioChunksRef.current = [];
+            recorder.ondataavailable = (event) => {
+              if (event.data && event.data.size > 0) audioChunksRef.current.push(event.data);
+            };
+            recorder.onstop = async () => {
+              try {
+                const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+                if (!blob.size) throw new Error("No audio captured.");
+                const ext = recorder.mimeType.includes("ogg") ? "ogg" : "webm";
+                const file = new File([blob], `voice-note-${Date.now()}.${ext}`, { type: recorder.mimeType || "audio/webm" });
+                const audioUrl = await uploadDmFile(storage, selectedId, `voice-${Date.now()}`, file);
+                await sendMessage(db, selectedId, user.uid, user.email ?? null, "", [], [], [audioUrl]);
+                await createNotificationForMember(selected?.memberEmail ?? null, "You received a new voice message.");
+                setSendError(null);
+              } catch (e) {
+                setSendError((e as Error)?.message ?? "Failed to upload voice note.");
+              } finally {
+                stopRecordingTracks();
+                setIsRecording(false);
+              }
+            };
+            recorder.start();
+            setIsRecording(true);
+          } catch (e) {
+            setSendError((e as Error)?.message ?? "Microphone access denied.");
+            stopRecordingTracks();
+          }
+        }, 1000);
+      } catch (e) {
+        setSendError((e as Error)?.message ?? "Microphone access denied.");
+        stopRecordingTracks();
+      }
+      return;
+    }
+    recentRecordingStopAtRef.current = Date.now();
+    mediaRecorderRef.current?.stop();
+  }, [db, user, selectedId, storage, isRecording, recordingCountdown, createNotificationForMember, selected?.memberEmail, stopRecordingTracks, clearCountdown]);
+
+  useEffect(() => {
+    return () => {
+      clearCountdown();
+      stopRecordingTracks();
+    };
+  }, [stopRecordingTracks, clearCountdown]);
+
+  const handleDeleteMessage = useCallback(async (messageId: string) => {
+    if (!db || !selectedId) return;
+    try {
+      await deleteDoc(doc(db, "conversations", selectedId, "messages", messageId));
+      await refreshConversationPreview(selectedId);
+    } catch (e) {
+      setSendError((e as Error)?.message ?? "Failed to delete message.");
+    }
+  }, [db, selectedId, refreshConversationPreview]);
+
+  const handleDeleteConversation = useCallback(async (conversationId: string) => {
+    if (!db) return;
+    if (!confirm("Delete this conversation and all messages?")) return;
+    try {
+      const msgs = await getDocs(collection(db, "conversations", conversationId, "messages"));
+      await Promise.all(msgs.docs.map((m) => deleteDoc(doc(db, "conversations", conversationId, "messages", m.id))));
+      await deleteDoc(doc(db, "conversations", conversationId));
+      if (selectedId === conversationId) {
+        setSelectedId(null);
+        setMessages([]);
+      }
+    } catch (e) {
+      setSendError((e as Error)?.message ?? "Failed to delete conversation.");
+    }
+  }, [db, selectedId]);
+
   const handleSend = useCallback(async () => {
     if (!db || !user || !selectedId) return;
     const hasText = text.trim().length > 0;
@@ -369,12 +562,14 @@ export default function AdminDmsPage() {
         const messagesRef = collection(db, "conversations", selectedId, "messages");
         const imageUrls: string[] = [];
         const videoUrls: string[] = [];
+        const audioUrls: string[] = [];
         const placeholderRef = await addDoc(messagesRef, {
           senderId: user.uid,
           senderEmail: user.email ?? null,
           text: text.trim(),
           imageUrls: [],
           videoUrls: [],
+          audioUrls: [],
           createdAt: serverTimestamp(),
         });
         const files = fileInputRef.current?.files;
@@ -388,7 +583,7 @@ export default function AdminDmsPage() {
           if (isVideo) videoUrls.push(url);
           else imageUrls.push(url);
         }
-        await updateDoc(placeholderRef, { imageUrls, videoUrls });
+        await updateDoc(placeholderRef, { imageUrls, videoUrls, audioUrls });
         await updateDoc(doc(db, "conversations", selectedId), {
           updatedAt: serverTimestamp(),
           lastMessageAt: serverTimestamp(),
@@ -429,7 +624,8 @@ export default function AdminDmsPage() {
         flexDirection: "column",
         flex: 1,
         minHeight: 0,
-        overflow: "hidden",
+        overflowX: "hidden",
+        overflowY: "auto",
       }}
     >
       <div className="chat-page" style={{ flex: 1, minHeight: 0, minWidth: 0, display: "flex", flexDirection: "row" }}>
@@ -497,6 +693,18 @@ export default function AdminDmsPage() {
                   </div>
                   <span className="chat-conversation-time" style={{ fontSize: "0.75rem", color: "var(--text-muted)", flexShrink: 0 }}>{formatRelativeTime(c.lastMessageAt)}</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteConversation(c.id);
+                  }}
+                  title="Delete conversation"
+                  aria-label="Delete conversation"
+                  style={{ border: "none", background: "transparent", color: "var(--text-muted)", cursor: "pointer", padding: 4 }}
+                >
+                  <TrashIcon />
+                </button>
                 {/* Profile menu intentionally only in right thread header */}
               </div>
             ))}
@@ -550,17 +758,66 @@ export default function AdminDmsPage() {
                     <div key={`date-${i}`} className="chat-date-separator"><span>{formatMessageDate(item.date)}</span></div>
                   ) : (
                     <div key={item.message.id} className={`chat-bubble ${item.message.senderId === user?.uid ? "me" : "them"}`}>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteMessage(item.message.id)}
+                        title="Delete message"
+                        aria-label="Delete message"
+                        style={{
+                          alignSelf: "flex-end",
+                          border: "none",
+                          background: "transparent",
+                          color: "inherit",
+                          opacity: 0.7,
+                          cursor: "pointer",
+                          fontSize: "0.85rem",
+                          lineHeight: 1,
+                          padding: 0,
+                        }}
+                      >
+                        <TrashIcon />
+                      </button>
                       {item.message.text ? <span style={{ whiteSpace: "pre-wrap" }}>{item.message.text}</span> : null}
                       {item.message.imageUrls.length > 0 && (
                         <div className="chat-bubble-images">
                           {item.message.imageUrls.map((url) => (
-                            <a key={url} href={url} target="_blank" rel="noopener noreferrer"><img src={url} alt="" /></a>
+                            <button
+                              key={url}
+                              type="button"
+                              onClick={() => setMediaPreview({ url, type: "image" })}
+                              style={{ border: "none", background: "transparent", padding: 0, cursor: "zoom-in" }}
+                            >
+                              <img src={url} alt="" onContextMenu={(e) => e.preventDefault()} draggable={false} />
+                            </button>
                           ))}
                         </div>
                       )}
                       {item.message.videoUrls.length > 0 && (
                         <div className="chat-bubble-videos">
-                          {item.message.videoUrls.map((url) => <video key={url} src={url} controls />)}
+                          {item.message.videoUrls.map((url) => (
+                            <video
+                              key={url}
+                              src={url}
+                              controls
+                              controlsList="nodownload noplaybackrate noremoteplayback"
+                              disablePictureInPicture
+                              onContextMenu={(e) => e.preventDefault()}
+                            />
+                          ))}
+                        </div>
+                      )}
+                      {item.message.audioUrls.length > 0 && (
+                        <div className="chat-bubble-videos">
+                          {item.message.audioUrls.map((url) => (
+                            <audio
+                              key={url}
+                              src={url}
+                              controls
+                              controlsList="nodownload noplaybackrate noremoteplayback"
+                              onContextMenu={(e) => e.preventDefault()}
+                              style={{ width: "100%" }}
+                            />
+                          ))}
                         </div>
                       )}
                       {item.message.createdAt && (
@@ -587,6 +844,16 @@ export default function AdminDmsPage() {
                   }}
                 />
                 <button type="button" className="icon-btn" onClick={() => fileInputRef.current?.click()} disabled={sending || uploading} title="Photo / video"><ImageIcon /></button>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={toggleVoiceRecording}
+                  disabled={sending || uploading}
+                  title={isRecording ? "Stop recording" : "Record voice message"}
+                  style={isRecording ? { color: "var(--error, #c53030)" } : undefined}
+                >
+                  <MicIcon />
+                </button>
                 <input
                   type="text"
                   className="chat-input-field"
@@ -600,6 +867,16 @@ export default function AdminDmsPage() {
               {selectedFilesCount > 0 && (
                 <p style={{ margin: 0, padding: "0 1rem 0.35rem", color: "var(--text-muted)", fontSize: "0.8rem" }}>
                   {selectedFilesCount} file{selectedFilesCount === 1 ? "" : "s"} selected
+                </p>
+              )}
+              {isRecording && (
+                <p style={{ margin: 0, padding: "0 1rem 0.35rem", color: "var(--error, #c53030)", fontSize: "0.8rem" }}>
+                  Recording voice… tap mic again to send.
+                </p>
+              )}
+              {recordingCountdown != null && (
+                <p style={{ margin: 0, padding: "0 1rem 0.35rem", color: "var(--text-muted)", fontSize: "0.8rem" }}>
+                  Recording starts in {recordingCountdown}…
                 </p>
               )}
               {sendError && (
@@ -720,6 +997,44 @@ export default function AdminDmsPage() {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {mediaPreview && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setMediaPreview(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 120,
+            padding: "1rem",
+          }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: "min(760px, 92vw)", width: "100%" }}>
+            {mediaPreview.type === "image" ? (
+              <img
+                src={mediaPreview.url}
+                alt=""
+                onContextMenu={(e) => e.preventDefault()}
+                draggable={false}
+                style={{ width: "100%", maxHeight: "70vh", objectFit: "contain", borderRadius: 10, display: "block", background: "#111" }}
+              />
+            ) : (
+              <video
+                src={mediaPreview.url}
+                controls
+                controlsList="nodownload noplaybackrate noremoteplayback"
+                disablePictureInPicture
+                onContextMenu={(e) => e.preventDefault()}
+                style={{ width: "100%", maxHeight: "70vh", borderRadius: 10, display: "block", background: "#111" }}
+              />
+            )}
           </div>
         </div>
       )}

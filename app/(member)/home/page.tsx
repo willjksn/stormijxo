@@ -123,6 +123,7 @@ export type FeedPost = {
   body: string;
   mediaUrls: string[];
   mediaTypes?: ("image" | "video")[];
+  audioUrls?: string[];
   dateStr?: string;
   createdAt?: { toDate: () => Date };
   likeCount: number;
@@ -141,8 +142,8 @@ export type FeedPost = {
 function displayPublicName(nameLike: string): string {
   const n = (nameLike || "").toString().trim();
   if (!n) return "user";
-  if (isAdminEmail(n.includes("@") ? n : null)) return "stormij";
-  if (/^will\b/i.test(n) || /will[\s_.-]*jackson/i.test(n)) return "stormij";
+  if (isAdminEmail(n.includes("@") ? n : null)) return "stormij_xo";
+  if (/^will\b/i.test(n) || /will[\s_.-]*jackson/i.test(n)) return "stormij_xo";
   return n;
 }
 
@@ -394,7 +395,7 @@ function FeedCard({
     try {
       const postRef = doc(db, "posts", post.id);
       const username = isAdminEmail(currentUser.email ?? null)
-        ? "stormij"
+        ? "stormij_xo"
         : (currentUser.displayName || currentUser.email?.split("@")[0] || "member").toString().trim().slice(0, 60);
       let nextComments: FeedPost["comments"] = post.comments;
       await runTransaction(db, async (tx) => {
@@ -559,6 +560,20 @@ function FeedCard({
           )}
         </Link>
       ) : null}
+      {Array.isArray(post.audioUrls) && post.audioUrls.length > 0 && (
+        <div className="feed-card-body" style={{ paddingTop: firstUrl ? 0 : undefined }}>
+          {post.audioUrls.map((url, index) => (
+            <audio
+              key={`post-audio-${post.id}-${index}`}
+              src={url}
+              controls
+              controlsList="nodownload noplaybackrate noremoteplayback"
+              onContextMenu={(e) => e.preventDefault()}
+              style={{ width: "100%", marginTop: index === 0 ? 0 : "0.5rem" }}
+            />
+          ))}
+        </div>
+      )}
 
       {firstUrl && !post.hideLikes && (
         <div className="feed-card-actions">
@@ -824,7 +839,7 @@ function FeedCard({
                       return (
                         <div className="feed-comments-modal-item" key={`${idx}-${c.text.slice(0, 12)}`}>
                           <div className="feed-comments-modal-item-avatar" aria-hidden>
-                            {authorName === "stormij" ? (
+                            {authorName === "stormij_xo" ? (
                               <img src="/assets/sj-heart-avatar.png" alt="" className="feed-comments-modal-avatar-img" />
                             ) : (
                               <span>{authorName.charAt(0).toUpperCase()}</span>
@@ -980,6 +995,7 @@ export default function HomeFeedPage() {
             body: (d.body as string) ?? "",
             mediaUrls: (d.mediaUrls as string[]) ?? [],
             mediaTypes: (d.mediaTypes as ("image" | "video")[]) ?? [],
+            audioUrls: (d.audioUrls as string[]) ?? [],
             createdAt: d.createdAt as { toDate: () => Date },
             likeCount: typeof d.likeCount === "number" ? d.likeCount : 0,
             likedBy: (d.likedBy as string[]) ?? [],

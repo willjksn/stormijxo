@@ -9,6 +9,7 @@ export type PostDoc = {
   body: string;
   mediaUrls: string[];
   mediaTypes?: ("image" | "video")[];
+  audioUrls?: string[];
   altTexts?: string[]; // optional alt text per media index
   /** Animation for text overlay on image: static, scroll-up, scroll-across, dissolve */
   captionStyle?: "static" | "scroll-up" | "scroll-across" | "dissolve";
