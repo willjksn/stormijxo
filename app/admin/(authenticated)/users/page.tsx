@@ -686,7 +686,25 @@ export default function AdminUsersPage() {
         note: manageDisplayName.trim() || null,
         updatedAt: serverTimestamp(),
       });
-      setManageMessage({ type: "success", text: "Member updated." });
+      // Ensure member has a Firebase Auth account (for legacy members created before Auth was in place).
+      try {
+        const token = await getAuthToken();
+        const res = await fetch("/api/admin/ensure-member-auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ memberId: manageUser.id }),
+        });
+        const data = (await res.json().catch(() => ({}))) as { ok?: boolean; created?: boolean; message?: string; error?: string };
+        if (!res.ok && data.error) {
+          setManageMessage({ type: "error", text: "Member updated but sign-in could not be created: " + data.error });
+        } else if (data.created && data.message) {
+          setManageMessage({ type: "success", text: "Member updated. " + data.message });
+        } else {
+          setManageMessage({ type: "success", text: "Member updated." });
+        }
+      } catch {
+        setManageMessage({ type: "success", text: "Member updated." });
+      }
     } catch (err) {
       setManageMessage({ type: "error", text: (err as Error).message });
     } finally {

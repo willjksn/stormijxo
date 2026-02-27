@@ -74,6 +74,34 @@ module.exports = async (req, res) => {
   const postId = typeof body.postId === "string" ? body.postId.trim() : "";
   const uid = typeof body.uid === "string" ? body.uid.trim() : "";
   if (!postId || !uid) {
+    // If request looks like admin user management (misrouted), proxy to correct admin API.
+    const memberId = typeof body.memberId === "string" ? String(body.memberId).trim() : "";
+    const email = typeof body.email === "string" ? String(body.email).trim() : "";
+    const newPassword = typeof body.newPassword === "string" ? String(body.newPassword).trim() : "";
+    if (memberId || (email && newPassword)) {
+      const proto = (req.headers && (req.headers["x-forwarded-proto"] || req.headers["x-forwarded-protocol"])) || "https";
+      const host = (req.headers && (req.headers["x-forwarded-host"] || req.headers["host"])) || process.env.VERCEL_URL || process.env.PUBLIC_APP_URL || "stormijxo.com";
+      const origin = host.startsWith("http") ? host : `${proto}://${host}`;
+      const adminPath = memberId ? "/api/admin/delete-member" : "/api/admin/change-password";
+      const adminBody = memberId ? { memberId } : { email, newPassword };
+      const authHeader = (req.headers && (req.headers.authorization || req.headers.Authorization)) || "";
+      try {
+        const r = await fetch(origin.replace(/\/$/, "") + adminPath, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: authHeader },
+          body: JSON.stringify(adminBody),
+        });
+        const data = await r.json().catch(() => ({}));
+        res.statusCode = r.status;
+        res.setHeader("Content-Type", "application/json; charset=utf-8");
+        res.end(JSON.stringify(data));
+        return;
+      } catch (proxyErr) {
+        console.error("unlock-checkout admin proxy error:", proxyErr);
+        json(res, 502, { error: "Could not reach admin API. Try again or use Firebase Console." });
+        return;
+      }
+    }
     json(res, 400, { error: "Missing postId or uid." });
     return;
   }
