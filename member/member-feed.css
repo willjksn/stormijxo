@@ -402,8 +402,8 @@
   overflow: hidden;
 }
 .feed-comments-modal {
-  width: min(980px, 97vw);
-  max-height: 86vh;
+  width: min(1200px, 98vw);
+  max-height: 90vh;
   background: linear-gradient(180deg, #fff 0%, #fef8f9 52%, #fdf4f6 100%);
   border: 1px solid rgba(201, 112, 130, 0.24);
   border-radius: 18px;

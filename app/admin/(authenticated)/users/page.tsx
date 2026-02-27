@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import {
   collection,
   addDoc,
@@ -18,6 +18,7 @@ import {
 } from "firebase/firestore";
 import { getFirebaseDb } from "../../../../lib/firebase";
 import { ALLOWED_ADMIN_EMAILS } from "../../../../lib/auth-redirect";
+import { MemberProfileCard } from "../../components/MemberProfileCard";
 
 type SpendEntry = { monthlyCents: number; storeItems: string[] };
 type TipperEntry = {
@@ -128,6 +129,8 @@ export default function AdminUsersPage() {
   const [recoverEmail, setRecoverEmail] = useState("");
   const [recovering, setRecovering] = useState(false);
   const [recoverStatus, setRecoverStatus] = useState("");
+  const [profileCardUserId, setProfileCardUserId] = useState<string | null>(null);
+  const profileCardAnchorRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (!db) {
@@ -672,13 +675,40 @@ export default function AdminUsersPage() {
                         <td><span className="um-spend">{u.monthlySpendCents > 0 ? "$" + (u.monthlySpendCents / 100).toFixed(2) : "—"}</span></td>
                         <td>{u.storeItems?.length ? u.storeItems.join(", ") : "—"}</td>
                         <td>
-                          <div className="um-actions">
+                          <div className="um-actions" style={{ position: "relative" }}>
                             <button type="button" className="link manage" onClick={() => alert("Manage user (placeholder)")}>Manage</button>
                             <button type="button" className="link reward" onClick={() => alert("Grant Reward (placeholder)")}>Grant Reward</button>
                             <button type="button" className="link danger" onClick={() => handleDelete(u.id, u.type)}>
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
                               Delete
                             </button>
+                            <button
+                              type="button"
+                              className="link"
+                              ref={profileCardUserId === u.id ? profileCardAnchorRef : undefined}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                profileCardAnchorRef.current = e.currentTarget;
+                                setProfileCardUserId(profileCardUserId === u.id ? null : u.id);
+                              }}
+                              title="View profile"
+                              aria-label="View profile"
+                              style={{ padding: "0.25rem 0.5rem", minWidth: 0 }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" />
+                              </svg>
+                            </button>
+                            {profileCardUserId === u.id && (
+                              <div style={{ position: "absolute", right: 0, top: "100%", zIndex: 10 }}>
+                                <MemberProfileCard
+                                  member={{ email: u.email, displayName: u.name }}
+                                  anchorRef={profileCardAnchorRef}
+                                  open={true}
+                                  onClose={() => setProfileCardUserId(null)}
+                                />
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>

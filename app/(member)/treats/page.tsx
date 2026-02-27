@@ -1,20 +1,71 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { collection, getDocs } from "firebase/firestore";
-import { getFirebaseDb } from "../../../lib/firebase";
+import { useState, useEffect, useCallback } from "react";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { getFirebaseDb, getFirebaseAuth } from "../../../lib/firebase";
 import { TREATS_COLLECTION, DEFAULT_TREATS, type TreatDoc } from "../../../lib/treats";
+import { PURCHASES_COLLECTION, purchaseFromDoc, type PurchaseDoc } from "../../../lib/purchases";
 
 const STORE_ENABLED =
   typeof process.env.NEXT_PUBLIC_TREATS_STORE !== "undefined"
     ? process.env.NEXT_PUBLIC_TREATS_STORE === "true"
     : true;
 
+function formatScheduledDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(y, (m ?? 1) - 1, d ?? 1);
+  return date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+}
+
+function formatScheduledTime(timeStr: string): string {
+  if (!timeStr || !timeStr.trim()) return "";
+  const [h, min] = timeStr.split(":").map(Number);
+  const hour = h ?? 0;
+  const minute = min ?? 0;
+  if (hour === 0 && minute === 0) return "12:00 AM";
+  if (hour < 12) return `${hour}:${String(minute).padStart(2, "0")} AM`;
+  if (hour === 12) return `12:${String(minute).padStart(2, "0")} PM`;
+  return `${hour - 12}:${String(minute).padStart(2, "0")} PM`;
+}
+
 export default function TreatsPage() {
   const [treats, setTreats] = useState<TreatDoc[]>([]);
+  const [scheduled, setScheduled] = useState<PurchaseDoc[]>([]);
   const [loading, setLoading] = useState<string | null>(null);
   const [listLoading, setListLoading] = useState(true);
   const db = getFirebaseDb();
+  const auth = getFirebaseAuth();
+
+  const loadScheduled = useCallback(() => {
+    if (!db || !auth?.currentUser?.email) {
+      setScheduled([]);
+      return;
+    }
+    const email = auth.currentUser.email.trim().toLowerCase();
+    const q = query(
+      collection(db, PURCHASES_COLLECTION),
+      where("email", "==", email),
+      where("scheduleStatus", "==", "scheduled")
+    );
+    getDocs(q)
+      .then((snap) => {
+        const list: PurchaseDoc[] = [];
+        snap.forEach((d) => {
+          list.push(purchaseFromDoc(d.id, d.data() as Record<string, unknown>));
+        });
+        list.sort((a, b) => {
+          const ta = a.scheduledAt?.getTime() ?? 0;
+          const tb = b.scheduledAt?.getTime() ?? 0;
+          return ta - tb;
+        });
+        setScheduled(list);
+      })
+      .catch(() => setScheduled([]));
+  }, [db, auth?.currentUser?.email]);
+
+  useEffect(() => {
+    loadScheduled();
+  }, [loadScheduled]);
 
   useEffect(() => {
     if (!db) {
@@ -110,6 +161,33 @@ export default function TreatsPage() {
         <h1 className="treats-title">Treats</h1>
         <p className="treats-subhead">Personal messages, voice notes, and more — just for you.</p>
       </section>
+
+      {scheduled.length > 0 && (
+        <section className="treats-scheduled-section" style={{ marginBottom: "2rem" }}>
+          <h2 className="treats-section-title" style={{ fontSize: "1.15rem", margin: "0 0 0.75rem", fontWeight: 600 }}>
+            Scheduled for you
+          </h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            {scheduled.map((p) => (
+              <div
+                key={p.id}
+                style={{
+                  padding: "1rem 1.25rem",
+                  borderRadius: 12,
+                  border: "1px solid rgba(34, 197, 94, 0.35)",
+                  background: "rgba(34, 197, 94, 0.08)",
+                }}
+              >
+                <p style={{ margin: "0 0 0.25rem", fontWeight: 600 }}>{p.productName || "Treat"}</p>
+                <p style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-muted)" }}>
+                  {p.scheduledDate && formatScheduledDate(p.scheduledDate)}
+                  {p.scheduledTime && ` at ${formatScheduledTime(p.scheduledTime)}`}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="treats-grid">
         {treats.length === 0 ? (

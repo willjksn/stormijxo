@@ -62,13 +62,13 @@
   position: relative;
   border-radius: 12px;
   overflow: hidden;
-  max-height: min(74vh, 760px);
+  max-height: min(85vh, 960px);
   background: var(--bg);
 }
 .post-media-img {
   width: 100%;
   height: auto;
-  max-height: min(74vh, 760px);
+  max-height: min(85vh, 960px);
   border-radius: 12px;
   display: block;
   background: var(--border);

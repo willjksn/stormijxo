@@ -91,6 +91,19 @@
 }
 .member-header .header-left { display: flex; align-items: center; gap: 1.5rem; flex-shrink: 0; flex-wrap: wrap; }
 .member-nav-main { display: flex; align-items: center; gap: 1.25rem; }
+.member-nav-main .member-nav-bell {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.member-nav-main .member-nav-bell .notification-bell-btn {
+  width: 36px;
+  height: 36px;
+}
+.member-nav-main .member-nav-bell .notification-bell-btn svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
 .member-nav-main a {
   color: var(--text-muted);
   text-decoration: none;

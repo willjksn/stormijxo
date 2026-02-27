@@ -2380,3 +2380,44 @@ main:not([class]) .section-title::after {
   opacity: 0; transition: opacity 0.2s ease-out;
 }
 .lazy-media-image-wrap img.lazy-media-image-loaded { opacity: 1; }
+
+/* Notification bell (admin + member headers) */
+.notification-bell-wrap { position: relative; }
+.notification-bell-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; padding: 0; border: none; border-radius: 50%;
+  background: transparent; color: var(--text-muted); cursor: pointer;
+  -webkit-tap-highlight-color: transparent; outline: none;
+}
+.notification-bell-btn:hover { color: var(--accent); background: var(--accent-soft); }
+.notification-bell-btn svg { width: 1.35rem; height: 1.35rem; }
+.notification-bell-badge {
+  position: absolute; top: 4px; right: 4px; min-width: 18px; height: 18px; padding: 0 5px;
+  font-size: 0.7rem; font-weight: 700; line-height: 18px; text-align: center;
+  background: var(--accent); color: #fff; border-radius: 999px;
+}
+.notification-bell-dropdown {
+  position: absolute; top: 100%; right: 0; margin-top: 0.35rem;
+  width: min(360px, 95vw); max-height: 400px; overflow: auto;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 100;
+}
+.notification-bell-dropdown-header {
+  padding: 0.65rem 1rem; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 0.9rem; color: var(--text);
+}
+.notification-bell-empty { padding: 1rem; margin: 0; font-size: 0.9rem; color: var(--text-muted); }
+.notification-bell-list { list-style: none; margin: 0; padding: 0.35rem 0; }
+.notification-bell-item {
+  display: block; padding: 0.65rem 1rem; text-decoration: none; color: var(--text);
+  border: none; background: none; width: 100%; text-align: left; cursor: pointer; font-family: inherit;
+  border-bottom: 1px solid var(--border); transition: background 0.15s;
+}
+.notification-bell-item:last-child { border-bottom: none; }
+.notification-bell-item:hover { background: var(--accent-soft); }
+.notification-bell-item.unread { background: rgba(212, 85, 139, 0.06); }
+.notification-bell-item-title { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.2rem; }
+.notification-bell-item-body { display: block; font-size: 0.85rem; color: var(--text-muted); line-height: 1.35; }
+.admin-header-right .notification-bell-wrap { margin-right: 0; }
+.header-right .notification-bell-wrap { margin-right: 0.5rem; }
+.header-right .notification-bell-btn { width: 36px; height: 36px; }
+.header-right .notification-bell-btn svg { width: 1.2rem; height: 1.2rem; }

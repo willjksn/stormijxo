@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRef, useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
+import { NotificationBell } from "../../components/NotificationBell";
 
 function useInitial(displayName: string | null, email: string | null): string {
   const name = (displayName ?? "").toString().trim();
@@ -62,6 +63,7 @@ export function AdminHeader() {
           </svg>
           <span>Treats</span>
         </Link>
+        <NotificationBell variant="admin" userEmail={user?.email ?? null} />
         <div className={`admin-header-profile${dropdownOpen ? " open" : ""}`} ref={wrapRef}>
           <button
             type="button"

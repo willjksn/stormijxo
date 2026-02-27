@@ -474,10 +474,10 @@ function FeedCard({
     <article className={`feed-card${commentsOpen ? " comments-open" : ""}${!firstUrl ? " feed-card-text-only" : ""}`} key={post.id}>
       <div className="feed-card-header">
         <div className="feed-card-avatar">
-          <img src="/assets/sj-heart-avatar.png" alt="stormij" className="feed-card-avatar-img" />
+          <img src="/assets/sj-heart-avatar.png" alt="stormij_xo" className="feed-card-avatar-img" />
         </div>
         <div className="feed-card-creator">
-          <span className="feed-card-username">stormij</span>
+          <span className="feed-card-username">stormij_xo</span>
         </div>
         <span className="feed-card-time">{dateStr}</span>
         {isPinned && (
@@ -615,7 +615,7 @@ function FeedCard({
 
       <div className="feed-card-body">
         <p className="feed-card-caption">
-          <span className="caption-username">stormij</span>
+          <span className="caption-username">stormij_xo</span>
           {post.body}
         </p>
         {post.poll && post.poll.question && post.poll.options?.length >= 2 && (

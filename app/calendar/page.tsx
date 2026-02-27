@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { collection, getDocs, query, where, doc, deleteDoc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { getFirebaseDb } from "../../lib/firebase";
+import { PURCHASES_COLLECTION, purchaseFromDoc } from "../../lib/purchases";
 import styles from "./calendar.module.css";
 
 type PostStatus = "scheduled" | "published" | "draft";
@@ -37,6 +38,14 @@ type ReminderItem = {
   description: string;
   date: string;
   time: string;
+};
+
+type ScheduledTreat = {
+  id: string;
+  productName: string;
+  email: string;
+  scheduledDate: string;
+  scheduledTime: string;
 };
 
 function toISODate(date: Date): string {
@@ -168,6 +177,7 @@ function CalendarPostCard({
 export function SchedulePlanner() {
   const [month, setMonth] = useState(() => new Date());
   const [posts, setPosts] = useState<CalendarPost[]>([]);
+  const [scheduledTreats, setScheduledTreats] = useState<ScheduledTreat[]>([]);
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>(SEED_SCHEDULE_ITEMS);
   const [reminders, setReminders] = useState<ReminderItem[]>([]);
   const [showReminderModal, setShowReminderModal] = useState(false);
@@ -240,6 +250,32 @@ export function SchedulePlanner() {
     fetchPosts();
   }, [fetchPosts]);
 
+  const fetchScheduledTreats = useCallback(() => {
+    if (!db) return;
+    getDocs(collection(db, PURCHASES_COLLECTION))
+      .then((snap) => {
+        const list: ScheduledTreat[] = [];
+        snap.forEach((docSnap) => {
+          const data = purchaseFromDoc(docSnap.id, docSnap.data() as Record<string, unknown>);
+          if (data.scheduleStatus !== "scheduled" || !data.scheduledDate) return;
+          if (data.scheduledDate < monthStart || data.scheduledDate > monthEnd) return;
+          list.push({
+            id: data.id,
+            productName: data.productName ?? "Treat",
+            email: data.email ?? "",
+            scheduledDate: data.scheduledDate,
+            scheduledTime: data.scheduledTime ?? "",
+          });
+        });
+        setScheduledTreats(list);
+      })
+      .catch(() => setScheduledTreats([]));
+  }, [db, monthStart, monthEnd]);
+
+  useEffect(() => {
+    fetchScheduledTreats();
+  }, [fetchScheduledTreats]);
+
   const deletePost = useCallback(
     async (id: string) => {
       if (!db) return;
@@ -284,6 +320,16 @@ export function SchedulePlanner() {
     }
     return map;
   }, [reminders]);
+
+  const treatsByDate = useMemo(() => {
+    const map = new Map<string, ScheduledTreat[]>();
+    for (const t of scheduledTreats) {
+      const arr = map.get(t.scheduledDate) || [];
+      arr.push(t);
+      map.set(t.scheduledDate, arr);
+    }
+    return map;
+  }, [scheduledTreats]);
 
   function openReminderModal() {
     setShowReminderModal(true);
@@ -402,6 +448,9 @@ export function SchedulePlanner() {
             </p>
           </div>
           <div className={styles.headerActions}>
+            <Link href="/admin/purchases" className={styles.reminderBtn}>
+              Schedule treat
+            </Link>
             <button type="button" className={styles.reminderBtn} onClick={openReminderModal}>
               + Add Reminder
             </button>
@@ -416,6 +465,7 @@ export function SchedulePlanner() {
           <span><i className={`${styles.dot} ${styles.dotGreen}`} />Published content</span>
           <span><i className={`${styles.dot} ${styles.dotGray}`} />Draft</span>
           <span><i className={`${styles.dot} ${styles.dotPink}`} />Scheduled fan meeting</span>
+          <span><i className={`${styles.dot} ${styles.dotTreat}`} />Scheduled treat</span>
         </div>
 
         <div className={styles.monthBar}>
@@ -459,6 +509,11 @@ export function SchedulePlanner() {
                     {daySchedule.map((item) => (
                       <span key={item.id} className={`${styles.badge} ${scheduleBadgeClass(item)}`}>
                         {item.title}
+                      </span>
+                    ))}
+                    {(treatsByDate.get(iso) || []).map((t) => (
+                      <span key={t.id} className={`${styles.badge} ${styles.badgeTreat}`} title={`${t.productName} — ${t.email}`}>
+                        Treat: {t.productName}
                       </span>
                     ))}
                     {dayReminders.map((r) => (

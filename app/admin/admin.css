@@ -41,10 +41,29 @@
 /* Static tools sub-nav (Calendar, Media, Content, Post) on every admin page */
 .admin-tools-nav { position: sticky; top: 0; z-index: 10; flex-shrink: 0; background: var(--bg); border-bottom: 1px solid var(--border); }
 .admin-tools-nav-inner { display: flex; flex-wrap: wrap; gap: 0.35rem; padding: 0.75rem 2rem; max-width: 1200px; margin: 0 auto; }
-.admin-tools-nav-tab { padding: 0.5rem 1rem; font-size: 0.9rem; color: var(--text-muted); text-decoration: none; border: 1px solid var(--border); background: var(--bg-card); border-radius: 8px; transition: color 0.2s, border-color 0.2s, background 0.2s; -webkit-tap-highlight-color: transparent; }
+.admin-tools-nav-tab { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; font-size: 0.9rem; color: var(--text-muted); text-decoration: none; border: 1px solid var(--border); background: var(--bg-card); border-radius: 8px; transition: color 0.2s, border-color 0.2s, background 0.2s; -webkit-tap-highlight-color: transparent; }
 .admin-tools-nav-tab:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
 .admin-tools-nav-tab.active { font-weight: 600; color: #fff; border-color: var(--accent); background: var(--accent); }
 .admin-tools-nav-tab.active:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: #fff; }
+
+.admin-tools-nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 999px;
+  background: #b91c1c;
+  color: #fff;
+}
+.admin-tools-nav-tab.active .admin-tools-nav-badge {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--accent);
+}
 
 .admin-media-page { padding: 2rem 2rem 2.5rem; }
 .admin-media-vault { max-width: 1100px; margin: 0 auto; }

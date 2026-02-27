@@ -1,7 +1,11 @@
 "use client";
 
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { getFirebaseDb } from "../../../lib/firebase";
+import { PURCHASES_COLLECTION } from "../../../lib/purchases";
 
 const TOOLS_LINKS = [
   { id: "calendar", label: "Calendar", href: "/admin/dashboard?panel=tools&tool=calendar" },
@@ -9,19 +13,81 @@ const TOOLS_LINKS = [
   { id: "media", label: "Media", href: "/admin/media" },
   { id: "content", label: "Content", href: "/admin/content" },
   { id: "treats", label: "Treats", href: "/admin/treats" },
+  { id: "purchases", label: "Purchases", href: "/admin/purchases" },
+  { id: "dms", label: "Messages", href: "/admin/dms" },
 ] as const;
+
+const BADGE_POLL_MS = 45_000;
 
 export function AdminToolsNav() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const panel = searchParams.get("panel");
   const toolParam = searchParams.get("tool");
+  const [unscheduledPurchasesCount, setUnscheduledPurchasesCount] = useState(0);
+  const [requestsCount, setRequestsCount] = useState(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    const db = getFirebaseDb();
+    if (!db) return;
+
+    const fetchCounts = () => {
+      if (!mountedRef.current) return;
+      getDocs(
+        query(
+          collection(db, PURCHASES_COLLECTION),
+          where("scheduleStatus", "==", "pending")
+        )
+      )
+        .then((snap) => {
+          if (!mountedRef.current) return;
+          let count = 0;
+          snap.forEach((d) => {
+            const data = d.data() as Record<string, unknown>;
+            if (data.treatId != null) count += 1;
+          });
+          setUnscheduledPurchasesCount(count);
+        })
+        .catch(() => {
+          if (mountedRef.current) setUnscheduledPurchasesCount(0);
+        });
+
+      getDocs(
+        query(
+          collection(db, "conversations"),
+          where("firstMessageFromMember", "==", true)
+        )
+      )
+        .then((snap) => {
+          if (mountedRef.current) setRequestsCount(snap.size);
+        })
+        .catch(() => {
+          if (mountedRef.current) setRequestsCount(0);
+        });
+    };
+
+    fetchCounts();
+    const interval = setInterval(fetchCounts, BADGE_POLL_MS);
+
+    const onFocus = () => fetchCounts();
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      mountedRef.current = false;
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, []);
 
   const activeId = (() => {
     if (pathname === "/admin/posts") return "posts";
     if (pathname === "/admin/media") return "media";
     if (pathname === "/admin/content") return "content";
     if (pathname === "/admin/treats") return "treats";
+    if (pathname === "/admin/purchases") return "purchases";
+    if (pathname === "/admin/dms") return "dms";
     if (pathname === "/admin/dashboard" && panel === "tools" && toolParam) {
       return TOOLS_LINKS.some((t) => t.id === toolParam) ? toolParam : "calendar";
     }
@@ -29,18 +95,32 @@ export function AdminToolsNav() {
     return null;
   })();
 
+  const getBadgeCount = (itemId: string): number => {
+    if (itemId === "purchases") return unscheduledPurchasesCount;
+    if (itemId === "dms") return requestsCount;
+    return 0;
+  };
+
   return (
     <nav className="admin-tools-nav" aria-label="Tools">
       <div className="admin-tools-nav-inner">
-        {TOOLS_LINKS.map((item) => (
-          <Link
-            key={item.id}
-            href={item.href}
-            className={`admin-tools-nav-tab${activeId === item.id ? " active" : ""}`}
-          >
-            {item.label}
-          </Link>
-        ))}
+        {TOOLS_LINKS.map((item) => {
+          const badgeCount = getBadgeCount(item.id);
+          return (
+            <Link
+              key={item.id}
+              href={item.href}
+              className={`admin-tools-nav-tab${activeId === item.id ? " active" : ""}`}
+            >
+              {item.label}
+              {badgeCount > 0 && (
+                <span className="admin-tools-nav-badge" aria-label={`${badgeCount} pending`}>
+                  {badgeCount > 99 ? "99+" : badgeCount}
+                </span>
+              )}
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );

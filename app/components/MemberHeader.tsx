@@ -5,9 +5,10 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { isAdminEmail } from "../../lib/auth-redirect";
+import { NotificationBell } from "./NotificationBell";
 
 type MemberHeaderProps = {
-  active: "home" | "treats" | "tip";
+  active: "home" | "treats" | "tip" | "dms";
 };
 
 const HomeIcon = () => (
@@ -30,6 +31,12 @@ const TreatsIcon = () => (
 const TipIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+  </svg>
+);
+
+const MessagesIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
   </svg>
 );
 
@@ -153,6 +160,22 @@ export function MemberHeader({ active }: MemberHeaderProps) {
               <span>Tip</span>
             </Link>
           )}
+          {!showAdmin && (
+            pathname === "/dms" ? (
+              <span className="active" title="Messages" aria-current="page">
+                <MessagesIcon />
+                <span>Messages</span>
+              </span>
+            ) : (
+              <Link href="/dms" className="" title="Messages">
+                <MessagesIcon />
+                <span>Messages</span>
+              </Link>
+            )
+          )}
+          <span className="member-nav-bell">
+            <NotificationBell variant="member" userEmail={user?.email ?? null} />
+          </span>
         </nav>
       </div>
       <div className="header-right header-profile-wrap" ref={wrapRef}>

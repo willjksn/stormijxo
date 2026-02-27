@@ -16,18 +16,27 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if false;
     }
-    // purchases: treat/store purchases from Stripe webhook; readable in admin dashboard
+    // purchases: treat/store purchases from Stripe webhook; admin can update (schedule); members read own by email
     match /purchases/{purchaseId} {
-      allow read: if request.auth != null;
-      allow write: if false;
+      allow read: if request.auth != null && (
+        resource.data.email == request.auth.token.email ||
+        exists(/databases/$(database)/documents/admin_users/$(request.auth.uid))
+      );
+      allow create: if false;
+      allow update: if request.auth != null && exists(/databases/$(database)/documents/admin_users/$(request.auth.uid));
+      allow delete: if false;
     }
     // admin_users: staff with roles (e.g. admin); who can access admin panel
     match /admin_users/{userId} {
       allow read, write: if request.auth != null;
     }
-    // users: member profiles; read/write own doc only
+    // users: member profiles; read own doc; admin can read all (e.g. to start DMs)
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && (
+        request.auth.uid == userId ||
+        exists(/databases/$(database)/documents/admin_users/$(request.auth.uid))
+      );
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
     // usernames: taken usernames (doc ID = lowercase username); public read for availability check
     match /usernames/{username} {
@@ -59,6 +68,34 @@ service cloud.firestore {
     match /treats/{treatId} {
       allow read: if true;
       allow write: if request.auth != null;
+    }
+    // treatSchedules: scheduled treat fulfillments (from purchases or manual); admin writes; members read own (by memberEmail)
+    match /treatSchedules/{scheduleId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null;
+    }
+    // notifications: in-app notifications for admin and members
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.forMemberEmail == request.auth.token.email ||
+        exists(/databases/$(database)/documents/admin_users/$(request.auth.uid))
+      );
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null;
+    }
+    // DMs: 1:1 conversations; conversation doc id = member uid; admin can read/write any, member only own
+    match /conversations/{convId} {
+      allow read, write: if request.auth != null && (
+        convId == request.auth.uid ||
+        exists(/databases/$(database)/documents/admin_users/$(request.auth.uid))
+      );
+    }
+    match /conversations/{convId}/messages/{msgId} {
+      allow read, write: if request.auth != null && (
+        convId == request.auth.uid ||
+        exists(/databases/$(database)/documents/admin_users/$(request.auth.uid))
+      );
     }
   }
 }

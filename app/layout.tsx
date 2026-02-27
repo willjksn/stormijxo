@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ClientErrorBoundary } from "./components/ClientErrorBoundary";
 
 export const metadata: Metadata = {
   title: "Stormij XO",
@@ -13,7 +14,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <ClientErrorBoundary>
+            {children}
+          </ClientErrorBoundary>
+        </AuthProvider>
       </body>
     </html>
   );
