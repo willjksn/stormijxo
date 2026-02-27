@@ -1,21 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
 import { getFirebaseDb } from "../../lib/firebase";
-
-type LandingMediaItem = {
-  url?: string;
-  type?: "image" | "video" | string;
-};
-
-type LandingDoc = {
-  hero?: LandingMediaItem;
-};
+import { loadLandingConfig } from "./landing-config-client";
 
 export function LandingHeroMedia() {
   const db = getFirebaseDb();
-  const [hero, setHero] = useState<LandingMediaItem | null>(null);
+  const [hero, setHero] = useState<{ url?: string; type?: "image" | "video" | string } | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -24,11 +15,10 @@ export function LandingHeroMedia() {
       setReady(true);
       return;
     }
-    getDoc(doc(db, "site_config", "landing"))
-      .then((snap) => {
+    loadLandingConfig(db)
+      .then((cfg) => {
         if (!active) return;
-        const data = snap.exists() ? (snap.data() as LandingDoc) : null;
-        const media = data?.hero;
+        const media = cfg.landing?.hero;
         if (media?.url) setHero(media);
       })
       .catch(() => {

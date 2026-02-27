@@ -1,12 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
 import { getFirebaseDb } from "../../lib/firebase";
 import type { SiteConfigContent } from "../../lib/site-config";
-import { SITE_CONFIG_CONTENT_ID } from "../../lib/site-config";
-
-const CONTENT_DOC_PATH = "site_config";
+import { loadLandingConfig } from "./landing-config-client";
 
 type SocialVisibility = {
   instagram: boolean;
@@ -56,13 +53,10 @@ export function LandingSocialLinks({ idPrefix = "social" }: { idPrefix?: string 
 
   useEffect(() => {
     if (!db) return;
-    Promise.all([
-      getDoc(doc(db, CONTENT_DOC_PATH, SITE_CONFIG_CONTENT_ID)),
-      getDoc(doc(db, CONTENT_DOC_PATH, "landing")),
-    ])
-      .then(([contentSnap, landingSnap]) => {
-        if (contentSnap.exists()) {
-          const d = contentSnap.data() as SiteConfigContent;
+    loadLandingConfig(db)
+      .then((cfg) => {
+        if (cfg.content) {
+          const d = cfg.content as SiteConfigContent;
           setVis({
             instagram: d.showSocialInstagram !== false,
             facebook: d.showSocialFacebook !== false,
@@ -72,8 +66,8 @@ export function LandingSocialLinks({ idPrefix = "social" }: { idPrefix?: string 
           });
         }
 
-        if (landingSnap.exists()) {
-          const landing = landingSnap.data() as LandingLegacyDoc;
+        if (cfg.landing) {
+          const landing = cfg.landing as LandingLegacyDoc;
           const links = landing.socialLinks || {};
           setUrls({
             instagram: (links.instagram?.url || "").trim(),

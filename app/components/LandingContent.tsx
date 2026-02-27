@@ -1,12 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
 import { getFirebaseDb } from "../../lib/firebase";
 import type { SiteConfigContent } from "../../lib/site-config";
-import { SITE_CONFIG_CONTENT_ID } from "../../lib/site-config";
-
-const CONTENT_DOC_PATH = "site_config";
+import { loadLandingConfig } from "./landing-config-client";
 
 export function LandingTestimonial() {
   const [content, setContent] = useState<SiteConfigContent | null>(null);
@@ -14,9 +11,9 @@ export function LandingTestimonial() {
 
   useEffect(() => {
     if (!db) return;
-    getDoc(doc(db, CONTENT_DOC_PATH, SITE_CONFIG_CONTENT_ID))
-      .then((snap) => {
-        if (snap.exists()) setContent(snap.data() as SiteConfigContent);
+    loadLandingConfig(db)
+      .then((cfg) => {
+        if (cfg.content) setContent(cfg.content as SiteConfigContent);
       })
       .catch(() => {});
   }, [db]);
@@ -42,9 +39,9 @@ export function LandingCtaCount() {
 
   useEffect(() => {
     if (!db) return;
-    getDoc(doc(db, CONTENT_DOC_PATH, SITE_CONFIG_CONTENT_ID))
-      .then((snap) => {
-        if (snap.exists()) setContent(snap.data() as SiteConfigContent);
+    loadLandingConfig(db)
+      .then((cfg) => {
+        if (cfg.content) setContent(cfg.content as SiteConfigContent);
       })
       .catch(() => {});
   }, [db]);
