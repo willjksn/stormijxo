@@ -3,6 +3,7 @@ import Script from "next/script";
 import { Suspense } from "react";
 import { LandingHeaderWithAuth } from "./components/LandingHeaderWithAuth";
 import { LandingCtaCount } from "./components/LandingContent";
+import { LandingHeroMedia } from "./components/LandingHeroMedia";
 import { LandingSocialLinks } from "./components/LandingSocialLinks";
 import { LandingTipCheckout } from "./components/LandingTipCheckout";
 import { SubscriptionCheckoutButton } from "./components/SubscriptionCheckoutButton";
@@ -27,12 +28,7 @@ export default function LandingPage() {
       <main>
         <section className="hero reveal visible">
           <div className="hero-image-wrap" data-landing-slot="hero">
-            <img
-              src="/images/hero.png"
-              alt="Creator"
-              className="hero-image"
-              data-landing-default
-            />
+            <LandingHeroMedia />
           </div>
           <div className="hero-text">
             <h1 className="hero-name hero-stagger" style={{ ["--delay" as string]: "0.1s" }}>
@@ -154,7 +150,6 @@ export default function LandingPage() {
       <Script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js" strategy="afterInteractive" />
       <Script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js" strategy="afterInteractive" />
       <Script src="/firebase-config.js" strategy="afterInteractive" />
-      <Script src="/landing-media.js" strategy="afterInteractive" />
     </>
   );
 }
