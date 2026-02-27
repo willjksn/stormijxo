@@ -6,6 +6,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { getFirebaseDb } from "../../../lib/firebase";
 import { getFirebaseAuth } from "../../../lib/firebase";
 import { canAccessAdmin } from "../../../lib/auth-redirect";
+import { doc, setDoc } from "firebase/firestore";
 
 type RequireAdminProps = {
   children: React.ReactNode;
@@ -37,26 +38,38 @@ export function RequireAdmin({ children, header }: RequireAdminProps) {
   useEffect(() => {
     if (!user || allowed !== true) return;
     let cancelled = false;
-    const auth = getFirebaseAuth();
-    if (!auth?.currentUser) {
+    const db = getFirebaseDb();
+    if (!db || !user.uid) {
       setAdminDocEnsured(true);
       return;
     }
     const setDone = () => {
       if (!cancelled) setAdminDocEnsured(true);
     };
-    auth.currentUser!.getIdToken(true).then((token) => {
-      const authHeader = { Authorization: `Bearer ${token}` };
-      const getReq = fetch("/api/admin/ensure-admin-doc", { method: "GET", headers: authHeader });
-      const postReq = fetch("/api/admin/ensure-admin-doc", {
-        method: "POST",
-        headers: { ...authHeader, "Content-Type": "application/json" },
-        body: "{}",
+    setDoc(
+      doc(db, "admin_users", user.uid),
+      { email: user.email ?? null, role: "admin" },
+      { merge: true }
+    )
+      .then(setDone)
+      .catch(() => {
+        const auth = getFirebaseAuth();
+        if (!auth?.currentUser) {
+          setDone();
+          return;
+        }
+        auth.currentUser
+          .getIdToken(true)
+          .then((token) =>
+            fetch("/api/admin/ensure-admin-doc", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: "{}",
+            })
+          )
+          .then(setDone)
+          .catch(setDone);
       });
-      Promise.all([getReq, postReq]).then(([getRes, postRes]) => {
-        if (getRes.ok || postRes.ok) setDone();
-      }).catch(setDone);
-    }).catch(setDone);
     const t = setTimeout(setDone, 5000);
     return () => {
       cancelled = true;

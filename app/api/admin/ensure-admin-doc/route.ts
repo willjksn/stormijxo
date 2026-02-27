@@ -16,8 +16,10 @@ async function handleEnsure(req: NextRequest) {
   try {
     await requireAdminAuth(req);
     return NextResponse.json({ ok: true });
-  } catch (res) {
-    return res as NextResponse;
+  } catch (err) {
+    if (err instanceof NextResponse) return err;
+    const message = err instanceof Error ? err.message : "Failed to ensure admin doc.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

@@ -451,23 +451,25 @@
 
 @media (max-width: 768px) {
   .chat-page {
-    flex-direction: row;
+    flex-direction: column;
     height: 100%;
     min-height: 60vh;
-    min-width: min(600px, 100vw);
-    flex-shrink: 0;
+    min-width: 0;
+    width: 100%;
   }
   .chat-sidebar {
-    width: 280px;
-    min-width: 280px;
-    max-height: none;
+    width: 100%;
+    min-width: 0;
+    max-height: 42vh;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
   }
   .admin-main.admin-content-main {
-    overflow-x: auto;
+    overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
   .admin-main.admin-content-main > .chat-page {
-    min-width: 600px;
+    min-width: 0;
   }
 }
