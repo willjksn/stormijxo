@@ -196,7 +196,7 @@ export default function LandingPage() {
       <Script src="/landing-media.js" strategy="afterInteractive" />
       <Script id="landing-tip-checkout" strategy="afterInteractive">{`
         (function() {
-          var tipUrl = "/api/tip-checkout";
+          var tipUrl = "/api/landing-tip";
           var cancelUrl = window.location.href;
           var base = window.location.origin;
           var successUrl = base + "/success?tip=1";
@@ -224,6 +224,7 @@ export default function LandingPage() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 amountCents: amountCents,
+                base_url: base,
                 success_url: successUrl,
                 cancel_url: cancelUrl,
                 instagram_handle: instagramHandle
