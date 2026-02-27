@@ -73,6 +73,7 @@ export default function TipPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          checkoutType: "tip",
           amountCents: cents,
           postId: postId || undefined,
           customer_email: user?.email || undefined,

@@ -550,24 +550,40 @@
       document.getElementById("btn-manage-sub").addEventListener("click", function() {
         if (!confirm("You will be taken to Stripe to manage your subscription (update payment, view billing, cancel). Continue?")) return;
         var btn = this;
+        if (!auth.currentUser) {
+          showError("Please sign in again and try.");
+          return;
+        }
         btn.disabled = true;
         btn.textContent = "…";
         var returnUrl = window.location.origin + "/profile";
-        functions.httpsCallable("createCustomerPortalSession")({ returnUrl: returnUrl })
-          .then(function(result) {
-            if (result.data && result.data.url) {
-              window.location.href = result.data.url;
-            } else {
-              btn.disabled = false;
-              btn.textContent = "Manage subscription";
-              showError("Could not open subscription portal.");
-            }
-          })
-          .catch(function(err) {
-            btn.disabled = false;
-            btn.textContent = "Manage subscription";
-            showError(err.message || "Could not open subscription portal.");
+        auth.currentUser.getIdToken(true).then(function(token) {
+          return fetch("/api/customer-portal", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({
+              returnUrl: returnUrl,
+              email: auth.currentUser.email || "",
+              uid: auth.currentUser.uid || ""
+            })
           });
+        }).then(function(resp) {
+          return resp.json().catch(function(){ return {}; }).then(function(data){ return { ok: resp.ok, data: data }; });
+        }).then(function(result) {
+          if (result.ok && result.data && result.data.url) {
+            window.location.href = result.data.url;
+            return;
+          }
+          showError(result.data && result.data.error ? result.data.error : "Could not open subscription portal.");
+        }).catch(function(err) {
+          showError(err && err.message ? err.message : "Could not open subscription portal.");
+        }).finally(function() {
+          btn.disabled = false;
+          btn.textContent = "Manage subscription";
+        });
       });
 
       document.getElementById("btn-logout").addEventListener("click", function() {

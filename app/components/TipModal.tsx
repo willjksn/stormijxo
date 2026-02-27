@@ -60,6 +60,7 @@ export function TipModal({ isOpen, onClose, postId, cancelPath, customerEmail, u
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          checkoutType: "tip",
           amountCents,
           postId,
           customer_email: customerEmail || undefined,

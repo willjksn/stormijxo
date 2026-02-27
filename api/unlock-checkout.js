@@ -20,6 +20,13 @@ function parseBody(req) {
 
 module.exports = async (req, res) => {
   const requestPath = ((req && req.url) || "").toString().toLowerCase();
+  const body = parseBody(req);
+
+  // If a tip checkout request is misrouted here, forward it.
+  if (body.checkoutType === "tip" || requestPath.includes("tip-checkout")) {
+    const tipCheckoutHandler = require("./tip-checkout");
+    return tipCheckoutHandler(req, res);
+  }
 
   // Production safety net: if Vercel misroutes landing checkout paths here,
   // forward to the intended handler instead of returning unlock validation errors.
@@ -60,7 +67,6 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const body = parseBody(req);
   const postId = typeof body.postId === "string" ? body.postId.trim() : "";
   const uid = typeof body.uid === "string" ? body.uid.trim() : "";
   if (!postId || !uid) {

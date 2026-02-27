@@ -4,16 +4,21 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { getFirebaseDb } from "../../../lib/firebase";
 import {
+  collection,
   doc,
   getDoc,
+  getDocs,
+  limit,
+  query,
   setDoc,
   updateDoc,
   runTransaction,
   serverTimestamp,
+  where,
 } from "firebase/firestore";
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import { getFirebaseAuth } from "../../../lib/firebase";
-import { getAuthErrorMessage } from "../../../lib/auth-redirect";
+import { getAuthErrorMessage, isAdminEmail } from "../../../lib/auth-redirect";
 
 const PROFILE_EMOJI_CATEGORIES = {
   faces: "😀 😃 😄 😁 😆 😅 🤣 😂 🙂 🙃 😉 😊 😇 🥰 😍 🤩 😘 😎 🥳 😏 😒 😞 😔 😟 😕 🙁 😣 😖 😫 😩 🥺 😭 😤 😠 😡 🤬 😳 😱 😨 😰 😥 😓 🤗 🤔 😴 🤤 😪 🤒 🤕 🤠 🤡 💩 👻 💀 🎃".split(" "),
@@ -70,6 +75,7 @@ export default function ProfilePage() {
   const [passwordForm, setPasswordForm] = useState({ current: "", new: "", confirm: "" });
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [accountSectionOpen, setAccountSectionOpen] = useState<"password" | null>(null);
+  const [hasStripeMembership, setHasStripeMembership] = useState<boolean | null>(null);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -142,6 +148,65 @@ export default function ProfilePage() {
     if (user && db) loadProfile();
     else if (!user) setLoading(false);
   }, [user, db, loadProfile]);
+
+  useEffect(() => {
+    if (!user || !db) {
+      setHasStripeMembership(null);
+      return;
+    }
+    let active = true;
+    const uid = user.uid || "";
+    const email = (user.email || "").trim().toLowerCase();
+    const membersRef = collection(db, "members");
+
+    const hasStripeLink = (data: Record<string, unknown> | undefined): boolean => {
+      if (!data) return false;
+      const customerId = String(data.stripeCustomerId ?? data.stripe_customer_id ?? "").trim();
+      const subscriptionId = String(data.stripeSubscriptionId ?? data.stripe_subscription_id ?? "").trim();
+      return !!customerId || !!subscriptionId;
+    };
+
+    (async () => {
+      try {
+        const checks: Promise<boolean>[] = [];
+        if (uid) {
+          checks.push(
+            getDocs(query(membersRef, where("uid", "==", uid), limit(2))).then((snap) =>
+              snap.docs.some((d) => hasStripeLink(d.data() as Record<string, unknown>))
+            )
+          );
+          checks.push(
+            getDocs(query(membersRef, where("userId", "==", uid), limit(2))).then((snap) =>
+              snap.docs.some((d) => hasStripeLink(d.data() as Record<string, unknown>))
+            )
+          );
+        }
+        if (email) {
+          checks.push(
+            getDocs(query(membersRef, where("email", "==", email), limit(2))).then((snap) =>
+              snap.docs.some((d) => hasStripeLink(d.data() as Record<string, unknown>))
+            )
+          );
+        }
+
+        let linked = false;
+        for (const check of checks) {
+          // eslint-disable-next-line no-await-in-loop
+          if (await check) {
+            linked = true;
+            break;
+          }
+        }
+        if (active) setHasStripeMembership(linked);
+      } catch {
+        if (active) setHasStripeMembership(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [db, user]);
 
   useEffect(() => {
     if (!bioEmojiOpen) return;
@@ -231,9 +296,12 @@ export default function ProfilePage() {
     if (!user) return;
     setPortalLoading(true);
     setMessage(null);
+    let timeoutId: number | null = null;
     try {
       const returnUrl = typeof window !== "undefined" ? `${window.location.origin}/profile` : "/profile";
-      const token = await user.getIdToken();
+      const token = await user.getIdToken(true);
+      const controller = new AbortController();
+      timeoutId = window.setTimeout(() => controller.abort(), 15000);
       const res = await fetch("/api/customer-portal", {
         method: "POST",
         headers: {
@@ -241,16 +309,25 @@ export default function ProfilePage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ returnUrl, email: user.email || "", uid: user.uid || "" }),
+        signal: controller.signal,
       });
       const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
       if (res.ok && data.url) {
-        window.location.href = data.url;
+        window.location.assign(data.url);
       } else {
-        setMessage({ type: "error", text: data.error || "Could not open subscription portal." });
+        const text = data.error || "Could not open subscription portal.";
+        setMessage({ type: "error", text });
+        alert(text);
       }
     } catch (err) {
-      setMessage({ type: "error", text: (err as Error).message || "Could not open subscription portal." });
+      const message =
+        err instanceof Error && err.name === "AbortError"
+          ? "Stripe portal request timed out. Please try again."
+          : (err as Error).message || "Could not open subscription portal.";
+      setMessage({ type: "error", text: message });
+      alert(message);
     } finally {
+      if (timeoutId != null) window.clearTimeout(timeoutId);
       setPortalLoading(false);
     }
   };
@@ -315,6 +392,7 @@ export default function ProfilePage() {
   const initial = displayName.trim()
     ? displayName.trim().charAt(0).toUpperCase()
     : email ? email.charAt(0).toUpperCase() : "?";
+  const adminWithoutStripeMembership = isAdminEmail(user.email ?? null) && hasStripeMembership === false;
 
   return (
     <main className="member-main profile-page">
@@ -462,11 +540,16 @@ export default function ProfilePage() {
           <p className="profile-subscription-desc">
             Manage your subscription, update payment method, or cancel anytime. You&apos;ll be taken to Stripe&apos;s secure portal.
           </p>
+          {adminWithoutStripeMembership && (
+            <p className="profile-subscription-desc" style={{ marginTop: "0.5rem" }}>
+              This admin account is not linked to a Stripe membership, so there is no subscription portal to manage.
+            </p>
+          )}
           <button
             type="button"
             className="btn btn-primary btn-manage-sub"
             onClick={handleManageSubscription}
-            disabled={portalLoading}
+            disabled={portalLoading || adminWithoutStripeMembership}
           >
             {portalLoading ? "…" : "Manage subscription"}
           </button>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
+import { POST as tipCheckoutPost } from "../tip-checkout/route";
 
 type UnlockConfig = {
   enabled?: boolean;
@@ -13,6 +14,7 @@ function getFirebaseAdmin(): ReturnType<typeof import("firebase-admin").initiali
 }
 
 export async function POST(req: NextRequest) {
+  const tipForwardReq = req.clone();
   const stripeSecret =
     process.env.Stripe_Secret_key ||
     process.env.STRIPE_SECRET_KEY ||
@@ -34,6 +36,11 @@ export async function POST(req: NextRequest) {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  // Safety net: if a tip checkout request is misrouted here, forward it.
+  if ((body as { checkoutType?: string }).checkoutType === "tip") {
+    return tipCheckoutPost(tipForwardReq);
   }
 
   const postId = typeof body.postId === "string" ? body.postId.trim() : "";
