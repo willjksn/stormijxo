@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { doc, getDoc } from "firebase/firestore";
 import { useAuth } from "../contexts/AuthContext";
 import { isAdminEmail } from "../../lib/auth-redirect";
+import { getFirebaseDb } from "../../lib/firebase";
+import { SITE_CONFIG_CONTENT_ID, type SiteConfigContent } from "../../lib/site-config";
 import { NotificationBell } from "./NotificationBell";
 import { AboutStormiJModal } from "./AboutStormiJModal";
 
@@ -63,6 +66,7 @@ export function MemberHeader({ active }: MemberHeaderProps) {
   const { user, signOut } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [aboutStormiJOpen, setAboutStormiJOpen] = useState(false);
+  const [aboutStormiJVisible, setAboutStormiJVisible] = useState(true);
   const wrapRef = useRef<HTMLDivElement>(null);
   const avatarStableRef = useRef<{ photoURL: string | null; initials: string }>({ photoURL: null, initials: "?" });
 
@@ -93,6 +97,18 @@ export function MemberHeader({ active }: MemberHeaderProps) {
     };
     document.addEventListener("click", close, true);
     return () => document.removeEventListener("click", close, true);
+  }, []);
+
+  useEffect(() => {
+    const db = getFirebaseDb();
+    if (!db) return;
+    getDoc(doc(db, "site_config", SITE_CONFIG_CONTENT_ID))
+      .then((snap) => {
+        if (!snap.exists()) return;
+        const d = snap.data() as SiteConfigContent;
+        setAboutStormiJVisible(d.aboutStormiJVisible !== false);
+      })
+      .catch(() => {});
   }, []);
 
   const displayAvatar = avatarStableRef.current;
@@ -178,14 +194,16 @@ export function MemberHeader({ active }: MemberHeaderProps) {
         </nav>
       </div>
       <div className="header-right header-profile-wrap" ref={wrapRef}>
-        <button
-          type="button"
-          className="header-about-stormi-j"
-          onClick={() => setAboutStormiJOpen(true)}
-          title="About Stormi J"
-        >
-          About Stormi J
-        </button>
+        {aboutStormiJVisible && (
+          <button
+            type="button"
+            className="header-about-stormi-j"
+            onClick={() => setAboutStormiJOpen(true)}
+            title="About Stormi J"
+          >
+            About Stormi J
+          </button>
+        )}
         <NotificationBell variant="member" userEmail={user?.email ?? null} />
         {showAdmin && (
           <Link href="/admin/dashboard" className="header-admin-btn" prefetch>

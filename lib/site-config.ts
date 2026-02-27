@@ -44,6 +44,8 @@ export type SiteConfigContent = {
   showSocialYoutube?: boolean;
   /** About Stormi J profile card: image URL (optional) */
   aboutStormiJImageUrl?: string;
+  /** Show About Stormi J button in member header (default true) */
+  aboutStormiJVisible?: boolean;
   /** About Stormi J profile card: video URL (optional, shown if set) */
   aboutStormiJVideoUrl?: string;
   /** About Stormi J profile card: bio/info text */
