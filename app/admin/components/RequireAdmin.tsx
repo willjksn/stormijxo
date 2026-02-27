@@ -46,31 +46,49 @@ export function RequireAdmin({ children, header }: RequireAdminProps) {
     const setDone = () => {
       if (!cancelled) setAdminDocEnsured(true);
     };
-    setDoc(
-      doc(db, "admin_users", user.uid),
-      { email: user.email ?? null, role: "admin" },
-      { merge: true }
-    )
-      .then(setDone)
-      .catch(() => {
-        const auth = getFirebaseAuth();
-        if (!auth?.currentUser) {
-          setDone();
-          return;
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const ensureByClientWrite = async () => {
+      for (let i = 0; i < 4; i++) {
+        try {
+          await setDoc(
+            doc(db, "admin_users", user.uid),
+            { email: user.email ?? null, role: "admin" },
+            { merge: true }
+          );
+          return true;
+        } catch {
+          await wait(300 * (i + 1));
         }
-        auth.currentUser
-          .getIdToken(true)
-          .then((token) =>
-            fetch("/api/admin/ensure-admin-doc", {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-              body: "{}",
-            })
-          )
-          .then(setDone)
-          .catch(setDone);
-      });
-    const t = setTimeout(setDone, 5000);
+      }
+      return false;
+    };
+    const ensureByApi = async () => {
+      const auth = getFirebaseAuth();
+      if (!auth?.currentUser) return false;
+      try {
+        const token = await auth.currentUser.getIdToken(true);
+        const res = await fetch("/api/admin/ensure-admin-doc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: "{}",
+        });
+        return res.ok;
+      } catch {
+        return false;
+      }
+    };
+    (async () => {
+      const clientOk = await ensureByClientWrite();
+      if (cancelled) return;
+      if (clientOk) {
+        setDone();
+        return;
+      }
+      const apiOk = await ensureByApi();
+      if (cancelled) return;
+      if (apiOk) setDone();
+    })();
+    const t = setTimeout(setDone, 9000);
     return () => {
       cancelled = true;
       clearTimeout(t);
