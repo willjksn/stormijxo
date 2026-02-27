@@ -3,7 +3,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { onAuthStateChanged, signOut as firebaseSignOut } from "firebase/auth";
-import { getFirebaseAuth } from "../../lib/firebase";
+import { doc, setDoc } from "firebase/firestore";
+import { getFirebaseAuth, getFirebaseDb } from "../../lib/firebase";
 
 type AuthState = {
   user: User | null;
@@ -32,6 +33,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const db = getFirebaseDb();
+    const email = user?.email?.trim();
+    if (!db || !user?.uid || !email) return;
+    const emailLower = email.toLowerCase();
+    setDoc(doc(db, "users", user.uid), { email_lower: emailLower }, { merge: true }).catch(() => {});
+  }, [user?.uid, user?.email]);
 
   const signOut = useCallback(async () => {
     const auth = getFirebaseAuth();

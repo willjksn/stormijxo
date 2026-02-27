@@ -43,18 +43,14 @@ export function AdminToolsNav() {
         });
         setUnscheduledPurchasesCount(count);
       },
-      () => {
-        if (mountedRef.current) setUnscheduledPurchasesCount(0);
-      }
+      () => {}
     );
     const unsubRequests = onSnapshot(
       query(collection(db, "notifications"), where("forAdmin", "==", true), where("type", "==", "dm"), where("read", "==", false)),
       (snap) => {
         if (mountedRef.current) setRequestsCount(snap.size);
       },
-      () => {
-        if (mountedRef.current) setRequestsCount(0);
-      }
+      () => {}
     );
 
     return () => {

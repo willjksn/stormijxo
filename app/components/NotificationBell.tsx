@@ -65,7 +65,6 @@ export function NotificationBell({ variant, userEmail }: NotificationBellProps) 
         setLoading(false);
       },
       () => {
-        setList([]);
         setLoading(false);
       }
     );
@@ -95,7 +94,7 @@ export function NotificationBell({ variant, userEmail }: NotificationBellProps) 
         });
         setPendingPurchasesCount(count);
       },
-      () => setPendingPurchasesCount(0)
+      () => {}
     );
   }, [db, variant]);
 
@@ -112,7 +111,7 @@ export function NotificationBell({ variant, userEmail }: NotificationBellProps) 
         where("read", "==", false)
       ),
       (snap) => setUnreadDmsCount(snap.size),
-      () => setUnreadDmsCount(0)
+      () => {}
     );
   }, [db, variant]);
 
@@ -130,7 +129,7 @@ export function NotificationBell({ variant, userEmail }: NotificationBellProps) 
         where("read", "==", false)
       ),
       (snap) => setUnreadDmsCount(snap.size),
-      () => setUnreadDmsCount(0)
+      () => {}
     );
   }, [db, variant, userEmail]);
 

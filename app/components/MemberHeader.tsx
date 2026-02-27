@@ -128,7 +128,7 @@ export function MemberHeader({ active }: MemberHeaderProps) {
         where("read", "==", false)
       ),
       (snap) => setUnreadDmsCount(snap.size),
-      () => setUnreadDmsCount(0)
+      () => {}
     );
   }, [user?.email]);
 
