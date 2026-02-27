@@ -2,20 +2,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth } from "../_lib/require-admin";
 
 /**
- * GET — Verifies admin auth and ensures allowlist admins have an admin_users doc
+ * GET/POST — Verifies admin auth and ensures allowlist admins have an admin_users doc
  * (so Firestore rules allow them to read users/members in the client).
  * Call once when loading the admin panel to avoid "permission-denied" on snapshot listeners.
- * OPTIONS — Allow CORS preflight so GET does not get 405.
+ * POST is preferred by the client to avoid caching/405 on some hosts.
+ * OPTIONS — Allow CORS preflight.
  */
 export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: { Allow: "GET, OPTIONS" } });
+  return new NextResponse(null, { status: 204, headers: { Allow: "GET, POST, OPTIONS" } });
 }
 
-export async function GET(req: NextRequest) {
+async function handleEnsure(req: NextRequest) {
   try {
     await requireAdminAuth(req);
     return NextResponse.json({ ok: true });
   } catch (res) {
     return res as NextResponse;
   }
+}
+
+export async function GET(req: NextRequest) {
+  return handleEnsure(req);
+}
+
+export async function POST(req: NextRequest) {
+  return handleEnsure(req);
 }

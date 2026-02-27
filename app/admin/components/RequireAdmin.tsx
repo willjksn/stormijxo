@@ -45,8 +45,9 @@ export function RequireAdmin({ children, header }: RequireAdminProps) {
     const doFetch = () =>
       auth.currentUser!.getIdToken(true).then((token) =>
         fetch("/api/admin/ensure-admin-doc", {
-          method: "GET",
-          headers: { Authorization: `Bearer ${token}` },
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: "{}",
         })
       );
     doFetch()

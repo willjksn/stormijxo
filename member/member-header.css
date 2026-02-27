@@ -2,17 +2,8 @@
 .member-header .logo-img {
   width: min(340px, 56vw) !important;
   height: 64px !important;
-  object-fit: contain;
-  object-position: center center;
-}
-/* Tablet: between mobile and desktop so logo doesn't get squashed or use wrong size */
-@media (min-width: 769px) and (max-width: 1024px) {
-  .member-header .logo-img {
-    width: min(220px, 32vw) !important;
-    height: 52px !important;
-    object-fit: contain;
-    object-position: center center;
-  }
+  object-fit: cover;
+  object-position: center 52%;
 }
 @media (max-width: 768px) {
   .member-header {
@@ -29,9 +20,6 @@
   .member-header .logo-img {
     width: min(120px, 35vw) !important;
     height: 42px !important;
-    min-width: 80px;
-    object-fit: contain;
-    object-position: center center;
   }
   .member-header .header-left {
     gap: 0.5rem;
@@ -41,11 +29,11 @@
     overflow: hidden;
   }
   .member-header .header-left .logo {
-    flex-shrink: 0;
-    min-width: 80px;
+    flex-shrink: 1;
+    min-width: 0;
   }
   .member-header .header-left .logo .logo-img {
-    flex-shrink: 0;
+    flex-shrink: 1;
     max-width: 100%;
   }
   .member-nav-main {
@@ -82,9 +70,6 @@
   .member-header .logo-img {
     width: min(100px, 30vw) !important;
     height: 38px !important;
-    min-width: 60px;
-    object-fit: contain;
-    object-position: center center;
   }
   .member-nav-main a span,
   .member-nav-main span[aria-current="page"] span {

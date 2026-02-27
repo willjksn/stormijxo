@@ -50,12 +50,9 @@ export function AdminHeader() {
           Admin Dashboard
         </Link>
       ) : (
-        <div className="admin-header-left-with-bell" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <Link href="/admin/dashboard" className="admin-header-title" style={{ fontSize: "1rem" }}>
-            Admin
-          </Link>
-          <NotificationBell variant="admin" userEmail={user?.email ?? null} />
-        </div>
+        <Link href="/admin/dashboard" className="admin-header-title" style={{ fontSize: "1rem" }}>
+          Admin
+        </Link>
       )}
       <div className="admin-header-right">
         <Link href="/home" className="header-link" title="Home">
@@ -75,7 +72,7 @@ export function AdminHeader() {
           </svg>
           <span>Treats</span>
         </Link>
-        {isDashboard && <NotificationBell variant="admin" userEmail={user?.email ?? null} />}
+        <NotificationBell variant="admin" userEmail={user?.email ?? null} />
         <div className={`admin-header-profile${dropdownOpen ? " open" : ""}`} ref={wrapRef}>
           <button
             type="button"
