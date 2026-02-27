@@ -81,6 +81,15 @@ module.exports = async (req, res) => {
           break;
         }
       }
+      if (membersSnap.empty) {
+        const byDocId = await membersRef.doc(uid).get();
+        if (byDocId.exists) {
+          membersSnap = {
+            empty: false,
+            docs: [byDocId],
+          };
+        }
+      }
     }
 
     if (membersSnap.empty && !email && uid) {
@@ -89,6 +98,20 @@ module.exports = async (req, res) => {
       if (userEmail) {
         rawEmail = userEmail;
         email = userEmail.toLowerCase();
+      }
+    }
+
+    // Some ID tokens/providers may not include email claims; recover from Firebase Auth.
+    if (membersSnap.empty && !email && uid) {
+      try {
+        const authUser = await admin.auth().getUser(uid);
+        const authEmail = (authUser.email || "").trim();
+        if (authEmail) {
+          rawEmail = authEmail;
+          email = authEmail.toLowerCase();
+        }
+      } catch {
+        // Keep graceful fallback below.
       }
     }
 
@@ -106,7 +129,7 @@ module.exports = async (req, res) => {
     }
 
     if (membersSnap.empty && !email) {
-      json(res, 400, { error: "No email found on your account. Please sign in again and retry." });
+      json(res, 404, { error: "No subscription found for this account." });
       return;
     }
 

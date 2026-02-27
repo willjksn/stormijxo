@@ -88,6 +88,15 @@ export async function POST(req: NextRequest) {
           break;
         }
       }
+      if (membersSnap.empty) {
+        const byDocId = await membersRef.doc(uid).get();
+        if (byDocId.exists) {
+          membersSnap = {
+            empty: false,
+            docs: [byDocId],
+          } as typeof membersSnap;
+        }
+      }
     }
 
     // If token/body had no email claim, attempt to recover it from users/{uid}.
@@ -97,6 +106,20 @@ export async function POST(req: NextRequest) {
       if (userEmail) {
         rawEmail = userEmail;
         email = userEmail.toLowerCase();
+      }
+    }
+
+    // Some ID tokens/providers may not include email claims; recover from Firebase Auth.
+    if (membersSnap.empty && !email && uid) {
+      try {
+        const authUser = await getAuth(app).getUser(uid);
+        const authEmail = (authUser.email || "").trim();
+        if (authEmail) {
+          rawEmail = authEmail;
+          email = authEmail.toLowerCase();
+        }
+      } catch {
+        // Keep graceful fallback error below.
       }
     }
 
@@ -114,10 +137,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (membersSnap.empty && !email) {
-      return NextResponse.json(
-        { error: "No email found on your account. Please sign in again and retry." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "No subscription found for this account." }, { status: 404 });
     }
     if (membersSnap.empty) {
       return NextResponse.json({ error: "No subscription found for this account." }, { status: 404 });
