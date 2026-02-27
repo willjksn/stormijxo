@@ -53,7 +53,22 @@ export default function AdminDashboardPage() {
   const toolParam = searchParams.get("tool") || "calendar";
   const currentTool = TOOLS_QUICK_LINKS.find((t) => t.id === toolParam)?.id ?? "calendar";
   const [overviewLoading, setOverviewLoading] = useState(true);
-  const [stats, setStats] = useState({ totalUsers: "—", newUsers: "—", totalRevenue: "—", revenue30d: "—", avgOrder: "—", repeatBuyers: "—", tipsTotal: "—", tips30d: "—", tipsCount: "—", postsThisMonth: "—", totalLikes: "—" });
+  const [stats, setStats] = useState({
+    totalUsers: "—",
+    newUsers: "—",
+    totalRevenue: "—",
+    revenue30d: "—",
+    avgOrder: "—",
+    repeatBuyers: "—",
+    tipsTotal: "—",
+    tips30d: "—",
+    tipsCount: "—",
+    subscriptionsTotal: "—",
+    subscriptions30d: "—",
+    subscriptionsCount: "—",
+    postsThisMonth: "—",
+    totalLikes: "—",
+  });
   const [activity, setActivity] = useState<{ name: string; dateStr: string; photoUrl: string | null; initial: string }[]>([]);
   const [topSpenders, setTopSpenders] = useState<{ email: string; name: string; totalCents: number }[]>([]);
   const [topPurchases, setTopPurchases] = useState<{ name: string; count: number; cents: number }[]>([]);
@@ -61,6 +76,15 @@ export default function AdminDashboardPage() {
   const [topPostComments, setTopPostComments] = useState<{ id: string; imageUrl: string | null; body: string; value: number } | null>(null);
   const [topPostTips, setTopPostTips] = useState<{ id: string; imageUrl: string | null; body: string; value: number } | null>(null);
   const [spendersExpanded, setSpendersExpanded] = useState(false);
+  const [showMonthlyMetrics, setShowMonthlyMetrics] = useState(false);
+  const [monthlyMetrics, setMonthlyMetrics] = useState<Array<{
+    label: string;
+    totalCents: number;
+    tipsCents: number;
+    subscriptionsCents: number;
+    storeCents: number;
+    newMembers: number;
+  }>>([]);
 
   const db = getFirebaseDb();
 
@@ -71,17 +95,6 @@ export default function AdminDashboardPage() {
     }
     const cutoff30 = new Date();
     cutoff30.setDate(cutoff30.getDate() - 30);
-
-    getDocs(collection(db, "members")).then((snap) => {
-      let total = snap.size;
-      let newCount = 0;
-      snap.forEach((doc) => {
-        const d = doc.data();
-        const joined = (d.joinedAt as Timestamp)?.toDate?.();
-        if (joined && joined >= cutoff30) newCount++;
-      });
-      setStats((s) => ({ ...s, totalUsers: String(total), newUsers: String(newCount) }));
-    }).catch(() => {});
 
     getDocs(query(collection(db, "members"), orderBy("joinedAt", "desc"), limit(15))).then((snap) => {
       const items: { name: string; dateStr: string; photoUrl: string | null; initial: string }[] = [];
@@ -100,61 +113,166 @@ export default function AdminDashboardPage() {
     }).catch(() => {});
 
     Promise.all([
+      getDocs(collection(db, "members")),
       getDocs(collection(db, "tips")),
-      getDocs(collection(db, "purchases")).catch(() => ({ empty: true, forEach: () => {} } as { empty: boolean; forEach: () => void })),
-    ]).then(([tipsSnap, purchasesSnap]) => {
-      let tipsTotalCents = 0, tips30dCents = 0, tipsCount = 0;
-      const byEmail: Record<string, { email: string; name: string; totalCents: number }> = {};
-      tipsSnap.forEach((doc) => {
-        const d = doc.data();
-        const cents = typeof d.amountCents === "number" ? d.amountCents : 0;
-        tipsTotalCents += cents;
-        tipsCount++;
-        const tippedAt = (d.tippedAt as Timestamp)?.toDate?.();
-        if (tippedAt && tippedAt >= cutoff30) tips30dCents += cents;
-        const email = (d.email ?? "").toString().trim().toLowerCase();
-        if (!email) return;
-        if (!byEmail[email]) byEmail[email] = { email: d.email || email, name: (d.instagram_handle || d.email || email).toString().trim(), totalCents: 0 };
-        byEmail[email].totalCents += cents;
-        if (d.instagram_handle) byEmail[email].name = String(d.instagram_handle).trim();
-      });
-      let storeTotalCents = 0, store30dCents = 0;
-      const byProduct: Record<string, { count: number; cents: number }> = {};
-      if (!(purchasesSnap as { empty?: boolean }).empty && (purchasesSnap as { forEach: (fn: (d: { data: () => Record<string, unknown> }) => void) => void }).forEach) {
-        (purchasesSnap as { forEach: (fn: (d: { data: () => Record<string, unknown> }) => void) => void }).forEach((doc: { data: () => Record<string, unknown> }) => {
-          const d = doc.data();
-          const cents = typeof d.amountCents === "number" ? d.amountCents as number : typeof d.amount === "number" ? Math.round((d.amount as number) * 100) : 0;
+      getDocs(collection(db, "purchases")).catch(
+        () => ({ empty: true, size: 0, docs: [], forEach: () => {} } as {
+          empty: boolean; size: number; docs: Array<{ data: () => Record<string, unknown> }>; forEach: (fn: (d: { data: () => Record<string, unknown> }) => void) => void;
+        })
+      ),
+      getDocs(collection(db, "subscriptionPayments")).catch(
+        () => ({ empty: true, size: 0, docs: [], forEach: () => {} } as {
+          empty: boolean; size: number; docs: Array<{ data: () => Record<string, unknown> }>; forEach: (fn: (d: { data: () => Record<string, unknown> }) => void) => void;
+        })
+      ),
+    ])
+      .then(([membersSnap, tipsSnap, purchasesSnap, subscriptionSnap]) => {
+        const now = new Date();
+        const monthBuckets: Array<{ key: string; label: string }> = [];
+        const monthIndexByKey: Record<string, number> = {};
+        for (let i = 11; i >= 0; i--) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          monthIndexByKey[key] = monthBuckets.length;
+          monthBuckets.push({
+            key,
+            label: d.toLocaleString(undefined, { month: "short", year: "2-digit" }),
+          });
+        }
+        const monthly = monthBuckets.map((m) => ({
+          label: m.label,
+          totalCents: 0,
+          tipsCents: 0,
+          subscriptionsCents: 0,
+          storeCents: 0,
+          newMembers: 0,
+        }));
+
+        const addMonthly = (when: Date | null, cents: number, field: "tipsCents" | "subscriptionsCents" | "storeCents") => {
+          if (!when || !Number.isFinite(cents) || cents <= 0) return;
+          const key = `${when.getFullYear()}-${String(when.getMonth() + 1).padStart(2, "0")}`;
+          const idx = monthIndexByKey[key];
+          if (idx === undefined) return;
+          monthly[idx][field] += cents;
+          monthly[idx].totalCents += cents;
+        };
+
+        const byEmail: Record<string, { email: string; name: string; totalCents: number; txCount: number }> = {};
+        const addSpender = (emailRaw: string, nameRaw: string, cents: number) => {
+          const email = (emailRaw || "").trim().toLowerCase();
+          if (!email || !Number.isFinite(cents) || cents <= 0) return;
+          if (!byEmail[email]) {
+            byEmail[email] = {
+              email,
+              name: nameRaw || email,
+              totalCents: 0,
+              txCount: 0,
+            };
+          }
+          byEmail[email].totalCents += cents;
+          byEmail[email].txCount += 1;
+          if (nameRaw) byEmail[email].name = nameRaw;
+        };
+
+        let totalMembers = membersSnap.size;
+        let newMembers30d = 0;
+        membersSnap.forEach((docSnap) => {
+          const d = docSnap.data();
+          const joined = (d.joinedAt as Timestamp)?.toDate?.() ?? null;
+          if (joined && joined >= cutoff30) newMembers30d++;
+          if (joined) {
+            const key = `${joined.getFullYear()}-${String(joined.getMonth() + 1).padStart(2, "0")}`;
+            const idx = monthIndexByKey[key];
+            if (idx !== undefined) monthly[idx].newMembers += 1;
+          }
+        });
+
+        let tipsTotalCents = 0;
+        let tips30dCents = 0;
+        let tipsCount = 0;
+        tipsSnap.forEach((docSnap) => {
+          const d = docSnap.data();
+          const cents = typeof d.amountCents === "number" ? d.amountCents : 0;
+          tipsTotalCents += cents;
+          if (cents > 0) tipsCount++;
+          const tippedAt = (d.tippedAt as Timestamp)?.toDate?.() ?? (d.createdAt as Timestamp)?.toDate?.() ?? null;
+          if (tippedAt && tippedAt >= cutoff30) tips30dCents += cents;
+          addMonthly(tippedAt, cents, "tipsCents");
+          addSpender((d.email ?? "").toString(), (d.instagram_handle || d.email || "").toString().trim(), cents);
+        });
+
+        let storeTotalCents = 0;
+        let store30dCents = 0;
+        const byProduct: Record<string, { count: number; cents: number }> = {};
+        purchasesSnap.forEach((docSnap: { data: () => Record<string, unknown> }) => {
+          const d = docSnap.data();
+          const cents = typeof d.amountCents === "number" ? (d.amountCents as number) : typeof d.amount === "number" ? Math.round((d.amount as number) * 100) : 0;
           storeTotalCents += cents;
-          const createdAt = (d.createdAt as Timestamp)?.toDate?.() ?? (d.purchasedAt as Timestamp)?.toDate?.();
+          const createdAt = (d.createdAt as Timestamp)?.toDate?.() ?? (d.purchasedAt as Timestamp)?.toDate?.() ?? null;
           if (createdAt && createdAt >= cutoff30) store30dCents += cents;
+          addMonthly(createdAt, cents, "storeCents");
+          addSpender((d.email ?? "").toString(), (d.displayName || d.email || "").toString().trim(), cents);
           const name = (d.productName || d.productId || d.sku || "Purchase").toString();
           if (!byProduct[name]) byProduct[name] = { count: 0, cents: 0 };
           byProduct[name].count++;
           byProduct[name].cents += cents;
         });
-      }
-      const totalRevenue = tipsTotalCents + storeTotalCents;
-      const revenue30d = tips30dCents + store30dCents;
-      const totalTx = tipsCount + ((purchasesSnap as { empty?: boolean; size?: number }).empty ? 0 : (purchasesSnap as { size: number }).size ?? 0);
-      const sorted = Object.values(byEmail).filter((o) => o.totalCents > 0).sort((a, b) => b.totalCents - a.totalCents);
-      const purchasesList = Object.entries(byProduct).map(([name, o]) => ({ name, count: o.count, cents: o.cents })).sort((a, b) => b.cents - a.cents);
-      setTopSpenders(sorted);
-      setTopPurchases(purchasesList.length ? purchasesList : [
-        { name: "1-on-1 Chat", count: 12, cents: 24000 },
-        { name: "Video Call", count: 8, cents: 40000 },
-        { name: "Personal Message", count: 24, cents: 12000 },
-      ]);
-      setStats((s) => ({
-        ...s,
-        totalRevenue: totalRevenue > 0 ? "$" + (totalRevenue / 100).toFixed(2) : "$0.00",
-        revenue30d: revenue30d > 0 ? "$" + (revenue30d / 100).toFixed(2) : "$0.00",
-        avgOrder: totalTx > 0 && totalRevenue > 0 ? "$" + (totalRevenue / 100 / totalTx).toFixed(2) : "—",
-        repeatBuyers: String(Object.values(byEmail).filter((o) => o.totalCents > 0).length),
-        tipsTotal: tipsTotalCents > 0 ? "$" + (tipsTotalCents / 100).toFixed(2) : "$0.00",
-        tips30d: tips30dCents > 0 ? "$" + (tips30dCents / 100).toFixed(2) : "$0.00",
-        tipsCount: String(tipsCount),
-      }));
-    }).catch(() => {}).finally(() => setOverviewLoading(false));
+
+        let subscriptionsTotalCents = 0;
+        let subscriptions30dCents = 0;
+        let subscriptionsCount = 0;
+        subscriptionSnap.forEach((docSnap: { data: () => Record<string, unknown> }) => {
+          const d = docSnap.data();
+          const cents = typeof d.amountCents === "number" ? (d.amountCents as number) : 0;
+          subscriptionsTotalCents += cents;
+          if (cents > 0) subscriptionsCount++;
+          const paidAt =
+            (d.paidAt as Timestamp)?.toDate?.() ??
+            (d.createdAt as Timestamp)?.toDate?.() ??
+            null;
+          if (paidAt && paidAt >= cutoff30) subscriptions30dCents += cents;
+          addMonthly(paidAt, cents, "subscriptionsCents");
+          addSpender((d.email ?? "").toString(), (d.email ?? "").toString().trim(), cents);
+        });
+
+        const totalRevenue = tipsTotalCents + storeTotalCents + subscriptionsTotalCents;
+        const revenue30d = tips30dCents + store30dCents + subscriptions30dCents;
+        const totalTx = tipsCount + (purchasesSnap.empty ? 0 : purchasesSnap.size ?? 0) + subscriptionsCount;
+        const sorted = Object.values(byEmail)
+          .filter((o) => o.totalCents > 0)
+          .sort((a, b) => b.totalCents - a.totalCents);
+        const purchasesList = Object.entries(byProduct)
+          .map(([name, o]) => ({ name, count: o.count, cents: o.cents }))
+          .sort((a, b) => b.cents - a.cents);
+        setTopSpenders(sorted);
+        setTopPurchases(
+          purchasesList.length
+            ? purchasesList
+            : [
+                { name: "1-on-1 Chat", count: 12, cents: 24000 },
+                { name: "Video Call", count: 8, cents: 40000 },
+                { name: "Personal Message", count: 24, cents: 12000 },
+              ]
+        );
+        setMonthlyMetrics(monthly);
+        setStats((s) => ({
+          ...s,
+          totalUsers: String(totalMembers),
+          newUsers: String(newMembers30d),
+          totalRevenue: totalRevenue > 0 ? "$" + (totalRevenue / 100).toFixed(2) : "$0.00",
+          revenue30d: revenue30d > 0 ? "$" + (revenue30d / 100).toFixed(2) : "$0.00",
+          avgOrder: totalTx > 0 && totalRevenue > 0 ? "$" + (totalRevenue / 100 / totalTx).toFixed(2) : "—",
+          repeatBuyers: String(Object.values(byEmail).filter((o) => o.txCount > 1).length),
+          tipsTotal: tipsTotalCents > 0 ? "$" + (tipsTotalCents / 100).toFixed(2) : "$0.00",
+          tips30d: tips30dCents > 0 ? "$" + (tips30dCents / 100).toFixed(2) : "$0.00",
+          tipsCount: String(tipsCount),
+          subscriptionsTotal: subscriptionsTotalCents > 0 ? "$" + (subscriptionsTotalCents / 100).toFixed(2) : "$0.00",
+          subscriptions30d: subscriptions30dCents > 0 ? "$" + (subscriptions30dCents / 100).toFixed(2) : "$0.00",
+          subscriptionsCount: String(subscriptionsCount),
+        }));
+      })
+      .catch(() => {})
+      .finally(() => setOverviewLoading(false));
 
     getDocs(collection(db, "posts")).then((snap) => {
       const now = new Date();
@@ -267,7 +385,52 @@ export default function AdminDashboardPage() {
                         <div className="value">{stats.tipsTotal}</div>
                         <div className="sublabel">30d: {stats.tips30d} · Tips: {stats.tipsCount}</div>
                       </div>
+                      <div className="stat-card">
+                        <div className="label">Subscriptions total</div>
+                        <div className="value">{stats.subscriptionsTotal}</div>
+                        <div className="sublabel">30d: {stats.subscriptions30d} · Charges: {stats.subscriptionsCount}</div>
+                      </div>
                     </div>
+                  </div>
+                  <div className="overview-section">
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", marginBottom: "0.75rem" }}>
+                      <h2 className="overview-section-title" style={{ marginBottom: 0 }}>Last 12 months</h2>
+                      <button
+                        type="button"
+                        className="top-spenders-toggle"
+                        onClick={() => setShowMonthlyMetrics((v) => !v)}
+                      >
+                        {showMonthlyMetrics ? "Hide" : "Show"}
+                      </button>
+                    </div>
+                    {showMonthlyMetrics && (
+                      <div className="top-purchases-card">
+                        <table className="top-purchases-table">
+                          <thead>
+                            <tr>
+                              <th>Month</th>
+                              <th>Total</th>
+                              <th>Tips</th>
+                              <th>Subscriptions</th>
+                              <th>Store</th>
+                              <th>New members</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {monthlyMetrics.map((row) => (
+                              <tr key={row.label}>
+                                <td>{row.label}</td>
+                                <td className="purchase-revenue">${(row.totalCents / 100).toFixed(2)}</td>
+                                <td>${(row.tipsCents / 100).toFixed(2)}</td>
+                                <td>${(row.subscriptionsCents / 100).toFixed(2)}</td>
+                                <td>${(row.storeCents / 100).toFixed(2)}</td>
+                                <td>{row.newMembers}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                   <div className="overview-section">
                     <h2 className="overview-section-title">Content & engagement</h2>

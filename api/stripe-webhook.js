@@ -68,6 +68,7 @@ module.exports = async (req, res) => {
     const membersRef = db.collection("members");
     const tipsRef = db.collection("tips");
     const purchasesRef = db.collection("purchases");
+    const subscriptionPaymentsRef = db.collection("subscriptionPayments");
     const usersRef = db.collection("users");
 
     if (event.type === "checkout.session.completed") {
@@ -230,6 +231,21 @@ module.exports = async (req, res) => {
 
       // Subscription checkout - create member record.
       const email = session.customer_email || (session.customer_details && session.customer_details.email);
+      if (typeof session.amount_total === "number" && session.amount_total > 0) {
+        await subscriptionPaymentsRef.doc(`checkout_${session.id}`).set({
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          paidAt: session.created
+            ? admin.firestore.Timestamp.fromMillis(session.created * 1000)
+            : admin.firestore.FieldValue.serverTimestamp(),
+          amountCents: session.amount_total,
+          currency: session.currency || "usd",
+          email: email || null,
+          stripeCustomerId: session.customer || null,
+          stripeSubscriptionId: session.subscription || null,
+          stripeSessionId: session.id,
+          source: "stripe_subscription_checkout",
+        }, { merge: true });
+      }
       if (email) {
         let instagramHandle = null;
         const customFields = session.custom_fields || [];
@@ -260,6 +276,48 @@ module.exports = async (req, res) => {
           source: "stripe",
           ...(uid ? { uid, userId: uid } : {}),
         });
+      }
+    } else if (event.type === "invoice.paid") {
+      const invoice = event.data.object;
+      const amountPaid = typeof invoice.amount_paid === "number" ? invoice.amount_paid : 0;
+      if (amountPaid > 0) {
+        const customerId =
+          typeof invoice.customer === "string" ? invoice.customer : null;
+        const subscriptionId =
+          typeof invoice.subscription === "string" ? invoice.subscription : null;
+        const paidAt = typeof invoice.created === "number"
+          ? admin.firestore.Timestamp.fromMillis(invoice.created * 1000)
+          : admin.firestore.FieldValue.serverTimestamp();
+
+        let email = (invoice.customer_email || "").toString().trim() || null;
+        if (!email && customerId) {
+          const byCustomer = await membersRef.where("stripeCustomerId", "==", customerId).limit(1).get();
+          if (!byCustomer.empty) {
+            email = (byCustomer.docs[0].data().email || "").toString().trim() || null;
+          }
+        }
+        if (!email && subscriptionId) {
+          const bySub = await membersRef.where("stripeSubscriptionId", "==", subscriptionId).limit(1).get();
+          if (!bySub.empty) {
+            email = (bySub.docs[0].data().email || "").toString().trim() || null;
+          }
+        }
+
+        const invoiceId = (invoice.id || "").toString();
+        if (invoiceId) {
+          await subscriptionPaymentsRef.doc(`invoice_${invoiceId}`).set({
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            paidAt,
+            amountCents: amountPaid,
+            currency: invoice.currency || "usd",
+            email: email || null,
+            stripeCustomerId: customerId,
+            stripeSubscriptionId: subscriptionId,
+            stripeInvoiceId: invoiceId,
+            source: "stripe_subscription_invoice",
+            billingReason: invoice.billing_reason || null,
+          }, { merge: true });
+        }
       }
     } else if (
       event.type === "customer.subscription.updated" ||
