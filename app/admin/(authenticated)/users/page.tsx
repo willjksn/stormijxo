@@ -491,7 +491,8 @@ export default function AdminUsersPage() {
         if (res.ok && data.ok) {
           setModalStatus("User created.");
         } else {
-          setModalStatus(data.error || "Member created but Auth user failed.");
+          const errMsg = data.error || (res.status >= 500 ? "Server error. Try again or create the member and use Save changes + password reset." : "Member created but Auth user failed.");
+          setModalStatus(errMsg);
         }
       } else {
         setModalStatus("Member created.");
@@ -699,11 +700,14 @@ export default function AdminUsersPage() {
           setManageMessage({ type: "error", text: "Member updated but sign-in could not be created: " + data.error });
         } else if (data.created && data.message) {
           setManageMessage({ type: "success", text: "Member updated. " + data.message });
+          setTimeout(closeManage, 1500);
         } else {
           setManageMessage({ type: "success", text: "Member updated." });
+          setTimeout(closeManage, 1500);
         }
       } catch {
         setManageMessage({ type: "success", text: "Member updated." });
+        setTimeout(closeManage, 1500);
       }
     } catch (err) {
       setManageMessage({ type: "error", text: (err as Error).message });

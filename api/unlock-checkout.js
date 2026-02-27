@@ -78,18 +78,91 @@ module.exports = async (req, res) => {
     const memberId = typeof body.memberId === "string" ? String(body.memberId).trim() : "";
     const email = typeof body.email === "string" ? String(body.email).trim() : "";
     const newPassword = typeof body.newPassword === "string" ? String(body.newPassword).trim() : "";
-    if (memberId || (email && newPassword)) {
+    const password = typeof body.password === "string" ? String(body.password).trim() : "";
+    const ensureAuth = body.ensureAuth === true || body.ensureAuth === "true" || requestPath.includes("ensure-member-auth");
+    const isCreateUser = requestPath.includes("create-user");
+
+    if (isCreateUser && email && password && password.length >= 6) {
       const proto = (req.headers && (req.headers["x-forwarded-proto"] || req.headers["x-forwarded-protocol"])) || "https";
       const host = (req.headers && (req.headers["x-forwarded-host"] || req.headers["host"])) || process.env.VERCEL_URL || process.env.PUBLIC_APP_URL || "stormijxo.com";
       const origin = host.startsWith("http") ? host : `${proto}://${host}`;
-      const adminPath = memberId ? "/api/admin/delete-member" : "/api/admin/change-password";
-      const adminBody = memberId ? { memberId } : { email, newPassword };
       const authHeader = (req.headers && (req.headers.authorization || req.headers.Authorization)) || "";
       try {
-        const r = await fetch(origin.replace(/\/$/, "") + adminPath, {
+        const r = await fetch(origin.replace(/\/$/, "") + "/api/admin/create-user", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: authHeader },
-          body: JSON.stringify(adminBody),
+          body: JSON.stringify({
+            email,
+            password,
+            memberId: memberId || undefined,
+            displayName: body.displayName != null ? String(body.displayName).trim() : undefined,
+          }),
+        });
+        const data = await r.json().catch(() => ({}));
+        res.statusCode = r.status;
+        res.setHeader("Content-Type", "application/json; charset=utf-8");
+        res.end(JSON.stringify(data));
+        return;
+      } catch (proxyErr) {
+        console.error("unlock-checkout create-user proxy error:", proxyErr);
+        json(res, 502, { error: "Could not reach create-user API. Try again." });
+        return;
+      }
+    }
+    if (ensureAuth && memberId) {
+      const proto = (req.headers && (req.headers["x-forwarded-proto"] || req.headers["x-forwarded-protocol"])) || "https";
+      const host = (req.headers && (req.headers["x-forwarded-host"] || req.headers["host"])) || process.env.VERCEL_URL || process.env.PUBLIC_APP_URL || "stormijxo.com";
+      const origin = host.startsWith("http") ? host : `${proto}://${host}`;
+      const authHeader = (req.headers && (req.headers.authorization || req.headers.Authorization)) || "";
+      try {
+        const r = await fetch(origin.replace(/\/$/, "") + "/api/admin/ensure-member-auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: authHeader },
+          body: JSON.stringify({ memberId }),
+        });
+        const data = await r.json().catch(() => ({}));
+        res.statusCode = r.status;
+        res.setHeader("Content-Type", "application/json; charset=utf-8");
+        res.end(JSON.stringify(data));
+        return;
+      } catch (proxyErr) {
+        console.error("unlock-checkout ensure-member-auth proxy error:", proxyErr);
+        json(res, 502, { error: "Could not reach admin API." });
+        return;
+      }
+    }
+    if (memberId && !ensureAuth) {
+      const proto = (req.headers && (req.headers["x-forwarded-proto"] || req.headers["x-forwarded-protocol"])) || "https";
+      const host = (req.headers && (req.headers["x-forwarded-host"] || req.headers["host"])) || process.env.VERCEL_URL || process.env.PUBLIC_APP_URL || "stormijxo.com";
+      const origin = host.startsWith("http") ? host : `${proto}://${host}`;
+      const authHeader = (req.headers && (req.headers.authorization || req.headers.Authorization)) || "";
+      try {
+        const r = await fetch(origin.replace(/\/$/, "") + "/api/admin/delete-member", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: authHeader },
+          body: JSON.stringify({ memberId }),
+        });
+        const data = await r.json().catch(() => ({}));
+        res.statusCode = r.status;
+        res.setHeader("Content-Type", "application/json; charset=utf-8");
+        res.end(JSON.stringify(data));
+        return;
+      } catch (proxyErr) {
+        console.error("unlock-checkout admin proxy error:", proxyErr);
+        json(res, 502, { error: "Could not reach admin API. Try again or use Firebase Console." });
+        return;
+      }
+    }
+    if (email && newPassword) {
+      const proto = (req.headers && (req.headers["x-forwarded-proto"] || req.headers["x-forwarded-protocol"])) || "https";
+      const host = (req.headers && (req.headers["x-forwarded-host"] || req.headers["host"])) || process.env.VERCEL_URL || process.env.PUBLIC_APP_URL || "stormijxo.com";
+      const origin = host.startsWith("http") ? host : `${proto}://${host}`;
+      const authHeader = (req.headers && (req.headers.authorization || req.headers.Authorization)) || "";
+      try {
+        const r = await fetch(origin.replace(/\/$/, "") + "/api/admin/change-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: authHeader },
+          body: JSON.stringify({ email, newPassword }),
         });
         const data = await r.json().catch(() => ({}));
         res.statusCode = r.status;

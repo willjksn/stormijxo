@@ -17,7 +17,7 @@ import { NOTIFICATIONS_COLLECTION } from "../../../../lib/notifications";
 import { useAuth } from "../../../contexts/AuthContext";
 import { MemberProfileCard } from "../../components/MemberProfileCard";
 
-type UserOption = { uid: string; email: string | null; displayName: string | null };
+type UserOption = { uid: string; email: string | null; displayName: string | null; memberId?: string };
 
 function formatMessageTime(d: Date): string {
   return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12: true });
@@ -216,15 +216,27 @@ export default function AdminDmsPage() {
         membersSnap.forEach((d) => {
           const data = d.data();
           const uid = (data.uid ?? data.userId ?? "").toString().trim();
-          if (!uid) return;
-          if (byUid.has(uid)) return;
-          byUid.set(uid, {
-            uid,
-            email: data.email != null ? String(data.email) : null,
-            displayName: (data.displayName ?? data.instagram_handle ?? data.note ?? data.email ?? null) != null
-              ? String(data.displayName ?? data.instagram_handle ?? data.note ?? data.email)
-              : null,
-          });
+          const email = data.email != null ? String(data.email).trim() : "";
+          const displayName = (data.displayName ?? data.instagram_handle ?? data.note ?? data.email ?? null) != null
+            ? String(data.displayName ?? data.instagram_handle ?? data.note ?? data.email)
+            : null;
+          if (uid) {
+            if (byUid.has(uid)) return;
+            byUid.set(uid, {
+              uid,
+              email: data.email != null ? String(data.email) : null,
+              displayName,
+            });
+          } else if (email) {
+            const key = "member-" + d.id;
+            if (byUid.has(key)) return;
+            byUid.set(key, {
+              uid: key,
+              email: data.email != null ? String(data.email) : null,
+              displayName,
+              memberId: d.id,
+            });
+          }
         });
         const list = Array.from(byUid.values());
         list.sort((a, b) => {
@@ -242,16 +254,35 @@ export default function AdminDmsPage() {
     async (userOption: UserOption) => {
       if (!db) return;
       setShowNewConversation(false);
+      let uid = userOption.uid;
+      if (userOption.memberId) {
+        try {
+          const token = user ? await user.getIdToken(true) : null;
+          if (!token) throw new Error("Not signed in.");
+          const res = await fetch("/api/admin/ensure-member-auth", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ memberId: userOption.memberId }),
+          });
+          const data = (await res.json().catch(() => ({}))) as { ok?: boolean; uid?: string; error?: string };
+          if (!res.ok || !data.uid) throw new Error(data.error || "Could not create sign-in for member.");
+          uid = data.uid;
+        } catch (e) {
+          console.error(e);
+          setShowNewConversation(true);
+          return;
+        }
+      }
       try {
-        await ensureConversation(db, userOption.uid, userOption.email, userOption.displayName);
-        setSelectedId(userOption.uid);
+        await ensureConversation(db, uid, userOption.email, userOption.displayName);
+        setSelectedId(uid);
         setConversations((prev) => {
-          if (prev.some((c) => c.id === userOption.uid)) return prev;
+          if (prev.some((c) => c.id === uid)) return prev;
           return [
             ...prev,
             {
-              id: userOption.uid,
-              memberUid: userOption.uid,
+              id: uid,
+              memberUid: uid,
               memberEmail: userOption.email,
               memberDisplayName: userOption.displayName,
               createdAt: null,
@@ -261,11 +292,18 @@ export default function AdminDmsPage() {
             },
           ];
         });
+        if (userOption.memberId) {
+          setUserList((prev) =>
+            prev.map((u) =>
+              u.memberId === userOption.memberId ? { ...u, uid, memberId: undefined } : u
+            )
+          );
+        }
       } catch (e) {
         console.error(e);
       }
     },
-    [db]
+    [db, user]
   );
 
   const handleStartByUid = useCallback(
