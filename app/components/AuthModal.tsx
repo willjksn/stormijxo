@@ -102,14 +102,25 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath }: AuthMod
   useEffect(() => {
     if (!isOpen) {
       setError("");
+      setLoading(false);
       document.body.style.overflow = "";
     } else {
+      setLoading(false);
       document.body.style.overflow = "hidden";
     }
     return () => {
       document.body.style.overflow = "";
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    const onPageShow = () => {
+      // Stripe back navigation may restore stale UI state from bfcache.
+      setLoading(false);
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
