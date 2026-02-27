@@ -28,7 +28,7 @@ function todayYMD(): string {
 export default function AdminContentPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [savingSection, setSavingSection] = useState<null | "landing" | "tip">(null);
+  const [savingSection, setSavingSection] = useState<null | "landing" | "tip" | "about">(null);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
   const [content, setContent] = useState<SiteConfigContent>({
     testimonialQuote: "",
@@ -49,10 +49,14 @@ export default function AdminContentPage() {
     showSocialX: true,
     showSocialTiktok: true,
     showSocialYoutube: true,
+    aboutStormiJImageUrl: "",
+    aboutStormiJVideoUrl: "",
+    aboutStormiJText: "",
   });
   const [legalModal, setLegalModal] = useState<null | "privacy" | "terms">(null);
   const [legalDraft, setLegalDraft] = useState("");
   const [showMediaPicker, setShowMediaPicker] = useState(false);
+  const [mediaPickerFor, setMediaPickerFor] = useState<null | "tip" | "about">(null);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [mediaLoading, setMediaLoading] = useState(false);
   const db = getFirebaseDb();
@@ -88,6 +92,9 @@ export default function AdminContentPage() {
             showSocialX: d.showSocialX !== false,
             showSocialTiktok: d.showSocialTiktok !== false,
             showSocialYoutube: d.showSocialYoutube !== false,
+            aboutStormiJImageUrl: d.aboutStormiJImageUrl ?? "",
+            aboutStormiJVideoUrl: d.aboutStormiJVideoUrl ?? "",
+            aboutStormiJText: d.aboutStormiJText ?? "",
           });
         }
       })
@@ -101,7 +108,7 @@ export default function AdminContentPage() {
   };
 
   const saveSection = async (
-    section: "landing" | "tip",
+    section: "landing" | "tip" | "about",
     payload: Partial<SiteConfigContent>
   ) => {
     const dbNow = getFirebaseDb();
@@ -146,9 +153,12 @@ export default function AdminContentPage() {
           showSocialX: d.showSocialX !== false,
           showSocialTiktok: d.showSocialTiktok !== false,
           showSocialYoutube: d.showSocialYoutube !== false,
+          aboutStormiJImageUrl: d.aboutStormiJImageUrl ?? "",
+          aboutStormiJVideoUrl: d.aboutStormiJVideoUrl ?? "",
+          aboutStormiJText: d.aboutStormiJText ?? "",
         });
       }
-      showMessage("ok", section === "landing" ? "Landing content saved." : "Tip page saved.");
+      showMessage("ok", section === "landing" ? "Landing content saved." : section === "tip" ? "Tip page saved." : "About Stormi J saved.");
     } catch (err) {
       const e = err as { message?: string; code?: string };
       const msg = e?.message ?? "Failed to save.";
@@ -185,6 +195,15 @@ export default function AdminContentPage() {
       tipPageHeroSubtextColor: c.tipPageHeroSubtextColor?.trim() ?? "",
       tipPageHeroTitleFontSize: c.tipPageHeroTitleFontSize,
       tipPageHeroSubtextFontSize: c.tipPageHeroSubtextFontSize,
+    });
+  };
+
+  const handleSaveAboutStormiJ = () => {
+    const c = contentRef.current;
+    saveSection("about", {
+      aboutStormiJImageUrl: c.aboutStormiJImageUrl?.trim() ?? "",
+      aboutStormiJVideoUrl: c.aboutStormiJVideoUrl?.trim() ?? "",
+      aboutStormiJText: c.aboutStormiJText?.trim() ?? "",
     });
   };
 
@@ -361,20 +380,20 @@ export default function AdminContentPage() {
                 className="admin-hero-image-img"
               />
               <div className="admin-hero-image-actions">
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => setShowMediaPicker(true)}
-                >
-                  Change image
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setContent((c) => ({ ...c, tipPageHeroImageUrl: "" }))}
-                >
-                  Remove
-                </button>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => { setMediaPickerFor("tip"); setShowMediaPicker(true); }}
+        >
+          Change image
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => setContent((c) => ({ ...c, tipPageHeroImageUrl: "" }))}
+        >
+          Remove
+        </button>
               </div>
             </div>
           ) : (
@@ -383,7 +402,7 @@ export default function AdminContentPage() {
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={() => setShowMediaPicker(true)}
+                onClick={() => { setMediaPickerFor("tip"); setShowMediaPicker(true); }}
               >
                 Choose image
               </button>
@@ -478,6 +497,69 @@ export default function AdminContentPage() {
       </div>
       </section>
 
+      <section className="content-section" aria-labelledby="content-about-stormi-heading">
+        <h2 id="content-about-stormi-heading" className="content-section-title">About Stormi J (member profile card)</h2>
+        <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginBottom: "1rem" }}>
+          Image or video and text shown when members click “About Stormi J” in the header. Video is shown first if both are set.
+        </p>
+        <div className="content-block">
+          <h2>Image</h2>
+          <div className="admin-hero-image-block">
+            {content.aboutStormiJImageUrl ? (
+              <div className="admin-hero-image-preview">
+                <img src={content.aboutStormiJImageUrl} alt="About Stormi J" className="admin-hero-image-img" />
+                <div className="admin-hero-image-actions">
+                  <button type="button" className="btn btn-primary" onClick={() => { setMediaPickerFor("about"); setShowMediaPicker(true); }}>
+                    Change image
+                  </button>
+                  <button type="button" className="btn btn-secondary" onClick={() => setContent((c) => ({ ...c, aboutStormiJImageUrl: "" }))}>
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="admin-hero-image-empty">
+                <p className="admin-hero-image-empty-text">No image set</p>
+                <button type="button" className="btn btn-primary" onClick={() => { setMediaPickerFor("about"); setShowMediaPicker(true); }}>
+                  Choose image
+                </button>
+              </div>
+            )}
+          </div>
+          <label className="admin-content-label" style={{ display: "block", marginTop: "1rem", marginBottom: "0.35rem", fontWeight: 500, fontSize: "0.9rem" }}>
+            Video URL (optional)
+          </label>
+          <input
+            type="url"
+            value={content.aboutStormiJVideoUrl ?? ""}
+            onChange={(e) => setContent((c) => ({ ...c, aboutStormiJVideoUrl: e.target.value }))}
+            placeholder="https://…"
+            className="admin-content-input"
+            style={{ width: "100%", padding: "0.5rem 0.75rem", border: "1px solid var(--border)", borderRadius: 8, fontSize: "0.95rem", background: "var(--bg-card)", color: "var(--text)" }}
+          />
+          <label className="admin-content-label" style={{ display: "block", marginTop: "1rem", marginBottom: "0.35rem", fontWeight: 500, fontSize: "0.9rem" }}>
+            Bio / info text
+          </label>
+          <textarea
+            value={content.aboutStormiJText ?? ""}
+            onChange={(e) => setContent((c) => ({ ...c, aboutStormiJText: e.target.value }))}
+            placeholder="A few lines about Stormi J…"
+            rows={4}
+            className="admin-content-input"
+            style={{ width: "100%", padding: "0.5rem 0.75rem", border: "1px solid var(--border)", borderRadius: 8, fontSize: "0.95rem", background: "var(--bg-card)", color: "var(--text)", resize: "vertical" }}
+          />
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleSaveAboutStormiJ}
+            disabled={saving}
+            style={{ marginTop: "1rem" }}
+          >
+            {savingSection === "about" ? "Saving…" : "Save About Stormi J"}
+          </button>
+        </div>
+      </section>
+
       <section className="content-section" aria-labelledby="content-legal-heading">
         <h2 id="content-legal-heading" className="content-section-title">Legal</h2>
         <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginBottom: "1rem" }}>
@@ -537,9 +619,9 @@ export default function AdminContentPage() {
       )}
 
       {showMediaPicker && (
-        <div className="admin-content-modal-overlay" role="dialog" aria-modal="true" aria-label="Choose hero image" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }} onClick={() => setShowMediaPicker(false)}>
+        <div className="admin-content-modal-overlay" role="dialog" aria-modal="true" aria-label={mediaPickerFor === "about" ? "Choose About Stormi J image" : "Choose hero image"} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }} onClick={() => { setShowMediaPicker(false); setMediaPickerFor(null); }}>
           <div className="admin-content-modal admin-media-picker-modal" onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ margin: 0, padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)", fontSize: "1.1rem", flexShrink: 0 }}>Choose hero image</h2>
+            <h2 style={{ margin: 0, padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)", fontSize: "1.1rem", flexShrink: 0 }}>{mediaPickerFor === "about" ? "Choose About Stormi J image" : "Choose hero image"}</h2>
             <div className="admin-media-picker-body">
               {mediaLoading ? (
                 <div className="admin-media-picker-loading">
@@ -555,8 +637,13 @@ export default function AdminContentPage() {
                       type="button"
                       className="admin-content-media-pick"
                       onClick={() => {
-                        setContent((c) => ({ ...c, tipPageHeroImageUrl: item.url }));
+                        if (mediaPickerFor === "about") {
+                          setContent((c) => ({ ...c, aboutStormiJImageUrl: item.url }));
+                        } else {
+                          setContent((c) => ({ ...c, tipPageHeroImageUrl: item.url }));
+                        }
                         setShowMediaPicker(false);
+                        setMediaPickerFor(null);
                       }}
                     >
                       <LazyMediaImage src={item.url} alt="" loading="lazy" />
@@ -566,7 +653,7 @@ export default function AdminContentPage() {
               )}
             </div>
             <div className="admin-media-picker-footer">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowMediaPicker(false)}>Cancel</button>
+              <button type="button" className="btn btn-secondary" onClick={() => { setShowMediaPicker(false); setMediaPickerFor(null); }}>Cancel</button>
             </div>
           </div>
         </div>

@@ -180,6 +180,33 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+.member-header .header-about-stormi-j {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-family: inherit;
+  transition: color 0.2s, background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+.member-header .header-about-stormi-j:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.member-header .header-about-stormi-j:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .member-header .profile-avatar-wrap {
   cursor: pointer;
   display: flex;

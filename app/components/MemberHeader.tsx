@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { isAdminEmail } from "../../lib/auth-redirect";
 import { NotificationBell } from "./NotificationBell";
+import { AboutStormiJModal } from "./AboutStormiJModal";
 
 type MemberHeaderProps = {
   active: "home" | "treats" | "tip" | "dms";
@@ -61,6 +62,7 @@ export function MemberHeader({ active }: MemberHeaderProps) {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [aboutStormiJOpen, setAboutStormiJOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const avatarStableRef = useRef<{ photoURL: string | null; initials: string }>({ photoURL: null, initials: "?" });
 
@@ -176,6 +178,14 @@ export function MemberHeader({ active }: MemberHeaderProps) {
         </nav>
       </div>
       <div className="header-right header-profile-wrap" ref={wrapRef}>
+        <button
+          type="button"
+          className="header-about-stormi-j"
+          onClick={() => setAboutStormiJOpen(true)}
+          title="About Stormi J"
+        >
+          About Stormi J
+        </button>
         <NotificationBell variant="member" userEmail={user?.email ?? null} />
         {showAdmin && (
           <Link href="/admin/dashboard" className="header-admin-btn" prefetch>
@@ -214,6 +224,7 @@ export function MemberHeader({ active }: MemberHeaderProps) {
           </button>
         </div>
       </div>
+      <AboutStormiJModal open={aboutStormiJOpen} onClose={() => setAboutStormiJOpen(false)} />
     </header>
   );
 }

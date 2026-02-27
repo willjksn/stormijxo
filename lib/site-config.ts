@@ -42,6 +42,12 @@ export type SiteConfigContent = {
   showSocialTiktok?: boolean;
   /** Show YouTube icon in hero and footer (default true) */
   showSocialYoutube?: boolean;
+  /** About Stormi J profile card: image URL (optional) */
+  aboutStormiJImageUrl?: string;
+  /** About Stormi J profile card: video URL (optional, shown if set) */
+  aboutStormiJVideoUrl?: string;
+  /** About Stormi J profile card: bio/info text */
+  aboutStormiJText?: string;
 };
 
 export const SITE_CONFIG_CONTENT_ID = "content";
