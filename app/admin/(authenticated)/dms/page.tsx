@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
-import { collection, getDocs, addDoc, doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs, getDocsFromServer, addDoc, doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseStorage } from "../../../../lib/firebase";
 import {
   ensureConversation,
@@ -200,8 +200,8 @@ export default function AdminDmsPage() {
     if (!db) return;
     setUserListLoading(true);
     Promise.all([
-      getDocs(collection(db, "users")),
-      getDocs(collection(db, "members")),
+      getDocsFromServer(collection(db, "users")),
+      getDocsFromServer(collection(db, "members")),
     ])
       .then(([usersSnap, membersSnap]) => {
         const byUid = new Map<string, UserOption>();
@@ -678,6 +678,23 @@ export default function AdminDmsPage() {
             <h2 id="new-conversation-title" style={{ margin: "0 0 1rem", fontSize: "1.2rem" }}>
               Start new conversation
             </h2>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+              <button
+                type="button"
+                onClick={() => loadUserList()}
+                disabled={userListLoading}
+                style={{
+                  padding: "0.35rem 0.6rem",
+                  fontSize: "0.85rem",
+                  border: "1px solid var(--border)",
+                  borderRadius: 6,
+                  background: "var(--bg-card)",
+                  cursor: userListLoading ? "wait" : "pointer",
+                }}
+              >
+                {userListLoading ? "Loading…" : "Refresh list"}
+              </button>
+            </div>
             {conversations.length === 0 && (
               <p style={{ margin: "0 0 1rem", fontSize: "0.9rem", color: "var(--text-muted)" }}>
                 Choose a member (they must have signed in at least once to appear here).
