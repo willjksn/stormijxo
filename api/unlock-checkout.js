@@ -19,6 +19,23 @@ function parseBody(req) {
 }
 
 module.exports = async (req, res) => {
+  const requestPath = ((req && req.url) || "").toString().toLowerCase();
+
+  // Production safety net: if Vercel misroutes landing checkout paths here,
+  // forward to the intended handler instead of returning unlock validation errors.
+  if (requestPath.includes("landing-subscription")) {
+    const landingSubscriptionHandler = require("./landing-subscription");
+    return landingSubscriptionHandler(req, res);
+  }
+  if (requestPath.includes("landing-tip")) {
+    const landingTipHandler = require("./landing-tip");
+    return landingTipHandler(req, res);
+  }
+  if (requestPath.includes("subscription-checkout")) {
+    const subscriptionCheckoutHandler = require("./subscription-checkout");
+    return subscriptionCheckoutHandler(req, res);
+  }
+
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");

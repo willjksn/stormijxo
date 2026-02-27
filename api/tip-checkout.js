@@ -18,6 +18,14 @@ module.exports = async (req, res) => {
     const customerPortalHandler = require("./customer-portal");
     return customerPortalHandler(req, res);
   }
+  if (requestPath.includes("landing-subscription")) {
+    const landingSubscriptionHandler = require("./landing-subscription");
+    return landingSubscriptionHandler(req, res);
+  }
+  if (requestPath.includes("landing-tip")) {
+    const landingTipHandler = require("./landing-tip");
+    return landingTipHandler(req, res);
+  }
   if (requestPath.includes("subscription-checkout")) {
     const subscriptionCheckoutHandler = require("./subscription-checkout");
     return subscriptionCheckoutHandler(req, res);
