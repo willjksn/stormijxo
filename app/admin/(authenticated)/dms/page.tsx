@@ -62,15 +62,6 @@ function EnvelopeIcon() {
   );
 }
 
-function PlusIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  );
-}
-
 function ImageIcon() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -114,6 +105,7 @@ export default function AdminDmsPage() {
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [selectedFilesCount, setSelectedFilesCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -366,7 +358,7 @@ export default function AdminDmsPage() {
   const handleSend = useCallback(async () => {
     if (!db || !user || !selectedId) return;
     const hasText = text.trim().length > 0;
-    const hasFiles = fileInputRef.current?.files?.length;
+    const hasFiles = selectedFilesCount > 0;
     if (!hasText && !hasFiles) return;
     setSending(true);
     setSendError(null);
@@ -385,7 +377,10 @@ export default function AdminDmsPage() {
           videoUrls: [],
           createdAt: serverTimestamp(),
         });
-        const files = fileInputRef.current!.files!;
+        const files = fileInputRef.current?.files;
+        if (!files || files.length === 0) {
+          throw new Error("No files were selected.");
+        }
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
           const isVideo = file.type.startsWith("video/");
@@ -402,7 +397,8 @@ export default function AdminDmsPage() {
         await setFirstMessageFlagIfFirst(db, selectedId, user.uid);
         setUploading(false);
         setText("");
-        fileInputRef.current!.value = "";
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        setSelectedFilesCount(0);
         await createNotificationForMember(selected?.memberEmail ?? null, "You received a new message.");
         return;
       }
@@ -422,7 +418,7 @@ export default function AdminDmsPage() {
       setSending(false);
       setUploading(false);
     }
-  }, [db, user, selectedId, selected?.memberEmail, text, storage, createNotificationForMember]);
+  }, [db, user, selectedId, selected?.memberEmail, text, storage, createNotificationForMember, selectedFilesCount]);
 
   return (
     <main
@@ -579,7 +575,17 @@ export default function AdminDmsPage() {
                 <div ref={messagesEndRef} />
               </div>
               <div className="chat-input-bar">
-                <input type="file" ref={fileInputRef} accept="image/*,video/*" multiple style={{ display: "none" }} />
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*,video/*"
+                  multiple
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    setSelectedFilesCount(e.target.files?.length ?? 0);
+                    setSendError(null);
+                  }}
+                />
                 <button type="button" className="icon-btn" onClick={() => fileInputRef.current?.click()} disabled={sending || uploading} title="Photo / video"><ImageIcon /></button>
                 <input
                   type="text"
@@ -589,8 +595,13 @@ export default function AdminDmsPage() {
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
                 />
-                <button type="button" className="send-btn" onClick={handleSend} disabled={sending || uploading || (!text.trim() && !fileInputRef.current?.files?.length)}>{sending ? "…" : "Send"}</button>
+                <button type="button" className="send-btn" onClick={handleSend} disabled={sending || uploading || (!text.trim() && selectedFilesCount === 0)}>{sending ? "…" : "Send"}</button>
               </div>
+              {selectedFilesCount > 0 && (
+                <p style={{ margin: 0, padding: "0 1rem 0.35rem", color: "var(--text-muted)", fontSize: "0.8rem" }}>
+                  {selectedFilesCount} file{selectedFilesCount === 1 ? "" : "s"} selected
+                </p>
+              )}
               {sendError && (
                 <p style={{ margin: 0, padding: "0.5rem 1rem", color: "var(--error, #c53030)", fontSize: "0.85rem" }}>
                   {sendError}
