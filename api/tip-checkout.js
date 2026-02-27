@@ -109,6 +109,8 @@ module.exports = async (req, res) => {
   }
 
   const postId = typeof body.postId === "string" ? body.postId.trim() : "";
+  const uid = typeof body.uid === "string" ? body.uid.trim() : "";
+  const customerEmail = typeof body.customer_email === "string" ? body.customer_email.trim() : "";
   const instagramHandle = typeof body.instagram_handle === "string"
     ? body.instagram_handle.trim().slice(0, 64)
     : "";
@@ -137,9 +139,12 @@ module.exports = async (req, res) => {
       ],
       success_url: successUrl,
       cancel_url: cancelUrl,
+      customer_email: customerEmail || undefined,
       metadata: {
         type: "tip",
         tip_post_id: postId || "",
+        tip_uid: uid || "",
+        tip_customer_email: customerEmail || "",
         tip_instagram_handle: instagramHandle || "",
       },
       custom_fields: [

@@ -5,11 +5,13 @@ import { doc, getDoc } from "firebase/firestore";
 import { getFirebaseDb } from "../../../lib/firebase";
 import { SITE_CONFIG_CONTENT_ID } from "../../../lib/site-config";
 import { useSearchParams } from "next/navigation";
+import { useAuth } from "../../contexts/AuthContext";
 
 const PRESET_AMOUNTS = [5, 10, 25, 50, 100, 250];
 
 export default function TipPage() {
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [customAmount, setCustomAmount] = useState("");
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
@@ -73,6 +75,8 @@ export default function TipPage() {
         body: JSON.stringify({
           amountCents: cents,
           postId: postId || undefined,
+          customer_email: user?.email || undefined,
+          uid: user?.uid || undefined,
           base_url: base,
           success_url: `${base}/success?tip=1`,
           cancel_url: `${base}/tip`,

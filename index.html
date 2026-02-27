@@ -242,10 +242,10 @@
   <script src="landing-media.js"></script>
   <script>
     (function() {
-      var tipUrl = "/api/tip-checkout";
-      var base = window.location.origin + window.location.pathname.replace(/[^/]+$/, "");
-      var successUrl = base + (base.endsWith("/") ? "" : "/") + "success?tip=1";
-      var cancelUrl = window.location.href;
+      var tipUrl = "/api/landing-tip";
+      var base = window.location.origin;
+      var successUrl = base + "/success?tip=1";
+      var cancelUrl = base + "/#pricing";
       var errEl = document.getElementById("tip-error");
       var tipHandleInput = document.getElementById("tip-instagram-handle");
       function startTipCheckout(amountCents, resetButtons) {
@@ -261,7 +261,7 @@
         fetch(tipUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: amountCents, success_url: successUrl, cancel_url: cancelUrl, instagram_handle: instagramHandle })
+          body: JSON.stringify({ amountCents: amountCents, base_url: base, success_url: successUrl, cancel_url: cancelUrl, instagram_handle: instagramHandle })
         }).then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
           .then(function(result) {
             if (result.ok && result.data && result.data.url) {

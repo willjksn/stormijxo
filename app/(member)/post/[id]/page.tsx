@@ -483,6 +483,8 @@ export default function PostByIdPage({
           onClose={() => setTipModalOpen(false)}
           postId={id}
           cancelPath={`/post/${encodeURIComponent(id)}`}
+          customerEmail={user?.email ?? null}
+          uid={user?.uid ?? null}
         />
         {!post.hideComments && (
           <div className="post-comments" id="comments">

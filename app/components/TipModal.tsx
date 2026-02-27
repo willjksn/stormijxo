@@ -11,9 +11,11 @@ type TipModalProps = {
   postId: string;
   /** Path to redirect to when user cancels checkout (e.g. "/home" or "/post/abc123") */
   cancelPath: string;
+  customerEmail?: string | null;
+  uid?: string | null;
 };
 
-export function TipModal({ isOpen, onClose, postId, cancelPath }: TipModalProps) {
+export function TipModal({ isOpen, onClose, postId, cancelPath, customerEmail, uid }: TipModalProps) {
   const [loading, setLoading] = useState(false);
   const [customAmount, setCustomAmount] = useState("");
   const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
@@ -51,6 +53,8 @@ export function TipModal({ isOpen, onClose, postId, cancelPath }: TipModalProps)
         body: JSON.stringify({
           amountCents,
           postId,
+          customer_email: customerEmail || undefined,
+          uid: uid || undefined,
           base_url: base,
           success_url: `${base}/success?tip=1`,
           cancel_url: `${base}${path}`,

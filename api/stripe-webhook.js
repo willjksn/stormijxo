@@ -172,6 +172,10 @@ module.exports = async (req, res) => {
           (session.metadata && typeof session.metadata.tip_post_id === "string"
             ? session.metadata.tip_post_id.trim()
             : "") || "";
+        const tipUid =
+          (session.metadata && typeof session.metadata.tip_uid === "string"
+            ? session.metadata.tip_uid.trim()
+            : "") || "";
         const customFields = session.custom_fields || [];
         for (const f of customFields) {
           const key = (f.key || "").toLowerCase();
@@ -192,6 +196,7 @@ module.exports = async (req, res) => {
             amountCents: typeof session.amount_total === "number" ? session.amount_total : null,
             currency: session.currency || "usd",
             email: tipEmail,
+            uid: tipUid || null,
             instagram_handle: tipInstagram || null,
             stripeCustomerId: session.customer || null,
             stripeSessionId: session.id,

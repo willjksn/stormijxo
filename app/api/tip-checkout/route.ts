@@ -18,6 +18,8 @@ export async function POST(req: NextRequest) {
     amountCents?: number | string;
     amount?: number | string;
     postId?: string;
+    uid?: string;
+    customer_email?: string;
     instagram_handle?: string;
     base_url?: string;
     success_url?: string;
@@ -49,6 +51,8 @@ export async function POST(req: NextRequest) {
   const successUrl = body.success_url || `${normalizedBase}/success`;
   const cancelUrl = body.cancel_url || `${normalizedBase}/tip`;
   const postId = typeof body.postId === "string" ? body.postId.trim() : "";
+  const uid = typeof body.uid === "string" ? body.uid.trim() : "";
+  const customerEmail = typeof body.customer_email === "string" ? body.customer_email.trim() : "";
   const instagramHandle =
     typeof body.instagram_handle === "string" ? body.instagram_handle.trim().slice(0, 64) : "";
 
@@ -72,9 +76,12 @@ export async function POST(req: NextRequest) {
       ],
       success_url: successUrl,
       cancel_url: cancelUrl,
+      customer_email: customerEmail || undefined,
       metadata: {
         type: "tip",
         tip_post_id: postId || "",
+        tip_uid: uid || "",
+        tip_customer_email: customerEmail || "",
         tip_instagram_handle: instagramHandle || "",
       },
       custom_fields: [

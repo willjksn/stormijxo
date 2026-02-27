@@ -496,6 +496,8 @@ function FeedCard({
                 onClose={() => setTipModalOpen(false)}
                 postId={post.id}
                 cancelPath="/home"
+                customerEmail={currentUser?.email ?? null}
+                uid={currentUser?.uid ?? null}
               />
             </>
           )}
