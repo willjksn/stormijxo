@@ -212,6 +212,7 @@ function FeedCard({
   onUnlockRequest?: (postId: string) => Promise<boolean>;
 }) {
   const firstUrl = post.mediaUrls?.[0];
+  const hasTipGoal = !!(post.tipGoal && typeof post.tipGoal.targetCents === "number" && post.tipGoal.targetCents > 0);
   const isVideo = post.mediaTypes?.[0] === "video" || (firstUrl && /\.(mp4|webm|mov|ogg)(\?|$)/i.test(firstUrl));
   const mediaTotals = useMemo(() => {
     const items = Array.isArray(post.mediaUrls) ? post.mediaUrls : [];
@@ -470,7 +471,7 @@ function FeedCard({
   };
 
   return (
-    <article className={`feed-card${commentsOpen ? " comments-open" : ""}`} key={post.id}>
+    <article className={`feed-card${commentsOpen ? " comments-open" : ""}${!firstUrl ? " feed-card-text-only" : ""}`} key={post.id}>
       <div className="feed-card-header">
         <div className="feed-card-avatar">
           <img src="/assets/sj-heart-avatar.png" alt="stormij" className="feed-card-avatar-img" />
@@ -521,44 +522,45 @@ function FeedCard({
         )}
       </div>
 
-      <Link href={`/post/${post.id}`} className="feed-card-media-wrap">
-        {firstUrl &&
-          (isVideo ? (
+      {firstUrl ? (
+        <Link href={`/post/${post.id}`} className="feed-card-media-wrap">
+          {isVideo ? (
             <video src={firstUrl} muted playsInline className={`feed-card-media feed-card-media-video${isLockedForViewer ? " feed-card-media-locked" : ""}`} preload="metadata" />
           ) : (
             <img src={firstUrl} alt="" className={`feed-card-media${isLockedForViewer ? " feed-card-media-locked" : ""}`} loading="lazy" decoding="async" />
-          ))}
-        {showCaptionOnMedia && (
-          <FeedCardCaptionOverlay caption={post.body} style={captionStyle} size={post.overlayTextSize} />
-        )}
-        {(mediaTotals.images + mediaTotals.videos) > 1 && (
-          <span className="feed-card-count">
-            {mediaTotals.images > 0 && (
-              <span className="feed-card-count-item">
-                <MediaImageIcon />
-                {mediaTotals.images} image{mediaTotals.images === 1 ? "" : "s"}
-              </span>
-            )}
-            {mediaTotals.videos > 0 && (
-              <span className="feed-card-count-item">
-                <MediaVideoIcon />
-                {mediaTotals.videos} video{mediaTotals.videos === 1 ? "" : "s"}
-              </span>
-            )}
-          </span>
-        )}
-        {isLockedForViewer && (
-          <div className="feed-card-lock-overlay" aria-hidden={unlockLoading ? "true" : "false"}>
-            <button type="button" className="feed-card-unlock-btn" onClick={startUnlock} disabled={unlockLoading}>
-              {unlockLoading
-                ? "Opening checkout..."
-                : `Unlock for $${((post.lockedContent?.priceCents ?? 0) / 100).toFixed(0)}`}
-            </button>
-          </div>
-        )}
-      </Link>
+          )}
+          {showCaptionOnMedia && (
+            <FeedCardCaptionOverlay caption={post.body} style={captionStyle} size={post.overlayTextSize} />
+          )}
+          {(mediaTotals.images + mediaTotals.videos) > 1 && (
+            <span className="feed-card-count">
+              {mediaTotals.images > 0 && (
+                <span className="feed-card-count-item">
+                  <MediaImageIcon />
+                  {mediaTotals.images} image{mediaTotals.images === 1 ? "" : "s"}
+                </span>
+              )}
+              {mediaTotals.videos > 0 && (
+                <span className="feed-card-count-item">
+                  <MediaVideoIcon />
+                  {mediaTotals.videos} video{mediaTotals.videos === 1 ? "" : "s"}
+                </span>
+              )}
+            </span>
+          )}
+          {isLockedForViewer && (
+            <div className="feed-card-lock-overlay" aria-hidden={unlockLoading ? "true" : "false"}>
+              <button type="button" className="feed-card-unlock-btn" onClick={startUnlock} disabled={unlockLoading}>
+                {unlockLoading
+                  ? "Opening checkout..."
+                  : `Unlock for $${((post.lockedContent?.priceCents ?? 0) / 100).toFixed(0)}`}
+              </button>
+            </div>
+          )}
+        </Link>
+      ) : null}
 
-      {!post.hideLikes && (
+      {firstUrl && !post.hideLikes && (
         <div className="feed-card-actions">
           <span className="feed-card-action-group">
             <button
@@ -581,23 +583,21 @@ function FeedCard({
           )}
           {post.showTipButton !== false && (
             <>
-              <button
-                type="button"
-                className="feed-card-action-group feed-card-action-link feed-card-send-tip"
-                aria-label="Send tip"
-                onClick={() => setTipModalOpen(true)}
-              >
-                <TipIcon />
-                <span className="feed-card-send-tip-text">SEND TIP</span>
-              </button>
-              <TipModal
-                isOpen={tipModalOpen}
-                onClose={() => setTipModalOpen(false)}
-                postId={post.id}
-                cancelPath="/home"
-                customerEmail={currentUser?.email ?? null}
-                uid={currentUser?.uid ?? null}
-              />
+              {!hasTipGoal && (
+                <button
+                  type="button"
+                  className="feed-card-action-group feed-card-action-link feed-card-send-tip"
+                  aria-label="Send tip"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setTipModalOpen(true);
+                  }}
+                >
+                  <TipIcon />
+                  <span className="feed-card-send-tip-text">SEND TIP</span>
+                </button>
+              )}
             </>
           )}
           <button
@@ -659,9 +659,37 @@ function FeedCard({
             <p className="feed-card-tip-goal-raised">
               ${(post.tipGoal.raisedCents / 100).toFixed(2)} of ${(post.tipGoal.targetCents / 100).toFixed(2)}
             </p>
-            <Link href={`/tip?postId=${encodeURIComponent(post.id)}`} className="feed-card-tip-for-post">
-              Tip for this post
-            </Link>
+            <div
+              className="feed-card-tip-goal-send-wrap"
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setTipModalOpen(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setTipModalOpen(true);
+                }
+              }}
+              aria-label="Send tip"
+            >
+              <button
+                type="button"
+                className="feed-card-action-group feed-card-action-link feed-card-send-tip"
+                aria-label="Send tip"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setTipModalOpen(true);
+                }}
+              >
+                <TipIcon />
+                <span className="feed-card-send-tip-text">SEND TIP</span>
+              </button>
+            </div>
           </div>
         )}
         {!post.hideComments && (
@@ -671,24 +699,95 @@ function FeedCard({
                 View all {commentsForViewer.length} comments
               </button>
             )}
-            <div className="feed-card-comments-list">
-              {commentsForViewer.length === 0 ? (
-                <div className="feed-card-comment feed-card-comment-empty">No comments yet.</div>
-              ) : (
-                commentsForViewer.slice(0, 2).map((c, i) => (
-                  <div key={i} className="feed-card-comment">
-                    <span className="comment-username">{displayPublicName(c.username ?? c.author ?? "user")}</span>
-                    {c.text}
-                  </div>
-                ))
-              )}
-            </div>
+            {(firstUrl || commentsForViewer.length > 0) && (
+              <div className="feed-card-comments-list">
+                {commentsForViewer.length === 0 ? (
+                  <div className="feed-card-comment feed-card-comment-empty">No comments yet.</div>
+                ) : (
+                  commentsForViewer.slice(0, 2).map((c, i) => (
+                    <div key={i} className="feed-card-comment">
+                      <span className="comment-username">{displayPublicName(c.username ?? c.author ?? "user")}</span>
+                      {c.text}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </>
         )}
-        <Link href={`/post/${post.id}`} className="feed-card-link">
-          View post
-        </Link>
+        {(firstUrl || (!firstUrl && post.hideLikes)) && (
+          <Link href={`/post/${post.id}`} className="feed-card-link">
+            View post
+          </Link>
+        )}
       </div>
+      {!firstUrl && !post.hideLikes && (
+        <div className="feed-card-text-only-footer">
+          <div className="feed-card-actions">
+            <span className="feed-card-action-group">
+              <button
+                type="button"
+                className={`feed-card-action-btn${isLiked ? " liked" : ""}`}
+                aria-label="Like"
+                onClick={toggleLike}
+                disabled={!currentUser?.uid || likeSaving}
+              >
+                <HeartOutline />
+                <HeartFilled />
+              </button>
+              <span className="feed-card-action-count">{post.likeCount ?? 0}</span>
+            </span>
+            {!post.hideComments && (
+              <button type="button" className="feed-card-action-group feed-card-action-link" aria-label="Comments" onClick={() => setCommentsOpen(true)}>
+                <CommentIcon />
+                <span className="feed-card-action-count">{commentsForViewer.length}</span>
+              </button>
+            )}
+            {post.showTipButton !== false && (
+              <>
+                {!hasTipGoal && (
+                  <button
+                    type="button"
+                    className="feed-card-action-group feed-card-action-link feed-card-send-tip"
+                    aria-label="Send tip"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setTipModalOpen(true);
+                    }}
+                  >
+                    <TipIcon />
+                    <span className="feed-card-send-tip-text">SEND TIP</span>
+                  </button>
+                )}
+              </>
+            )}
+            <button
+              type="button"
+              className={`feed-card-action-btn bookmark-btn${isSaved ? " bookmarked" : ""}`}
+              aria-label={isSaved ? "Unsave post" : "Save post"}
+              onClick={toggleSavePost}
+              disabled={!currentUser?.uid}
+            >
+              <BookmarkOutline />
+              <BookmarkFilled />
+            </button>
+          </div>
+          <Link href={`/post/${post.id}`} className="feed-card-link feed-card-link-inline">
+            View post
+          </Link>
+        </div>
+      )}
+      {(post.showTipButton !== false || hasTipGoal) && (
+        <TipModal
+          isOpen={tipModalOpen}
+          onClose={() => setTipModalOpen(false)}
+          postId={post.id}
+          cancelPath="/home"
+          customerEmail={currentUser?.email ?? null}
+          uid={currentUser?.uid ?? null}
+        />
+      )}
       {commentsOpen && (
         <div className="feed-comments-modal-backdrop" role="presentation" onClick={() => setCommentsOpen(false)}>
           <div

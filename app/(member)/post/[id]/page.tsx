@@ -463,7 +463,7 @@ export default function PostByIdPage({
               className="post-tip-for-post-btn"
               onClick={() => setTipModalOpen(true)}
             >
-              Tip for this post
+              Send Tip
             </button>
           </div>
         )}

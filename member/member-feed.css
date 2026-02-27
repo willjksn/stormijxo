@@ -886,6 +886,61 @@
 .feed-card-tip-goal-bar-wrap { height: 8px; background: rgba(212, 85, 139, 0.12); border-radius: 4px; overflow: hidden; margin-bottom: 0.35rem; }
 .feed-card-tip-goal-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent) 0%, rgba(201, 112, 130, 0.9) 100%); border-radius: 4px; transition: width 0.3s; }
 .feed-card-tip-goal-raised { font-size: 0.8rem; margin: 0; color: var(--text-muted); font-weight: 500; }
+.feed-card-tip-goal .feed-card-send-tip { margin-top: 0.5rem; }
+.feed-card-tip-goal-send-wrap {
+  display: inline-block;
+  margin-top: 0.5rem;
+  cursor: pointer;
+}
+.feed-card-tip-goal-send-wrap .feed-card-send-tip { margin-top: 0; }
+/* Text-only posts: no image box, body flows under header/actions */
+.feed-card-text-only .feed-card-body {
+  border-top: 1px solid rgba(201, 112, 130, 0.15);
+}
+/* Text-only: single footer row = actions + View post */
+.feed-card-text-only-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem 1rem;
+  background: linear-gradient(180deg, rgba(253, 244, 246, 0.4) 0%, rgba(254, 248, 249, 0.85) 100%);
+  border-top: 1px solid rgba(201, 112, 130, 0.12);
+}
+.feed-card-text-only-footer .feed-card-actions {
+  border: none;
+  background: none;
+  padding: 0;
+}
+.feed-card-link-inline {
+  margin-top: 0;
+  font-size: 0.8rem;
+}
+/* Text-only: cleaner card, caption is the focus */
+.feed-card-text-only {
+  box-shadow: 0 2px 10px rgba(201, 112, 130, 0.06), 0 1px 3px rgba(45, 31, 36, 0.04);
+}
+.feed-card-text-only:hover {
+  box-shadow: 0 6px 18px rgba(201, 112, 130, 0.08), 0 2px 6px rgba(45, 31, 36, 0.05);
+}
+.feed-card-text-only .feed-card-header {
+  padding: 0.75rem 1.25rem;
+}
+.feed-card-text-only .feed-card-body {
+  padding: 1rem 1.25rem 1rem;
+}
+.feed-card-text-only .feed-card-caption {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  margin: 0;
+  color: var(--text);
+}
+.feed-card-text-only .feed-card-caption .caption-username {
+  font-weight: 600;
+  margin-right: 0.35rem;
+  color: var(--accent);
+}
 .feed-card-tip-for-post {
   display: inline-block;
   margin-top: 0.5rem;
