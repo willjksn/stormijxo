@@ -10,6 +10,19 @@ function json(res, status, body) {
 }
 
 module.exports = async (req, res) => {
+  const requestPath = ((req && req.url) || "").toString().toLowerCase();
+
+  // Production safety net: if Vercel misroutes API paths to this file,
+  // forward to the intended handler instead of returning tip validation errors.
+  if (requestPath.includes("customer-portal")) {
+    const customerPortalHandler = require("./customer-portal");
+    return customerPortalHandler(req, res);
+  }
+  if (requestPath.includes("subscription-checkout")) {
+    const subscriptionCheckoutHandler = require("./subscription-checkout");
+    return subscriptionCheckoutHandler(req, res);
+  }
+
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
