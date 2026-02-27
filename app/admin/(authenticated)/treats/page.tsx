@@ -9,12 +9,14 @@ import {
   slugForTreatName,
   type TreatDoc,
 } from "../../../../lib/treats";
+import { EmojiField } from "../../../components/EmojiField";
 
 export default function AdminTreatsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
   const [treats, setTreats] = useState<TreatDoc[]>([]);
+  const [firestoreIds, setFirestoreIds] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<TreatDoc | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -39,10 +41,10 @@ export default function AdminTreatsPage() {
     }
     getDocs(collection(db, TREATS_COLLECTION))
       .then((snap) => {
-        const list: TreatDoc[] = [];
+        const byId = new Map<string, TreatDoc>();
         snap.forEach((d) => {
           const data = d.data();
-          list.push({
+          byId.set(d.id, {
             id: d.id,
             name: (data.name ?? "").toString(),
             price: typeof data.price === "number" ? data.price : 0,
@@ -51,11 +53,18 @@ export default function AdminTreatsPage() {
             order: typeof data.order === "number" ? data.order : 0,
           });
         });
-        list.sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
-        setTreats(list.length > 0 ? list : DEFAULT_TREATS);
+        setFirestoreIds(new Set(byId.keys()));
+        // Show default treats; Firestore overrides by id. Save in admin to create/update the doc for checkout.
+        const merged: TreatDoc[] = DEFAULT_TREATS.map((def) => byId.get(def.id) ?? def);
+        byId.forEach((t, id) => {
+          if (!DEFAULT_TREATS.some((d) => d.id === id)) merged.push(t);
+        });
+        merged.sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+        setTreats(merged);
       })
       .catch((err) => {
         setTreats(DEFAULT_TREATS);
+        setFirestoreIds(new Set());
         const e = err as { message?: string; code?: string };
         const msg = e?.message ?? "Could not load treats.";
         const hint =
@@ -129,7 +138,12 @@ export default function AdminTreatsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!db || !confirm("Remove this treat? Members will no longer see it.")) return;
+    if (!db) return;
+    if (!firestoreIds.has(id)) {
+      showMsg("error", "This treat isn’t in the store yet. Save it once to add it, then you can delete it from here.");
+      return;
+    }
+    if (!confirm("Remove this treat? Members will no longer see it.")) return;
     const auth = getFirebaseAuth();
     if (!auth?.currentUser) {
       showMsg("error", "Session expired or not signed in. Please sign in again and retry.");
@@ -139,6 +153,11 @@ export default function AdminTreatsPage() {
     setMessage(null);
     try {
       await deleteDoc(doc(db, TREATS_COLLECTION, id));
+      setFirestoreIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
       setTreats((prev) => prev.filter((t) => t.id !== id));
       if (editingId === id) {
         setEditingId(null);
@@ -217,8 +236,7 @@ export default function AdminTreatsPage() {
     <main className="admin-main admin-content-main" style={{ maxWidth: 720, margin: "0 auto" }}>
       <h1>Treats</h1>
       <p className="intro" style={{ color: "var(--text-muted)", marginBottom: "1.5rem" }}>
-        Manage treat cards for the member Treats page. Set &quot;quantity left&quot; per treat; it goes down by one
-        when a member buys. Sales show in the dashboard under Top purchases.
+        Manage treat cards for the member Treats page. All six default treats appear below; <strong>save each one</strong> to add it to the store so members can purchase it. Price and quantity you set here are used by Stripe checkout. When a member completes a purchase, <strong>quantity left</strong> is decremented automatically by the Stripe webhook. Sales show in the dashboard under Top purchases.
       </p>
 
       {message && (
@@ -263,13 +281,11 @@ export default function AdminTreatsPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
             <label>
               <span style={{ display: "block", marginBottom: "0.25rem", fontSize: "0.9rem" }}>Name</span>
-              <input
-                type="text"
+              <EmojiField
+                type="input"
                 value={newTreat.name}
-                onChange={(e) => setNewTreat((n) => ({ ...n, name: e.target.value }))}
+                onChange={(name) => setNewTreat((n) => ({ ...n, name }))}
                 placeholder="e.g. 30-Second Voice Note"
-                className="admin-content-input"
-                style={{ width: "100%", padding: "0.5rem 0.75rem", borderRadius: 8, border: "1px solid var(--border)" }}
               />
             </label>
             <label>
@@ -286,13 +302,12 @@ export default function AdminTreatsPage() {
             </label>
             <label>
               <span style={{ display: "block", marginBottom: "0.25rem", fontSize: "0.9rem" }}>Description</span>
-              <textarea
+              <EmojiField
+                type="textarea"
                 value={newTreat.description}
-                onChange={(e) => setNewTreat((n) => ({ ...n, description: e.target.value }))}
+                onChange={(description) => setNewTreat((n) => ({ ...n, description }))}
                 placeholder="Short description for the card"
                 rows={2}
-                className="admin-content-input"
-                style={{ width: "100%", padding: "0.5rem 0.75rem", borderRadius: 8, border: "1px solid var(--border)", resize: "vertical" }}
               />
             </label>
             <label>
@@ -348,13 +363,13 @@ export default function AdminTreatsPage() {
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1rem" }}>
                     <label>
                       <span style={{ display: "block", marginBottom: "0.25rem", fontSize: "0.9rem" }}>Name</span>
-                      <input
-                        type="text"
+                      <EmojiField
+                        type="input"
                         value={editForm.name}
-                        onChange={(e) => setEditForm((f) => (f ? { ...f, name: e.target.value } : f))}
+                        onChange={(name) => setEditForm((f) => (f ? { ...f, name } : f))}
                         style={{
                           width: "100%",
-                          padding: "0.5rem 0.75rem",
+                          padding: "0.5rem 2rem 0.5rem 0.75rem",
                           borderRadius: 8,
                           border: "1px solid var(--border)",
                         }}
@@ -379,13 +394,14 @@ export default function AdminTreatsPage() {
                     </label>
                     <label>
                       <span style={{ display: "block", marginBottom: "0.25rem", fontSize: "0.9rem" }}>Description</span>
-                      <textarea
+                      <EmojiField
+                        type="textarea"
                         value={editForm.description}
-                        onChange={(e) => setEditForm((f) => (f ? { ...f, description: e.target.value } : f))}
+                        onChange={(description) => setEditForm((f) => (f ? { ...f, description } : f))}
                         rows={2}
                         style={{
                           width: "100%",
-                          padding: "0.5rem 0.75rem",
+                          padding: "0.5rem 2rem 0.5rem 0.75rem",
                           borderRadius: 8,
                           border: "1px solid var(--border)",
                           resize: "vertical",
@@ -430,6 +446,11 @@ export default function AdminTreatsPage() {
                       <h3 style={{ margin: "0 0 0.25rem", fontSize: "1.1rem" }}>{t.name}</h3>
                       <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.9rem" }}>
                         ${t.price} · <strong>{t.quantityLeft}</strong> left
+                        {!firestoreIds.has(t.id) && (
+                          <span style={{ marginLeft: "0.5rem", color: "var(--text-muted)", fontStyle: "italic" }}>
+                            — Not in store yet (save to activate)
+                          </span>
+                        )}
                       </p>
                       <p style={{ margin: "0.5rem 0 0", fontSize: "0.9rem" }}>{t.description}</p>
                     </div>
@@ -443,6 +464,7 @@ export default function AdminTreatsPage() {
                         style={{ color: "var(--error, #c53030)" }}
                         onClick={() => handleDelete(t.id)}
                         disabled={saving}
+                        title={!firestoreIds.has(t.id) ? "Save this treat first to add it to the store, then you can delete it." : undefined}
                       >
                         Delete
                       </button>

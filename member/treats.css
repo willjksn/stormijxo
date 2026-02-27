@@ -59,40 +59,62 @@
   }
 }
 
-/* Product cards - store tile style */
+/* Product cards - store tile style with more personality */
 .treat-card {
-  background: linear-gradient(180deg, #fff 0%, #fffbfc 25%, #fef5f7 70%, #fdf0f3 100%);
-  border: 1px solid rgba(201, 112, 130, 0.22);
+  background: linear-gradient(165deg, #fff 0%, #fffbfc 20%, #fef7f9 50%, #fdf0f4 85%, #fcecf2 100%);
+  border: 1px solid rgba(201, 112, 130, 0.28);
   border-radius: 20px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow:
-    0 2px 12px -4px rgba(201, 112, 130, 0.15),
-    0 8px 28px -8px rgba(201, 112, 130, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    0 3px 16px -4px rgba(201, 112, 130, 0.18),
+    0 10px 32px -10px rgba(201, 112, 130, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(253, 240, 244, 0.5);
   transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
   display: flex;
   flex-direction: column;
   position: relative;
+}
+/* Soft accent bar at top of card */
+.treat-card .treat-card-inner {
+  position: relative;
+}
+.treat-card .treat-card-inner::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg,
+    rgba(212, 85, 139, 0.35) 0%,
+    rgba(212, 85, 139, 0.55) 25%,
+    rgba(212, 85, 139, 0.7) 50%,
+    rgba(212, 85, 139, 0.55) 75%,
+    rgba(212, 85, 139, 0.35) 100%);
+  border-radius: 20px 20px 0 0;
 }
 .treat-card::before {
   content: "♡";
   position: absolute;
   top: 0.85rem;
   right: 1rem;
-  font-size: 1rem;
-  color: rgba(201, 112, 130, 0.45);
+  font-size: 1.1rem;
+  color: rgba(201, 112, 130, 0.5);
   z-index: 2;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
 }
 .treat-card:hover {
   transform: translateY(-6px) scale(1.02);
   box-shadow:
-    0 12px 32px -8px rgba(201, 112, 130, 0.22),
-    0 24px 48px -16px rgba(201, 112, 130, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  border-color: rgba(201, 112, 130, 0.4);
+    0 14px 36px -8px rgba(201, 112, 130, 0.25),
+    0 28px 56px -16px rgba(201, 112, 130, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(253, 240, 244, 0.6);
+  border-color: rgba(201, 112, 130, 0.45);
 }
 .treat-card:hover::before {
-  color: rgba(201, 112, 130, 0.8);
+  color: rgba(201, 112, 130, 0.85);
 }
 .treat-card-image-wrap {
   position: relative;
@@ -136,7 +158,8 @@
   transform: scale(1.06);
 }
 .treat-card-inner {
-  padding: 1.25rem 1.5rem 1.5rem;
+  padding: 1.5rem 1.5rem 1.5rem;
+  padding-top: 1.35rem; /* room for accent bar */
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -146,18 +169,20 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
 }
 .treat-card-title {
   font-family: var(--serif);
-  font-size: 1.25rem;
+  font-size: 1.28rem;
   font-weight: 600;
   margin: 0;
   letter-spacing: 0.02em;
   font-style: italic;
+  line-height: 1.35;
+  color: var(--text);
 }
 .treat-card-price {
-  font-size: 1.25rem;
+  font-size: 1.3rem;
   font-weight: 700;
   color: var(--accent);
   white-space: nowrap;
@@ -165,6 +190,7 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0.8));
 }
 .treat-card-tagline {
   font-size: 0.9rem;
@@ -178,11 +204,12 @@
   opacity: 0.8;
 }
 .treat-card-desc {
-  font-size: 0.9rem;
-  line-height: 1.55;
+  font-size: 0.95rem;
+  line-height: 1.6;
   color: var(--text);
   margin: 0 0 0.75rem;
   flex: 1;
+  opacity: 0.95;
 }
 .treat-card-delivery {
   font-size: 0.8rem;
@@ -222,7 +249,8 @@ button.treat-card:disabled {
   opacity: 0.75;
 }
 button.treat-card .treat-card-inner {
-  padding: 1.25rem 1.5rem 1.5rem;
+  padding: 1.5rem 1.5rem 1.5rem;
+  padding-top: 1.35rem;
 }
 .treat-card-footer {
   display: flex;
@@ -230,11 +258,19 @@ button.treat-card .treat-card-inner {
   justify-content: space-between;
   gap: 0.75rem;
   margin-top: 1rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(201, 112, 130, 0.15);
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(201, 112, 130, 0.18);
+  background: linear-gradient(180deg, transparent 0%, rgba(253, 244, 247, 0.4) 100%);
+  margin-left: -1.5rem;
+  margin-right: -1.5rem;
+  margin-bottom: -1.5rem;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  padding-bottom: 1.25rem;
+  border-radius: 0 0 20px 20px;
 }
 .treat-card-qty {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -242,9 +278,10 @@ button.treat-card .treat-card-inner {
   color: #c53030;
 }
 .treat-card-cta {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--accent);
+  letter-spacing: 0.02em;
 }
 button.treat-card:hover:not(:disabled) .treat-card-cta {
   text-decoration: underline;
