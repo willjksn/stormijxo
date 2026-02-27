@@ -111,6 +111,7 @@ export type FeedPost = {
   overlayTextSize?: number;
   hideComments?: boolean;
   hideLikes?: boolean;
+  showTipButton?: boolean;
   poll?: { question: string; options: string[]; optionVotes?: number[] };
   tipGoal?: { description: string; targetCents: number; raisedCents: number };
   lockedContent?: { enabled?: boolean; priceCents?: number };
@@ -786,6 +787,7 @@ export default function HomeFeedPage() {
             overlayTextSize: typeof d.overlayTextSize === "number" ? d.overlayTextSize : (d.overlayTextSize === "small" ? 14 : d.overlayTextSize === "large" ? 24 : 18),
             hideComments: !!d.hideComments,
             hideLikes: !!d.hideLikes,
+            showTipButton: d.showTipButton !== false,
             poll: d.poll as FeedPost["poll"] | undefined,
             tipGoal: d.tipGoal as FeedPost["tipGoal"] | undefined,
             lockedContent: d.lockedContent as FeedPost["lockedContent"] | undefined,
