@@ -1,14 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseStorage } from "../../../../lib/firebase";
-import { listMediaLibraryAll, type MediaItem } from "../../../../lib/media-library";
+import { listMediaLibraryAll, uploadToMediaLibrary, type MediaItem } from "../../../../lib/media-library";
 import type { SiteConfigContent } from "../../../../lib/site-config";
 import { SITE_CONFIG_CONTENT_ID } from "../../../../lib/site-config";
 import { DEFAULT_PRIVACY_HTML, DEFAULT_TERMS_HTML } from "../../../../lib/legal-defaults";
 import { prepareLegalHtml } from "../../../../lib/legal-display";
 import { LazyMediaImage } from "../../../components/LazyMediaImage";
+import { AdminEmojiPicker } from "../../components/AdminEmojiPicker";
 
 const CONTENT_DOC_PATH = "site_config";
 
@@ -52,11 +54,24 @@ export default function AdminContentPage() {
     aboutStormiJImageUrl: "",
     aboutStormiJVideoUrl: "",
     aboutStormiJText: "",
+    aboutStormiJTextColor: "#2f1a24",
+    aboutStormiJTextFontSize: 16,
+    aboutStormiJTextFontFamily: "DM Sans",
   });
   const [legalModal, setLegalModal] = useState<null | "privacy" | "terms">(null);
   const [legalDraft, setLegalDraft] = useState("");
   const [showMediaPicker, setShowMediaPicker] = useState(false);
-  const [mediaPickerFor, setMediaPickerFor] = useState<null | "tip" | "about">(null);
+  const [mediaPickerFor, setMediaPickerFor] = useState<null | "tip" | "aboutImage" | "aboutVideo">(null);
+  const [aboutUploading, setAboutUploading] = useState<"image" | "video" | null>(null);
+  const [aboutUploadProgress, setAboutUploadProgress] = useState(0);
+  const aboutImageInputRef = useRef<HTMLInputElement>(null);
+  const aboutVideoInputRef = useRef<HTMLInputElement>(null);
+  const aboutBioEmojiWrapRef = useRef<HTMLDivElement>(null);
+  const aboutBioTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const aboutBioPickerContainerRef = useRef<HTMLDivElement | null>(null);
+  const [aboutBioEmojiOpen, setAboutBioEmojiOpen] = useState(false);
+  const [aboutBioEmojiQuery, setAboutBioEmojiQuery] = useState("");
+  const [aboutBioPickerPosition, setAboutBioPickerPosition] = useState<{ top: number; right: number } | null>(null);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [mediaLoading, setMediaLoading] = useState(false);
   const db = getFirebaseDb();
@@ -95,6 +110,9 @@ export default function AdminContentPage() {
             aboutStormiJImageUrl: d.aboutStormiJImageUrl ?? "",
             aboutStormiJVideoUrl: d.aboutStormiJVideoUrl ?? "",
             aboutStormiJText: d.aboutStormiJText ?? "",
+            aboutStormiJTextColor: d.aboutStormiJTextColor ?? "#2f1a24",
+            aboutStormiJTextFontSize: typeof d.aboutStormiJTextFontSize === "number" ? d.aboutStormiJTextFontSize : 16,
+            aboutStormiJTextFontFamily: d.aboutStormiJTextFontFamily ?? "DM Sans",
           });
         }
       })
@@ -156,6 +174,9 @@ export default function AdminContentPage() {
           aboutStormiJImageUrl: d.aboutStormiJImageUrl ?? "",
           aboutStormiJVideoUrl: d.aboutStormiJVideoUrl ?? "",
           aboutStormiJText: d.aboutStormiJText ?? "",
+          aboutStormiJTextColor: d.aboutStormiJTextColor ?? "#2f1a24",
+          aboutStormiJTextFontSize: typeof d.aboutStormiJTextFontSize === "number" ? d.aboutStormiJTextFontSize : 16,
+          aboutStormiJTextFontFamily: d.aboutStormiJTextFontFamily ?? "DM Sans",
         });
       }
       showMessage("ok", section === "landing" ? "Landing content saved." : section === "tip" ? "Tip page saved." : "About Stormi J saved.");
@@ -204,6 +225,9 @@ export default function AdminContentPage() {
       aboutStormiJImageUrl: c.aboutStormiJImageUrl?.trim() ?? "",
       aboutStormiJVideoUrl: c.aboutStormiJVideoUrl?.trim() ?? "",
       aboutStormiJText: c.aboutStormiJText?.trim() ?? "",
+      aboutStormiJTextColor: c.aboutStormiJTextColor?.trim() ?? "#2f1a24",
+      aboutStormiJTextFontSize: c.aboutStormiJTextFontSize,
+      aboutStormiJTextFontFamily: c.aboutStormiJTextFontFamily?.trim() ?? "DM Sans",
     });
   };
 
@@ -257,9 +281,9 @@ export default function AdminContentPage() {
     try {
       const configSnap = await getDoc(doc(db, "mediaLibrary", "config"));
       const folders = (configSnap.data()?.folders as { id: string; name: string }[] | undefined) || [];
-      const folderIds = folders.map((f) => f.id).filter((id) => id !== "general");
+      const folderIds = ["general", ...folders.map((f) => f.id).filter((id) => id !== "general")];
       const items = await listMediaLibraryAll(storage, folderIds);
-      setMediaItems(items.filter((i) => !i.isVideo));
+      setMediaItems(items);
     } catch {
       setMediaItems([]);
     } finally {
@@ -271,16 +295,110 @@ export default function AdminContentPage() {
     if (showMediaPicker) loadMedia();
   }, [showMediaPicker, loadMedia]);
 
+  useEffect(() => {
+    if (!aboutBioEmojiOpen) return;
+    const close = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (aboutBioEmojiWrapRef.current?.contains(target)) return;
+      if (aboutBioPickerContainerRef.current?.contains(target)) return;
+      setAboutBioEmojiOpen(false);
+    };
+    document.addEventListener("click", close, true);
+    return () => document.removeEventListener("click", close, true);
+  }, [aboutBioEmojiOpen]);
+
+  useLayoutEffect(() => {
+    if (!aboutBioEmojiOpen || !aboutBioEmojiWrapRef.current) {
+      setAboutBioPickerPosition(null);
+      return;
+    }
+    const rect = aboutBioEmojiWrapRef.current.getBoundingClientRect();
+    const gap = 6;
+    const pickerWidth = 320;
+    setAboutBioPickerPosition({
+      top: rect.bottom + gap,
+      right: Math.max(8, window.innerWidth - rect.right),
+    });
+  }, [aboutBioEmojiOpen]);
+
+  const insertAboutBioEmoji = useCallback((emoji: string) => {
+    const el = aboutBioTextareaRef.current;
+    const current = contentRef.current.aboutStormiJText ?? "";
+    if (!el) {
+      setContent((c) => ({ ...c, aboutStormiJText: (c.aboutStormiJText ?? "") + emoji }));
+      return;
+    }
+    const start = el.selectionStart ?? current.length;
+    const end = el.selectionEnd ?? current.length;
+    const next = current.slice(0, start) + emoji + current.slice(end);
+    setContent((c) => ({ ...c, aboutStormiJText: next }));
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + emoji.length;
+      el.setSelectionRange(pos, pos);
+    });
+  }, []);
+
+  const handleAboutImageUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = "";
+      if (!file || !storage) return;
+      if (!file.type.startsWith("image/")) {
+        showMessage("error", "Please choose an image file.");
+        return;
+      }
+      setAboutUploading("image");
+      setAboutUploadProgress(0);
+      setMessage(null);
+      try {
+        const url = await uploadToMediaLibrary(storage, file, setAboutUploadProgress, "");
+        setContent((c) => ({ ...c, aboutStormiJImageUrl: url }));
+        showMessage("ok", "Image uploaded.");
+      } catch (err) {
+        showMessage("error", (err as Error)?.message ?? "Upload failed.");
+      } finally {
+        setAboutUploading(null);
+      }
+    },
+    [storage, showMessage]
+  );
+
+  const handleAboutVideoUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = "";
+      if (!file || !storage) return;
+      if (!file.type.startsWith("video/")) {
+        showMessage("error", "Please choose a video file.");
+        return;
+      }
+      setAboutUploading("video");
+      setAboutUploadProgress(0);
+      setMessage(null);
+      try {
+        const url = await uploadToMediaLibrary(storage, file, setAboutUploadProgress, "");
+        setContent((c) => ({ ...c, aboutStormiJVideoUrl: url }));
+        showMessage("ok", "Video uploaded.");
+      } catch (err) {
+        showMessage("error", (err as Error)?.message ?? "Upload failed.");
+      } finally {
+        setAboutUploading(null);
+      }
+    },
+    [storage, showMessage]
+  );
+
   if (loading) {
     return (
-      <main className="admin-main" style={{ maxWidth: 640, margin: "0 auto" }}>
+      <main className="admin-main" style={{ maxWidth: 920, margin: "0 auto" }}>
         <p className="intro" style={{ color: "var(--text-muted)" }}>Loading…</p>
       </main>
     );
   }
 
   return (
-    <main className="admin-main admin-content-main" style={{ maxWidth: 640, margin: "0 auto" }}>
+    <main className="admin-main admin-content-main" style={{ maxWidth: 920, margin: "0 auto" }}>
       <h1>Content</h1>
       <p className="intro" style={{ color: "var(--text-muted)", marginBottom: "1.5rem" }}>
         Site-wide content: landing page (testimonial, social icons), tip page hero, and legal “last updated” dates.
@@ -500,63 +618,191 @@ export default function AdminContentPage() {
       <section className="content-section" aria-labelledby="content-about-stormi-heading">
         <h2 id="content-about-stormi-heading" className="content-section-title">About Stormi J (member profile card)</h2>
         <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginBottom: "1rem" }}>
-          Image or video and text shown when members click “About Stormi J” in the header. Video is shown first if both are set.
+          Shown when members click “About Stormi J” in the header. Video appears first if both image and video are set.
         </p>
-        <div className="content-block">
-          <h2>Image</h2>
-          <div className="admin-hero-image-block">
-            {content.aboutStormiJImageUrl ? (
-              <div className="admin-hero-image-preview">
-                <img src={content.aboutStormiJImageUrl} alt="About Stormi J" className="admin-hero-image-img" />
-                <div className="admin-hero-image-actions">
-                  <button type="button" className="btn btn-primary" onClick={() => { setMediaPickerFor("about"); setShowMediaPicker(true); }}>
-                    Change image
-                  </button>
-                  <button type="button" className="btn btn-secondary" onClick={() => setContent((c) => ({ ...c, aboutStormiJImageUrl: "" }))}>
+
+        <div className="admin-about-stormi-card">
+          <div className="admin-about-stormi-card-head">
+            <div className="admin-about-stormi-title-row">
+              <img src="/assets/sj-heart-logo-transparent.png" alt="" aria-hidden className="admin-about-stormi-title-logo" />
+              <h2>About Stormi J</h2>
+            </div>
+            <p>Image or video for the profile card. Upload from your computer or pick from the media library.</p>
+          </div>
+
+          <div className="admin-about-stormi-media-section">
+            <p className="admin-about-stormi-media-label">Image</p>
+            <div className="admin-about-stormi-media-row">
+              <div className="admin-about-stormi-media-preview">
+                {content.aboutStormiJImageUrl ? (
+                  <img src={content.aboutStormiJImageUrl} alt="About Stormi J" />
+                ) : (
+                  <span className="admin-about-stormi-media-empty">None</span>
+                )}
+              </div>
+              <div className="admin-about-stormi-actions">
+                <input
+                  ref={aboutImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  aria-hidden
+                  onChange={handleAboutImageUpload}
+                  disabled={!!aboutUploading}
+                />
+                <button type="button" className="admin-about-stormi-btn primary" disabled={!!aboutUploading} onClick={() => aboutImageInputRef.current?.click()}>
+                  {aboutUploading === "image" ? `${Math.round(aboutUploadProgress)}%` : "Upload"}
+                </button>
+                <button type="button" className="admin-about-stormi-btn" onClick={() => { setMediaPickerFor("aboutImage"); setShowMediaPicker(true); }} disabled={!!aboutUploading}>
+                  Library
+                </button>
+                {content.aboutStormiJImageUrl && (
+                  <button type="button" className="admin-about-stormi-btn danger" onClick={() => setContent((c) => ({ ...c, aboutStormiJImageUrl: "" }))}>
                     Remove
                   </button>
-                </div>
+                )}
               </div>
-            ) : (
-              <div className="admin-hero-image-empty">
-                <p className="admin-hero-image-empty-text">No image set</p>
-                <button type="button" className="btn btn-primary" onClick={() => { setMediaPickerFor("about"); setShowMediaPicker(true); }}>
-                  Choose image
-                </button>
-              </div>
-            )}
+            </div>
           </div>
-          <label className="admin-content-label" style={{ display: "block", marginTop: "1rem", marginBottom: "0.35rem", fontWeight: 500, fontSize: "0.9rem" }}>
-            Video URL (optional)
-          </label>
-          <input
-            type="url"
-            value={content.aboutStormiJVideoUrl ?? ""}
-            onChange={(e) => setContent((c) => ({ ...c, aboutStormiJVideoUrl: e.target.value }))}
-            placeholder="https://…"
-            className="admin-content-input"
-            style={{ width: "100%", padding: "0.5rem 0.75rem", border: "1px solid var(--border)", borderRadius: 8, fontSize: "0.95rem", background: "var(--bg-card)", color: "var(--text)" }}
-          />
-          <label className="admin-content-label" style={{ display: "block", marginTop: "1rem", marginBottom: "0.35rem", fontWeight: 500, fontSize: "0.9rem" }}>
-            Bio / info text
-          </label>
-          <textarea
-            value={content.aboutStormiJText ?? ""}
-            onChange={(e) => setContent((c) => ({ ...c, aboutStormiJText: e.target.value }))}
-            placeholder="A few lines about Stormi J…"
-            rows={4}
-            className="admin-content-input"
-            style={{ width: "100%", padding: "0.5rem 0.75rem", border: "1px solid var(--border)", borderRadius: 8, fontSize: "0.95rem", background: "var(--bg-card)", color: "var(--text)", resize: "vertical" }}
-          />
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={handleSaveAboutStormiJ}
-            disabled={saving}
-            style={{ marginTop: "1rem" }}
-          >
-            {savingSection === "about" ? "Saving…" : "Save About Stormi J"}
-          </button>
+
+          <div className="admin-about-stormi-media-section">
+            <p className="admin-about-stormi-media-label">Video (optional)</p>
+            <div className="admin-about-stormi-media-row">
+              <div className="admin-about-stormi-media-preview">
+                {content.aboutStormiJVideoUrl ? (
+                  <video src={content.aboutStormiJVideoUrl} muted />
+                ) : (
+                  <span className="admin-about-stormi-media-empty">None</span>
+                )}
+              </div>
+              <div className="admin-about-stormi-actions">
+                <input
+                  ref={aboutVideoInputRef}
+                  type="file"
+                  accept="video/*"
+                  className="sr-only"
+                  aria-hidden
+                  onChange={handleAboutVideoUpload}
+                  disabled={!!aboutUploading}
+                />
+                <button type="button" className="admin-about-stormi-btn primary" disabled={!!aboutUploading} onClick={() => aboutVideoInputRef.current?.click()}>
+                  {aboutUploading === "video" ? `${Math.round(aboutUploadProgress)}%` : "Upload"}
+                </button>
+                <button type="button" className="admin-about-stormi-btn" onClick={() => { setMediaPickerFor("aboutVideo"); setShowMediaPicker(true); }} disabled={!!aboutUploading}>
+                  Library
+                </button>
+                {content.aboutStormiJVideoUrl && (
+                  <button type="button" className="admin-about-stormi-btn danger" onClick={() => setContent((c) => ({ ...c, aboutStormiJVideoUrl: "" }))}>
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="admin-about-stormi-text-section">
+            <label htmlFor="about-stormi-j-bio">Bio / info text</label>
+            <div className="admin-posts-caption-wrap" ref={aboutBioEmojiWrapRef}>
+              <textarea
+                ref={aboutBioTextareaRef}
+                id="about-stormi-j-bio"
+                value={content.aboutStormiJText ?? ""}
+                onChange={(e) => setContent((c) => ({ ...c, aboutStormiJText: e.target.value }))}
+                placeholder="A few lines about Stormi J…"
+                rows={5}
+                className="admin-posts-caption-input"
+              />
+              <button
+                type="button"
+                className="admin-posts-emoji-trigger admin-posts-emoji-trigger-inline"
+                onClick={() => {
+                  setAboutBioEmojiOpen((o) => !o);
+                  setAboutBioEmojiQuery("");
+                }}
+                aria-label="Add emoji"
+              >
+                😀
+              </button>
+              {aboutBioEmojiOpen && typeof document !== "undefined" && aboutBioPickerPosition && createPortal(
+                <div
+                  ref={aboutBioPickerContainerRef}
+                  style={{
+                    position: "fixed",
+                    top: aboutBioPickerPosition.top,
+                    right: aboutBioPickerPosition.right,
+                    left: "auto",
+                    width: "min(320px, calc(100vw - 1.5rem))",
+                    zIndex: 1000,
+                  }}
+                >
+                  <AdminEmojiPicker
+                    onPick={insertAboutBioEmoji}
+                    onClose={() => setAboutBioEmojiOpen(false)}
+                    query={aboutBioEmojiQuery}
+                    setQuery={setAboutBioEmojiQuery}
+                  />
+                </div>,
+                document.body
+              )}
+            </div>
+            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginTop: "0.75rem", alignItems: "flex-end" }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: "0.35rem", fontSize: "0.82rem", color: "var(--text-muted)", textTransform: "none", letterSpacing: 0, margin: 0 }}>
+                Text color
+                <input
+                  type="color"
+                  value={content.aboutStormiJTextColor || "#2f1a24"}
+                  onChange={(e) => setContent((c) => ({ ...c, aboutStormiJTextColor: e.target.value }))}
+                  title="About text color"
+                  style={{ width: 44, height: 32, padding: 2, border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", background: "var(--bg)" }}
+                />
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: "0.35rem", fontSize: "0.82rem", color: "var(--text-muted)", textTransform: "none", letterSpacing: 0, margin: 0 }}>
+                Font size (px)
+                <input
+                  type="number"
+                  min={12}
+                  max={36}
+                  value={content.aboutStormiJTextFontSize ?? 16}
+                  onChange={(e) => setContent((c) => ({ ...c, aboutStormiJTextFontSize: Math.max(12, Math.min(36, Number(e.target.value) || 16)) }))}
+                  className="admin-content-input"
+                  style={{ width: "6.5rem", padding: "0.4rem 0.5rem", border: "1px solid var(--border)", borderRadius: 8, fontSize: "0.9rem", background: "var(--bg-card)", color: "var(--text)" }}
+                />
+              </label>
+              <label style={{ display: "flex", flexDirection: "column", gap: "0.35rem", fontSize: "0.82rem", color: "var(--text-muted)", textTransform: "none", letterSpacing: 0, margin: 0, minWidth: 170 }}>
+                Font
+                <select
+                  value={content.aboutStormiJTextFontFamily ?? "DM Sans"}
+                  onChange={(e) => setContent((c) => ({ ...c, aboutStormiJTextFontFamily: e.target.value }))}
+                  className="admin-content-input"
+                  style={{ width: "100%", padding: "0.42rem 0.5rem", border: "1px solid var(--border)", borderRadius: 8, fontSize: "0.9rem", background: "var(--bg-card)", color: "var(--text)" }}
+                >
+                  <option value="DM Sans">DM Sans</option>
+                  <option value="Playfair Display">Playfair Display</option>
+                  <option value="Cormorant Garamond">Cormorant Garamond</option>
+                  <option value="Great Vibes">Great Vibes</option>
+                  <option value="Segoe UI">Segoe UI</option>
+                  <option value="Arial">Arial</option>
+                  <option value="Verdana">Verdana</option>
+                  <option value="Tahoma">Tahoma</option>
+                  <option value="Trebuchet MS">Trebuchet MS</option>
+                  <option value="Georgia">Georgia</option>
+                  <option value="Times New Roman">Times New Roman</option>
+                  <option value="Courier New">Courier New</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div className="admin-about-stormi-save-wrap">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleSaveAboutStormiJ}
+              disabled={saving}
+            >
+              {savingSection === "about" ? "Saving…" : "Save About Stormi J"}
+            </button>
+          </div>
         </div>
       </section>
 
@@ -619,38 +865,51 @@ export default function AdminContentPage() {
       )}
 
       {showMediaPicker && (
-        <div className="admin-content-modal-overlay" role="dialog" aria-modal="true" aria-label={mediaPickerFor === "about" ? "Choose About Stormi J image" : "Choose hero image"} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }} onClick={() => { setShowMediaPicker(false); setMediaPickerFor(null); }}>
+        <div className="admin-content-modal-overlay" role="dialog" aria-modal="true" aria-label={mediaPickerFor === "aboutVideo" ? "Choose video" : "Choose image"} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }} onClick={() => { setShowMediaPicker(false); setMediaPickerFor(null); }}>
           <div className="admin-content-modal admin-media-picker-modal" onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ margin: 0, padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)", fontSize: "1.1rem", flexShrink: 0 }}>{mediaPickerFor === "about" ? "Choose About Stormi J image" : "Choose hero image"}</h2>
+            <h2 style={{ margin: 0, padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)", fontSize: "1.1rem", flexShrink: 0 }}>
+              {mediaPickerFor === "aboutVideo" ? "Choose video from library" : mediaPickerFor === "aboutImage" ? "Choose About Stormi J image" : "Choose hero image"}
+            </h2>
             <div className="admin-media-picker-body">
               {mediaLoading ? (
                 <div className="admin-media-picker-loading">
-                  <p style={{ margin: 0, fontSize: "1rem" }}>Loading images…</p>
+                  <p style={{ margin: 0, fontSize: "1rem" }}>Loading…</p>
                 </div>
-              ) : mediaItems.length === 0 ? (
-                <p style={{ color: "var(--text-muted)", margin: 0 }}>No images in media library. Upload images in Media first.</p>
-              ) : (
-                <div className="admin-media-picker-grid">
-                  {mediaItems.map((item) => (
-                    <button
-                      key={item.path}
-                      type="button"
-                      className="admin-content-media-pick"
-                      onClick={() => {
-                        if (mediaPickerFor === "about") {
-                          setContent((c) => ({ ...c, aboutStormiJImageUrl: item.url }));
-                        } else {
-                          setContent((c) => ({ ...c, tipPageHeroImageUrl: item.url }));
-                        }
-                        setShowMediaPicker(false);
-                        setMediaPickerFor(null);
-                      }}
-                    >
-                      <LazyMediaImage src={item.url} alt="" loading="lazy" />
-                    </button>
-                  ))}
-                </div>
-              )}
+              ) : (() => {
+                const displayItems = mediaPickerFor === "aboutVideo" ? mediaItems.filter((i) => i.isVideo) : mediaItems.filter((i) => !i.isVideo);
+                return displayItems.length === 0 ? (
+                  <p style={{ color: "var(--text-muted)", margin: 0 }}>
+                    {mediaPickerFor === "aboutVideo" ? "No videos in media library. Upload videos in Media first." : "No images in media library. Upload images in Media first."}
+                  </p>
+                ) : (
+                  <div className="admin-media-picker-grid">
+                    {displayItems.map((item) => (
+                      <button
+                        key={item.path}
+                        type="button"
+                        className="admin-content-media-pick"
+                        onClick={() => {
+                          if (mediaPickerFor === "tip") {
+                            setContent((c) => ({ ...c, tipPageHeroImageUrl: item.url }));
+                          } else if (mediaPickerFor === "aboutImage") {
+                            setContent((c) => ({ ...c, aboutStormiJImageUrl: item.url }));
+                          } else if (mediaPickerFor === "aboutVideo") {
+                            setContent((c) => ({ ...c, aboutStormiJVideoUrl: item.url }));
+                          }
+                          setShowMediaPicker(false);
+                          setMediaPickerFor(null);
+                        }}
+                      >
+                        {item.isVideo ? (
+                          <video src={item.url} style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 8 }} muted />
+                        ) : (
+                          <LazyMediaImage src={item.url} alt="" loading="lazy" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
             <div className="admin-media-picker-footer">
               <button type="button" className="btn btn-secondary" onClick={() => { setShowMediaPicker(false); setMediaPickerFor(null); }}>Cancel</button>

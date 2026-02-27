@@ -18,6 +18,9 @@ export function AboutStormiJModal({ open, onClose }: AboutStormiJModalProps) {
     imageUrl: string | null;
     videoUrl: string | null;
     text: string;
+    textColor: string;
+    textFontSize: number;
+    textFontFamily: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,9 +43,12 @@ export function AboutStormiJModal({ open, onClose }: AboutStormiJModalProps) {
             imageUrl: d.aboutStormiJImageUrl?.trim() || null,
             videoUrl: d.aboutStormiJVideoUrl?.trim() || null,
             text: d.aboutStormiJText?.trim() || "",
+            textColor: d.aboutStormiJTextColor?.trim() || "#2f1a24",
+            textFontSize: typeof d.aboutStormiJTextFontSize === "number" ? d.aboutStormiJTextFontSize : 16,
+            textFontFamily: d.aboutStormiJTextFontFamily?.trim() || "DM Sans",
           });
         } else {
-          setData({ imageUrl: null, videoUrl: null, text: "" });
+          setData({ imageUrl: null, videoUrl: null, text: "", textColor: "#2f1a24", textFontSize: 16, textFontFamily: "DM Sans" });
         }
       })
       .catch(() => setError("Could not load."))
@@ -73,20 +79,23 @@ export function AboutStormiJModal({ open, onClose }: AboutStormiJModalProps) {
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "var(--bg-card)",
-          borderRadius: 12,
-          boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
-          maxWidth: 420,
+          borderRadius: 16,
+          boxShadow: "0 16px 46px rgba(0,0,0,0.28)",
+          maxWidth: 760,
           width: "100%",
-          maxHeight: "90vh",
+          maxHeight: "94vh",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
         }}
       >
-        <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-          <h2 id="about-stormi-j-title" style={{ margin: 0, fontSize: "1.15rem", fontWeight: 600, color: "var(--text)" }}>
-            About Stormi J
-          </h2>
+        <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, background: "linear-gradient(135deg, rgba(212, 85, 139, 0.18) 0%, rgba(212, 85, 139, 0.05) 45%, transparent 100%)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", minWidth: 0 }}>
+            <img src="/assets/sj-heart-logo-transparent.png" alt="" aria-hidden style={{ width: 34, height: 34, objectFit: "contain" }} />
+            <h2 id="about-stormi-j-title" style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700, color: "#9a2f64" }}>
+              About Stormi J
+            </h2>
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -108,7 +117,7 @@ export function AboutStormiJModal({ open, onClose }: AboutStormiJModalProps) {
             </svg>
           </button>
         </div>
-        <div style={{ overflowY: "auto", flex: 1, minHeight: 0, padding: "1rem 1.25rem" }}>
+        <div style={{ overflowY: "auto", flex: 1, minHeight: 0, padding: "1.25rem 1.35rem" }}>
           {loading && (
             <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.95rem" }}>Loading…</p>
           )}
@@ -118,21 +127,21 @@ export function AboutStormiJModal({ open, onClose }: AboutStormiJModalProps) {
           {!loading && !error && data && (
             <>
               {(data.videoUrl || data.imageUrl) && (
-                <div style={{ marginBottom: "1rem", borderRadius: 8, overflow: "hidden", background: "var(--bg)" }}>
+                <div style={{ marginBottom: "1rem", borderRadius: 12, overflow: "hidden", background: "var(--bg)" }}>
                   {data.videoUrl ? (
                     <video
                       src={data.videoUrl}
                       controls
                       controlsList="nodownload noplaybackrate noremoteplayback"
                       disablePictureInPicture
-                      style={{ width: "100%", display: "block", maxHeight: 240, objectFit: "contain" }}
+                      style={{ width: "100%", display: "block", maxHeight: 300, objectFit: "contain" }}
                       onContextMenu={(e) => e.preventDefault()}
                     />
                   ) : data.imageUrl ? (
                     <img
                       src={data.imageUrl}
                       alt="Stormi J"
-                      style={{ width: "100%", display: "block", maxHeight: 320, objectFit: "contain" }}
+                      style={{ width: "100%", display: "block", maxHeight: 360, objectFit: "contain" }}
                       onContextMenu={(e) => e.preventDefault()}
                       draggable={false}
                     />
@@ -142,7 +151,13 @@ export function AboutStormiJModal({ open, onClose }: AboutStormiJModalProps) {
               {data.text ? (
                 <div
                   className="about-stormi-j-text"
-                  style={{ fontSize: "0.95rem", lineHeight: 1.5, color: "var(--text)", whiteSpace: "pre-wrap" }}
+                  style={{
+                    fontSize: `${Math.max(12, Math.min(36, data.textFontSize))}px`,
+                    lineHeight: 1.62,
+                    color: data.textColor || "var(--text)",
+                    fontFamily: data.textFontFamily || "DM Sans",
+                    whiteSpace: "pre-wrap",
+                  }}
                 >
                   {data.text}
                 </div>

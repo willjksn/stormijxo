@@ -20,6 +20,7 @@ import { getFirebaseDb, getFirebaseStorage } from "../../../../lib/firebase";
 import { listMediaLibrary, uploadToMediaLibrary, type MediaItem } from "../../../../lib/media-library";
 import { useAuth } from "../../../contexts/AuthContext";
 import { LazyMediaImage } from "../../../components/LazyMediaImage";
+import { AdminEmojiPicker } from "../../components/AdminEmojiPicker";
 import type { PostStatus } from "../../../../lib/posts";
 import { useRouter } from "next/navigation";
 
@@ -45,102 +46,7 @@ const AI_LENGTHS = [
   { id: "long", label: "Long" },
 ];
 
-const EMOJI_CATEGORIES = {
-  faces: "😀 😃 😄 😁 😆 😅 🤣 😂 🙂 🙃 😉 😊 😇 🥰 😍 🤩 😘 😎 🥳 😏 😒 😞 😔 😟 😕 🙁 😣 😖 😫 😩 🥺 😭 😤 😠 😡 🤬 😳 😱 😨 😰 😥 😓 🤗 🤔 😴 🤤 😪 🤒 🤕 🤠 🤡 💩 👻 💀 🎃".split(" "),
-  people: "👩 👩‍🦰 👩‍🦱 👩‍🦳 👩‍🦲 👱‍♀️ 👵 👸 💃 🕺 👯‍♀️ 🧚‍♀️ 🧜‍♀️ 🦸‍♀️ 🧝‍♀️ 🙋‍♀️ 🙆‍♀️ 🙅‍♀️ 🤷‍♀️ 👩‍💻 👩‍🎤 👩‍🎨 👩‍🍳 👰‍♀️ 🤰 🤱".split(" "),
-  animals: "🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐵 🦄 🦋 🐝 🐢 🐙 🐬 🐳 🦈 🐊 🐘 🦒 🦘 🐎 🐕 🐓 🦅 🦆 🦢 🦉 🦚 🦜 🐸".split(" "),
-  plants: "🌹 🥀 🌺 🌻 🌼 🌷 🌱 🌲 🌳 🌴 🌵 🌿 🍀 🍁 🍄 🔥 ✨ ⭐ ☀️ 🌙 ☁️ 🌊 🌎".split(" "),
-  food: "🍇 🍉 🍊 🍋 🍌 🍍 🍎 🍏 🍐 🍑 🍒 🍓 🥝 🍅 🥥 🥑 🍆 🥔 🥕 🌽 🌶️ 🥒 🥬 🥦 🍞 🥐 🥖 🧀 🍖 🍔 🍟 🍕 🌮 🍣 🍤 🍦 🍩 🍪 🎂 🍰 🧁 🍫 🍬 ☕ 🍵 🍾 🍷 🍸 🍹 🍺 🍻 🥂".split(" "),
-  sports: "⚽ 🏀 🏈 ⚾ 🎾 🏐 🏉 🎱 🏓 🏸 🏒 ⛳ 🏹 🥊 🥋 ⛸️ 🎿 🏂 🏋️ 🤸 🏇 🏊 🏄 🎯 🎳 🎮 🎲 🧩 ♟️".split(" "),
-  travel: "🎨 🎬 🎤 🎧 🎹 🥁 🎉 🎊 🎄 🎆 🚀 ✈️ 🚁 🛰️ ⛵ 🚢 🚗 🚕 🚌 🚓 🚑 🚒 🚚 🚂 🚲 🚦 🗽 🗼 🏰 🎡 🎢 🎪 ⛺ 🏠 🏡 🏢 🏨 🏦 🏥 🏫 🏛️ 🏝️ 🏞️ ⛰️".split(" "),
-  objects: "💡 💻 🖥️ 🖱️ 📱 ☎️ 📺 📷 📹 🎥 💿 💾 💰 💵 💎 🔧 🔨 🛠️ 🔑 🚪 🪑 🛏️ 🛁 🚽 🎁 🎈 📚 📖 📄 📰 🔗 📎 ✂️ 🗑️ 🔒 🔓 🔔 👗 👠 👑 💍 💄 👛 👜".split(" "),
-  symbols: "❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 💟 ☮️ ✝️ ☪️ ☯️ ♈ ♉ ♊ ♋ ♌ ♍ ♎ ♏ ♐ ♑ ♒ ♓ 💯 ✅ ❌ ❓ ❕ ©️ ®️ ™️".split(" "),
-} as const;
-const EMOJI_CATEGORY_ORDER = ["all", "faces", "people", "animals", "plants", "food", "sports", "travel", "objects", "symbols"] as const;
-type EmojiCategory = (typeof EMOJI_CATEGORY_ORDER)[number];
-const EMOJI_CATEGORY_ICONS: Record<EmojiCategory, string> = {
-  all: "😀",
-  faces: "😀",
-  people: "👩",
-  animals: "🐶",
-  plants: "🌹",
-  food: "🍎",
-  sports: "⚽",
-  travel: "✈️",
-  objects: "💡",
-  symbols: "❤️",
-};
-
 const DRAFT_STORAGE_KEY = "admin-posts-draft";
-
-function EmojiPicker({
-  onPick,
-  onClose,
-  query,
-  setQuery,
-}: {
-  onPick: (emoji: string) => void;
-  onClose: () => void;
-  query: string;
-  setQuery: (v: string) => void;
-}) {
-  const [category, setCategory] = useState<EmojiCategory>("all");
-  const normalized = query.trim().toLowerCase();
-  const visibleEmojis = useMemo(() => {
-    const source =
-      category === "all"
-        ? EMOJI_CATEGORY_ORDER.filter((c) => c !== "all").flatMap((c) => EMOJI_CATEGORIES[c])
-        : EMOJI_CATEGORIES[category];
-    if (!normalized) return source;
-    return source.filter((e) => e.includes(normalized));
-  }, [category, normalized]);
-
-  return (
-    <div className="admin-emoji-picker-wrap" role="dialog" aria-label="Pick emoji">
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search emoji..."
-        className="admin-emoji-search"
-      />
-      <div className="admin-emoji-grid">
-        {visibleEmojis.length === 0 ? (
-          <p className="admin-emoji-empty">No emoji found.</p>
-        ) : (
-          visibleEmojis.map((e, i) => (
-            <button
-              key={`${category}-${i}-${e}`}
-              type="button"
-              className="admin-emoji-btn"
-              onClick={() => {
-                onPick(e);
-                onClose();
-              }}
-              aria-label={`Emoji ${e}`}
-            >
-              {e}
-            </button>
-          ))
-        )}
-      </div>
-      <div className="admin-emoji-category-bar" role="tablist" aria-label="Emoji categories">
-        {EMOJI_CATEGORY_ORDER.map((c) => (
-          <button
-            key={c}
-            type="button"
-            className={`admin-emoji-category-btn${category === c ? " active" : ""}`}
-            onClick={() => setCategory(c)}
-            aria-label={`Show ${c} emoji`}
-            title={c}
-          >
-            {EMOJI_CATEGORY_ICONS[c]}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export default function AdminPostsPage() {
   const { user } = useAuth();
@@ -1009,7 +915,7 @@ export default function AdminPostsPage() {
               </button>
               {emojiOpenFor === "caption" && (
                 <div className="admin-emoji-picker-inline">
-                  <EmojiPicker
+                  <AdminEmojiPicker
                     onPick={(emoji) => insertEmojiAtCursor("caption", emoji)}
                     onClose={() => setEmojiOpenFor(null)}
                     query={emojiQuery}
@@ -1070,7 +976,7 @@ export default function AdminPostsPage() {
                   </button>
                   {emojiOpenFor === "pollQuestion" && (
                     <div className="admin-emoji-picker-inline admin-emoji-picker-inline-field">
-                      <EmojiPicker
+                      <AdminEmojiPicker
                         onPick={(emoji) => insertEmojiAtCursor("pollQuestion", emoji)}
                         onClose={() => setEmojiOpenFor(null)}
                         query={emojiQuery}
@@ -1161,7 +1067,7 @@ export default function AdminPostsPage() {
                   </button>
                   {emojiOpenFor === "tipGoal" && (
                     <div className="admin-emoji-picker-inline admin-emoji-picker-inline-field">
-                      <EmojiPicker
+                      <AdminEmojiPicker
                         onPick={(emoji) => insertEmojiAtCursor("tipGoal", emoji)}
                         onClose={() => setEmojiOpenFor(null)}
                         query={emojiQuery}
@@ -1322,7 +1228,7 @@ export default function AdminPostsPage() {
                     </button>
                     {emojiOpenFor === "overlayText" && (
                       <div className="admin-emoji-picker-inline admin-emoji-picker-inline-field">
-                        <EmojiPicker
+                        <AdminEmojiPicker
                           onPick={(emoji) => insertEmojiAtCursor("overlayText", emoji)}
                           onClose={() => setEmojiOpenFor(null)}
                           query={emojiQuery}

@@ -48,6 +48,12 @@ export type SiteConfigContent = {
   aboutStormiJVideoUrl?: string;
   /** About Stormi J profile card: bio/info text */
   aboutStormiJText?: string;
+  /** About Stormi J profile card: bio text color (hex) */
+  aboutStormiJTextColor?: string;
+  /** About Stormi J profile card: bio text font size in px */
+  aboutStormiJTextFontSize?: number;
+  /** About Stormi J profile card: bio text font family */
+  aboutStormiJTextFontFamily?: string;
 };
 
 export const SITE_CONFIG_CONTENT_ID = "content";
