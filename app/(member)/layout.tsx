@@ -1,5 +1,9 @@
 "use client";
 
+import "../../member/member-header.css";
+import "../../member/member-feed.css";
+import "../../member/member-post.css";
+import "../../member/treats.css";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { MemberHeader } from "../components/MemberHeader";
