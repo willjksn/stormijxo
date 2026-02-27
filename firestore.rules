@@ -87,10 +87,15 @@ service cloud.firestore {
       allow create, update, delete: if request.auth != null;
     }
     // notifications: in-app notifications for admin and members
+    // forMemberEmail is stored lowercase; match with token email or email_lower claim (set by auth trigger)
     match /notifications/{notificationId} {
       allow read: if request.auth != null && (
         resource.data.userId == request.auth.uid ||
-        resource.data.forMemberEmail == request.auth.token.email ||
+        (resource.data.forAdmin == true && isAdmin()) ||
+        (resource.data.forMemberEmail != null && (
+          resource.data.forMemberEmail == request.auth.token.email ||
+          (request.auth.token.email_lower != null && resource.data.forMemberEmail == request.auth.token.email_lower)
+        )) ||
         isAdmin()
       );
       allow create: if request.auth != null;

@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, doc, getDoc, query, where, onSnapshot } from "firebase/firestore";
 import { useAuth } from "../contexts/AuthContext";
 import { isAdminEmail } from "../../lib/auth-redirect";
 import { getFirebaseDb } from "../../lib/firebase";
 import { SITE_CONFIG_CONTENT_ID, type SiteConfigContent } from "../../lib/site-config";
+import { NOTIFICATIONS_COLLECTION } from "../../lib/notifications";
 import { NotificationBell } from "./NotificationBell";
 import { AboutStormiJModal } from "./AboutStormiJModal";
 
@@ -67,6 +68,7 @@ export function MemberHeader({ active }: MemberHeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [aboutStormiJOpen, setAboutStormiJOpen] = useState(false);
   const [aboutStormiJVisible, setAboutStormiJVisible] = useState(true);
+  const [unreadDmsCount, setUnreadDmsCount] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const avatarStableRef = useRef<{ photoURL: string | null; initials: string }>({ photoURL: null, initials: "?" });
 
@@ -110,6 +112,25 @@ export function MemberHeader({ active }: MemberHeaderProps) {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const db = getFirebaseDb();
+    const email = user?.email?.trim().toLowerCase();
+    if (!db || !email) {
+      setUnreadDmsCount(0);
+      return;
+    }
+    return onSnapshot(
+      query(
+        collection(db, NOTIFICATIONS_COLLECTION),
+        where("forMemberEmail", "==", email),
+        where("type", "==", "dm"),
+        where("read", "==", false)
+      ),
+      (snap) => setUnreadDmsCount(snap.size),
+      () => setUnreadDmsCount(0)
+    );
+  }, [user?.email]);
 
   const displayAvatar = avatarStableRef.current;
   const showAdmin = user ? isAdminEmail(user.email ?? null) : false;
@@ -180,14 +201,24 @@ export function MemberHeader({ active }: MemberHeaderProps) {
           )}
           {!showAdmin && (
             pathname === "/dms" ? (
-              <span className="active" title="Messages" aria-current="page">
+              <span className="active member-nav-messages-wrap" title="Messages" aria-current="page">
                 <MessagesIcon />
                 <span>Messages</span>
+                {unreadDmsCount > 0 && (
+                  <span className="member-nav-messages-badge" aria-label={`${unreadDmsCount} unread`}>
+                    {unreadDmsCount > 99 ? "99+" : unreadDmsCount}
+                  </span>
+                )}
               </span>
             ) : (
-              <Link href="/dms" className="" title="Messages">
+              <Link href="/dms" className="member-nav-messages-wrap" title="Messages">
                 <MessagesIcon />
                 <span>Messages</span>
+                {unreadDmsCount > 0 && (
+                  <span className="member-nav-messages-badge" aria-label={`${unreadDmsCount} unread`}>
+                    {unreadDmsCount > 99 ? "99+" : unreadDmsCount}
+                  </span>
+                )}
               </Link>
             )
           )}

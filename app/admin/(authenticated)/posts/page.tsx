@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   collection,
-  addDoc,
+  setDoc,
   getDocs,
   query,
   orderBy,
@@ -14,10 +14,11 @@ import {
   Timestamp,
   updateDoc,
   deleteDoc,
+  doc,
 } from "firebase/firestore";
-import { doc, getDoc, deleteField } from "firebase/firestore";
+import { getDoc, deleteField } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseStorage } from "../../../../lib/firebase";
-import { listMediaLibrary, uploadToMediaLibrary, type MediaItem } from "../../../../lib/media-library";
+import { listMediaLibrary, uploadToMediaLibrary, copyLibraryUrlsToUsed, type MediaItem } from "../../../../lib/media-library";
 import { useAuth } from "../../../contexts/AuthContext";
 import { LazyMediaImage } from "../../../components/LazyMediaImage";
 import { AdminEmojiPicker } from "../../components/AdminEmojiPicker";
@@ -613,13 +614,22 @@ export default function AdminPostsPage() {
     setPublishLoading(true);
     setMessage(null);
     try {
+      const postId = editId ?? doc(collection(db, "posts")).id;
+      const storage = getFirebaseStorage();
+      const mediaUrlsToSave = storage
+        ? await copyLibraryUrlsToUsed(storage, selectedMedia.map((m) => m.url), postId)
+        : selectedMedia.map((m) => m.url);
+      const audioUrlsToSave = storage
+        ? await copyLibraryUrlsToUsed(storage, selectedAudioUrls, postId)
+        : selectedAudioUrls;
+
       const altTextsArr = selectedMedia.map((m) => (m.alt ?? "").trim()).filter(Boolean);
       const payload: Record<string, unknown> = {
         title: caption.slice(0, 80) || "Untitled",
         body: caption,
-        mediaUrls: selectedMedia.map((m) => m.url),
+        mediaUrls: mediaUrlsToSave,
         mediaTypes: selectedMedia.map((m) => (m.isVideo ? "video" : "image")),
-        audioUrls: selectedAudioUrls,
+        audioUrls: audioUrlsToSave,
         captionStyle: overlayAnimation,
         hideComments,
         hideLikes,
@@ -677,9 +687,9 @@ export default function AdminPostsPage() {
       if (editId) {
         await updateDoc(doc(db, "posts", editId), { ...payload, updatedAt: serverTimestamp() });
       } else {
-        const docRef = await addDoc(collection(db, "posts"), { ...payload, createdAt: serverTimestamp() });
+        await setDoc(doc(db, "posts", postId), { ...payload, createdAt: serverTimestamp() });
         await loadRecentPosts();
-        router.push(`/admin/posts?edit=${docRef.id}`);
+        router.push(`/admin/posts?edit=${postId}`);
       }
       setMessage({
         type: "success",

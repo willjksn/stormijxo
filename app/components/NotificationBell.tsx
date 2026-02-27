@@ -24,6 +24,7 @@ function BellIcon() {
 export function NotificationBell({ variant, userEmail }: NotificationBellProps) {
   const [list, setList] = useState<NotificationDoc[]>([]);
   const [pendingPurchasesCount, setPendingPurchasesCount] = useState(0);
+  const [unreadDmsCount, setUnreadDmsCount] = useState(0);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -99,6 +100,41 @@ export function NotificationBell({ variant, userEmail }: NotificationBellProps) 
   }, [db, variant]);
 
   useEffect(() => {
+    if (!db || variant !== "admin") {
+      setUnreadDmsCount(0);
+      return;
+    }
+    return onSnapshot(
+      query(
+        collection(db, NOTIFICATIONS_COLLECTION),
+        where("forAdmin", "==", true),
+        where("type", "==", "dm"),
+        where("read", "==", false)
+      ),
+      (snap) => setUnreadDmsCount(snap.size),
+      () => setUnreadDmsCount(0)
+    );
+  }, [db, variant]);
+
+  useEffect(() => {
+    if (!db || variant !== "member" || !userEmail?.trim()) {
+      if (variant === "member") setUnreadDmsCount(0);
+      return;
+    }
+    const email = userEmail.trim().toLowerCase();
+    return onSnapshot(
+      query(
+        collection(db, NOTIFICATIONS_COLLECTION),
+        where("forMemberEmail", "==", email),
+        where("type", "==", "dm"),
+        where("read", "==", false)
+      ),
+      (snap) => setUnreadDmsCount(snap.size),
+      () => setUnreadDmsCount(0)
+    );
+  }, [db, variant, userEmail]);
+
+  useEffect(() => {
     const close = (e: MouseEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
     };
@@ -106,7 +142,11 @@ export function NotificationBell({ variant, userEmail }: NotificationBellProps) 
     return () => document.removeEventListener("click", close, true);
   }, []);
 
-  const unreadCount = list.filter((n) => !n.read).length + (variant === "admin" ? pendingPurchasesCount : 0);
+  const otherUnreadCount = list.filter((n) => !n.read && n.type !== "dm").length;
+  const unreadCount =
+    variant === "admin"
+      ? unreadDmsCount + pendingPurchasesCount + otherUnreadCount
+      : unreadDmsCount + otherUnreadCount;
 
   const markRead = useCallback(
     async (id: string) => {
@@ -147,12 +187,40 @@ export function NotificationBell({ variant, userEmail }: NotificationBellProps) 
           <div className="notification-bell-dropdown-header">
             <span>Notifications</span>
           </div>
-          {loading && list.length === 0 ? (
+          {loading && list.length === 0 && unreadDmsCount === 0 && (variant !== "admin" || pendingPurchasesCount === 0) ? (
             <p className="notification-bell-empty">Loading…</p>
-          ) : list.length === 0 && !(variant === "admin" && pendingPurchasesCount > 0) ? (
+          ) : list.length === 0 && unreadDmsCount === 0 && !(variant === "admin" && pendingPurchasesCount > 0) ? (
             <p className="notification-bell-empty">No notifications</p>
           ) : (
             <ul className="notification-bell-list">
+              {variant === "admin" && unreadDmsCount > 0 && (
+                <li>
+                  <Link
+                    href="/admin/dms"
+                    className="notification-bell-item unread"
+                    onClick={() => setOpen(false)}
+                  >
+                    <span className="notification-bell-item-title">New messages</span>
+                    <span className="notification-bell-item-body">
+                      {unreadDmsCount} new message{unreadDmsCount === 1 ? "" : "s"}.
+                    </span>
+                  </Link>
+                </li>
+              )}
+              {variant === "member" && unreadDmsCount > 0 && (
+                <li>
+                  <Link
+                    href="/dms"
+                    className="notification-bell-item unread"
+                    onClick={() => setOpen(false)}
+                  >
+                    <span className="notification-bell-item-title">New messages</span>
+                    <span className="notification-bell-item-body">
+                      {unreadDmsCount} new message{unreadDmsCount === 1 ? "" : "s"}.
+                    </span>
+                  </Link>
+                </li>
+              )}
               {variant === "admin" && pendingPurchasesCount > 0 && (
                 <li>
                   <Link
@@ -167,7 +235,7 @@ export function NotificationBell({ variant, userEmail }: NotificationBellProps) 
                   </Link>
                 </li>
               )}
-              {list.map((n) => (
+              {list.filter((n) => n.type !== "dm").map((n) => (
                 <li key={n.id}>
                   {n.link ? (
                     <Link

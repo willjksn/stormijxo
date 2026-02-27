@@ -17,8 +17,30 @@ import {
 import type { FirebaseStorage } from "firebase/storage";
 
 const MEDIA_PREFIX = "content/media";
+const USED_PREFIX = "content/used";
 
 export type MediaItem = { url: string; path: string; name: string; isVideo: boolean; isAudio: boolean; folderId: string };
+
+/** Extract storage path from a Firebase Storage download URL, or null. */
+export function pathFromStorageUrl(url: string): string | null {
+  const marker = "/o/";
+  const idx = url.indexOf(marker);
+  if (idx < 0) return null;
+  const encoded = url.slice(idx + marker.length).split("?")[0];
+  if (!encoded) return null;
+  try {
+    return decodeURIComponent(encoded);
+  } catch {
+    return null;
+  }
+}
+
+/** True if path is under content/media/ (library), not content/used/. */
+export function isLibraryPath(path: string | null): boolean {
+  if (!path) return false;
+  const p = path.toLowerCase();
+  return p.startsWith("content/media/") && !p.startsWith("content/used/");
+}
 
 const LIST_PAGE_SIZE = 1000;
 const URL_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -260,4 +282,45 @@ function getContentTypeFromName(fileName: string): string {
     wav: "audio/wav",
   };
   return types[ext] || "";
+}
+
+/**
+ * Copy any library URLs (content/media/...) to content/used/{postId}_{index}_{filename}
+ * so the post has its own copy and deleting from the library won't break the feed.
+ * URLs already under content/used/ are returned as-is. Returns new URLs in same order.
+ */
+export async function copyLibraryUrlsToUsed(
+  storage: FirebaseStorage,
+  urls: string[],
+  postId: string
+): Promise<string[]> {
+  const result: string[] = [];
+  for (let i = 0; i < urls.length; i++) {
+    const url = urls[i]!;
+    const path = pathFromStorageUrl(url);
+    if (!path || !isLibraryPath(path)) {
+      result.push(url);
+      continue;
+    }
+    const fromRef = ref(storage, path);
+    let blob: Blob;
+    try {
+      blob = await getBlob(fromRef);
+    } catch {
+      result.push(url);
+      continue;
+    }
+    const fileName = path.split("/").pop() || `item-${i}`;
+    const safeName = `${fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    const toPath = `${USED_PREFIX}/${postId}_${i}_${safeName}`;
+    const toRef = ref(storage, toPath);
+    const contentType = blob.type || getContentTypeFromName(fileName);
+    await uploadBytes(toRef, blob, {
+      contentType: contentType || undefined,
+      customMetadata: { originalName: fileName },
+    });
+    const newUrl = await getDownloadURL(toRef);
+    result.push(newUrl);
+  }
+  return result;
 }

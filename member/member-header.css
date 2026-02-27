@@ -131,6 +131,24 @@
   font-size: 0.95rem;
   cursor: default;
 }
+.member-nav-messages-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.member-nav-messages-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 999px;
+}
 .member-header .header-left .logo { flex-shrink: 0; }
 .member-header .header-left .logo .logo-img { flex-shrink: 0; }
 .member-header .header-profile-link {

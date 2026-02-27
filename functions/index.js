@@ -312,6 +312,38 @@ exports.sendSubscriptionEndReminders = functions
   });
 
 /**
+ * Set email_lower custom claim on user create/update so notification rules can match
+ * forMemberEmail (stored lowercase) regardless of IdP email case.
+ */
+function setEmailLowerClaim(user) {
+  const email = user.email;
+  if (!email || typeof email !== "string") return Promise.resolve();
+  const emailLower = email.trim().toLowerCase();
+  return admin.auth().getUser(user.uid)
+    .then((existing) => {
+      const claims = existing.customClaims || {};
+      if (claims.email_lower === emailLower) return;
+      return admin.auth().setCustomUserClaims(user.uid, { ...claims, email_lower: emailLower });
+    })
+    .catch((err) => {
+      console.warn("setEmailLowerClaim failed for", user.uid, err.message);
+    });
+}
+
+exports.onAuthUserCreated = functions
+  .runWith({ node: "20" })
+  .auth.user().onCreate((user) => setEmailLowerClaim(user));
+
+exports.onAuthUserUpdated = functions
+  .runWith({ node: "20" })
+  .auth.user().onUpdate((change) => {
+    const user = change.after;
+    const before = change.before;
+    if (before.email !== user.email) return setEmailLowerClaim(user);
+    return Promise.resolve();
+  });
+
+/**
  * Create Stripe Customer Portal session for the logged-in user.
  * Looks up member by auth email, returns portal URL for subscription management (cancel, etc.).
  */

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseStorage } from "../../../../lib/firebase";
 import {
   listMediaLibrary,
@@ -108,6 +108,16 @@ export default function AdminMediaPage() {
   const [moving, setMoving] = useState(false);
   const addFolderButtonRef = useRef<HTMLButtonElement | null>(null);
   const addFolderPanelRef = useRef<HTMLDivElement | null>(null);
+  const [previewItem, setPreviewItem] = useState<MediaItem | null>(null);
+
+  useEffect(() => {
+    if (!previewItem) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPreviewItem(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [previewItem]);
 
   const loadFolders = useCallback(async () => {
     if (!db) return;
@@ -240,22 +250,7 @@ export default function AdminMediaPage() {
   const getInUseMediaPaths = useCallback(async (): Promise<Set<string>> => {
     const inUse = new Set<string>();
     if (!db) return inUse;
-    const postsSnap = await getDocs(collection(db, "posts"));
-    postsSnap.forEach((postDoc) => {
-      const data = postDoc.data() as Record<string, unknown>;
-      const mediaUrls = Array.isArray(data.mediaUrls) ? (data.mediaUrls as unknown[]) : [];
-      mediaUrls.forEach((urlRaw) => {
-        if (typeof urlRaw !== "string") return;
-        const path = storagePathFromUrl(urlRaw);
-        if (path) inUse.add(path);
-      });
-      const audioUrls = Array.isArray(data.audioUrls) ? (data.audioUrls as unknown[]) : [];
-      audioUrls.forEach((urlRaw) => {
-        if (typeof urlRaw !== "string") return;
-        const path = storagePathFromUrl(urlRaw);
-        if (path) inUse.add(path);
-      });
-    });
+    // Only site content (hero, about) blocks delete. Posts use copies in content/used/ so library delete is allowed.
     const contentSnap = await getDoc(doc(db, "site_config", "content"));
     if (contentSnap.exists()) {
       const content = contentSnap.data() as Record<string, unknown>;
@@ -280,10 +275,10 @@ export default function AdminMediaPage() {
       const blockedCount = selected.filter((path) => inUsePaths.has(path)).length;
       const deletable = selected.filter((path) => !inUsePaths.has(path));
       if (deletable.length === 0) {
-        setMessage({ type: "error", text: "Selected media is currently used by feed/content and cannot be deleted." });
+        setMessage({ type: "error", text: "Selected media is used in site content (hero/about) and cannot be deleted." });
         return;
       }
-      // Keep feed/content safe by never deleting files still referenced in posts/site content.
+      // Posts use copies in content/used/; only site_config refs block delete.
       await import("../../../../lib/media-library").then(({ deleteMediaLibrary }) => deleteMediaLibrary(storage, deletable));
       const suffix = blockedCount > 0 ? ` ${blockedCount} in-use item(s) were kept.` : "";
       setMessage({ type: "success", text: `${deletable.length} item(s) deleted.${suffix}` });
@@ -369,7 +364,7 @@ export default function AdminMediaPage() {
     const selected = Array.from(selectedPaths);
     const inUseCount = selected.filter((p) => inUsePaths.has(p)).length;
     if (inUseCount > 0) {
-      setMessage({ type: "error", text: "Some selected items are used in posts or content. Remove those references first, or move only unused items." });
+      setMessage({ type: "error", text: "Some selected items are used in site content (hero/about). Remove those references first, or move only unused items." });
       return;
     }
     const targetId = moveTargetFolderId === GENERAL_ID ? "" : moveTargetFolderId;
@@ -608,7 +603,23 @@ export default function AdminMediaPage() {
                     >
                       {selectedPaths.has(item.path) ? "✓" : ""}
                     </button>
-                    <div className="admin-media-card-preview">
+                    <div
+                      className="admin-media-card-preview"
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!item.isAudio) setPreviewItem(item);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          if (!item.isAudio) setPreviewItem(item);
+                        }
+                      }}
+                      aria-label={item.isAudio ? undefined : `View ${item.name}`}
+                      title={item.isAudio ? undefined : "Click to view"}
+                    >
                       {item.isAudio ? (
                         <div className="admin-media-card-voice">
                           <VoiceIcon className="admin-media-card-voice-icon" />
@@ -685,6 +696,44 @@ export default function AdminMediaPage() {
                 {moving ? "Moving…" : "Move"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {previewItem && (
+        <div
+          className="admin-media-preview-overlay"
+          onClick={() => setPreviewItem(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Media preview"
+        >
+          <div className="admin-media-preview-content" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="admin-media-preview-close"
+              onClick={() => setPreviewItem(null)}
+              aria-label="Close preview"
+            >
+              ×
+            </button>
+            {previewItem.isVideo ? (
+              <video
+                src={previewItem.url}
+                controls
+                autoPlay
+                playsInline
+                className="admin-media-preview-media admin-media-preview-video"
+                title={previewItem.name}
+              />
+            ) : (
+              <img
+                src={previewItem.url}
+                alt={previewItem.name}
+                className="admin-media-preview-media admin-media-preview-image"
+              />
+            )}
+            <p className="admin-media-preview-name">{previewItem.name}</p>
           </div>
         </div>
       )}

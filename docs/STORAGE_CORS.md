@@ -1,36 +1,58 @@
-# Fix CORS for Firebase Storage (Move media / fetch)
+# Fix CORS for Firebase Storage (Move media / load videos)
 
-If you see **"blocked by CORS policy"** when moving media or loading files from Firebase Storage in the app, your bucket needs a CORS configuration.
+If you see **"blocked by CORS policy"** when moving media or loading videos from Firebase Storage, your bucket needs a CORS configuration.
 
-## One-time setup
+## Option A: Use Google Cloud Shell (no install)
 
-1. **Install Google Cloud SDK** (includes `gsutil`) if you don’t have it:  
+You can set CORS from your browser without installing anything.
+
+1. **Open Cloud Shell**
+   - Go to [Google Cloud Console](https://console.cloud.google.com/) and make sure the project **stormij** is selected (top bar).
+   - Click the **Activate Cloud Shell** icon (terminal icon `>_`) in the top-right. A terminal opens at the bottom.
+
+2. **Create the CORS file in Cloud Shell**
+   - In the Cloud Shell terminal, run:
+   ```bash
+   cat > cors.json << 'EOF'
+   [{"origin":["http://localhost:3000","http://localhost:3001","http://127.0.0.1:3000","http://127.0.0.1:3001","https://stormijxo.com","https://www.stormijxo.com"],"method":["GET","HEAD","PUT","POST","OPTIONS"],"responseHeader":["Content-Type","Content-Length","Content-Range","Accept-Ranges"],"maxAgeSeconds":3600}]
+   EOF
+   ```
+
+3. **Apply CORS to your Storage bucket**
+   ```bash
+   gsutil cors set cors.json gs://stormij.firebasestorage.app
+   ```
+   If that bucket name fails, check **Firebase Console → Storage** and use the bucket from the URL (e.g. `gs://stormij.appspot.com`).
+
+4. **Confirm**
+   ```bash
+   gsutil cors get gs://stormij.firebasestorage.app
+   ```
+   You should see the same JSON. After this, your app at `https://stormijxo.com` and localhost should be able to load storage files without CORS errors.
+
+---
+
+## Option B: Use gcloud / gsutil on your PC
+
+1. **Install Google Cloud SDK** (includes `gsutil`):  
    https://cloud.google.com/sdk/docs/install  
+   On Windows, run the installer and ensure **"Add to PATH"** is checked.
 
-2. **Log in and set project** (use your Firebase project id, e.g. `stormij`):
+2. **Open a new PowerShell or Command Prompt** (so PATH is updated), then:
    ```bash
    gcloud auth login
    gcloud config set project stormij
-   ```
-
-3. **Apply CORS** from the **project root** (where `storage-cors.json` lives):
-   ```bash
+   cd C:\Projects\Stormij_xo
    gsutil cors set storage-cors.json gs://stormij.firebasestorage.app
    ```
-   If your bucket name is different, check **Firebase Console → Storage** and use the bucket from the URL (e.g. `gs://your-bucket-name`).
 
-4. **Confirm**:
+3. **Confirm**
    ```bash
    gsutil cors get gs://stormij.firebasestorage.app
    ```
 
-After this, the Move feature and any `fetch`/`getBlob` of storage files from your app origin (e.g. `http://localhost:3001`) should work.
+---
 
-## Add your production URL
+## Add more origins later
 
-Edit `storage-cors.json` and add your production origin to the `"origin"` array, for example:
-
-- `"https://yourdomain.com"`
-- `"https://www.yourdomain.com"`
-
-Then run the `gsutil cors set` command again.
+Edit `storage-cors.json` in the project: add origins to the `"origin"` array (e.g. `"https://another-domain.com"`). Then run the `gsutil cors set` command again (from Cloud Shell or from your PC with the path to the updated file).
