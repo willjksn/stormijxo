@@ -31,6 +31,11 @@ export type PostDoc = {
     targetCents: number;
     raisedCents: number;
   };
+  /** Optional paid unlock for the full post media set. */
+  lockedContent?: {
+    enabled: boolean;
+    priceCents: number;
+  };
   status: PostStatus;
   /** YYYY-MM-DD for calendar placement */
   calendarDate: string;

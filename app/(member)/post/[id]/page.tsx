@@ -33,6 +33,7 @@ type PostData = {
   hideComments?: boolean;
   hideLikes?: boolean;
   tipGoal?: { description: string; targetCents: number; raisedCents: number };
+  lockedContent?: { enabled?: boolean; priceCents?: number };
 };
 
 const COMMENT_EMOJI_CATEGORIES = {
@@ -98,6 +99,8 @@ export default function PostByIdPage({
   const [replyEmojiOpenFor, setReplyEmojiOpenFor] = useState<number | null>(null);
   const [emojiQuery, setEmojiQuery] = useState("");
   const [emojiCategory, setEmojiCategory] = useState<CommentEmojiCategory>("all");
+  const [unlockedPostIds, setUnlockedPostIds] = useState<string[]>([]);
+  const [unlockLoading, setUnlockLoading] = useState(false);
   const db = getFirebaseDb();
   const { user } = useAuth();
   const commentInputRef = useRef<HTMLInputElement | null>(null);
@@ -140,6 +143,22 @@ export default function PostByIdPage({
   }, [emojiCategory, emojiQuery]);
 
   useEffect(() => {
+    if (!db || !user?.uid) {
+      setUnlockedPostIds([]);
+      return;
+    }
+    getDoc(doc(db, "users", user.uid))
+      .then((snap) => {
+        const d = snap.exists() ? snap.data() : {};
+        const unlocked = Array.isArray(d.unlockedPostIds)
+          ? (d.unlockedPostIds as unknown[]).map((v) => String(v))
+          : [];
+        setUnlockedPostIds(unlocked);
+      })
+      .catch(() => setUnlockedPostIds([]));
+  }, [db, user?.uid]);
+
+  useEffect(() => {
     if (!id) {
       setStatus("error");
       return;
@@ -176,6 +195,7 @@ export default function PostByIdPage({
           hideComments: !!d.hideComments,
           hideLikes: !!d.hideLikes,
           tipGoal: d.tipGoal as PostData["tipGoal"] | undefined,
+          lockedContent: d.lockedContent as PostData["lockedContent"] | undefined,
         });
         setStatus("ok");
       })
@@ -312,6 +332,40 @@ export default function PostByIdPage({
   const visibleIndex = urls.length ? (currentMediaIndex % urls.length) : 0;
   const visibleUrl = urls[visibleIndex];
   const visibleIsVideo = mediaTypes[visibleIndex] === "video" || (visibleUrl && /\.(mp4|webm|mov|ogg)(\?|$)/i.test(visibleUrl));
+  const isLockedForViewer =
+    !!post.lockedContent?.enabled &&
+    (post.lockedContent?.priceCents ?? 0) >= 100 &&
+    !unlockedPostIds.includes(id);
+
+  const startUnlockCheckout = async () => {
+    if (!user || !id || unlockLoading) return;
+    setUnlockLoading(true);
+    try {
+      const base = typeof window !== "undefined" ? window.location.origin : "";
+      const res = await fetch("/api/unlock-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postId: id,
+          uid: user.uid,
+          customer_email: user.email || "",
+          base_url: base,
+          success_url: `${base}/post/${encodeURIComponent(id)}?unlocked=1`,
+          cancel_url: `${base}/post/${encodeURIComponent(id)}`,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      alert(data.error || "Could not start unlock checkout.");
+    } catch {
+      alert("Could not start unlock checkout.");
+    } finally {
+      setUnlockLoading(false);
+    }
+  };
 
   return (
     <main className="member-main member-post-main">
@@ -326,12 +380,12 @@ export default function PostByIdPage({
             <div className="post-media-carousel">
               <div className="post-media-item">
                 {visibleIsVideo ? (
-                  <video src={visibleUrl} controls playsInline className="post-media-img" key={visibleIndex} />
+                  <video src={visibleUrl} controls playsInline className={`post-media-img${isLockedForViewer ? " post-media-img-locked" : ""}`} key={visibleIndex} />
                 ) : (
                   <img
                     src={visibleUrl}
                     alt={altTexts[visibleIndex]?.trim() || ""}
-                    className="post-media-img"
+                    className={`post-media-img${isLockedForViewer ? " post-media-img-locked" : ""}`}
                     loading="eager"
                     key={visibleIndex}
                   />
@@ -339,6 +393,15 @@ export default function PostByIdPage({
                 {showCaptionOnMedia && (
                   <div className={`post-caption-overlay post-caption-overlay-${captionStyle}`}>
                     <span className="post-caption-overlay-text" style={post.overlayTextSize != null && post.overlayTextSize > 0 ? { fontSize: `${post.overlayTextSize}px` } : undefined}>{post.body}</span>
+                  </div>
+                )}
+                {isLockedForViewer && (
+                  <div className="post-lock-overlay">
+                    <button type="button" className="post-unlock-btn" onClick={startUnlockCheckout} disabled={unlockLoading}>
+                      {unlockLoading
+                        ? "Opening checkout..."
+                        : `Unlock for $${((post.lockedContent?.priceCents ?? 0) / 100).toFixed(0)}`}
+                    </button>
                   </div>
                 )}
               </div>

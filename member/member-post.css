@@ -75,6 +75,38 @@
   object-fit: contain;
   object-position: center top;
 }
+.post-media-img-locked {
+  filter: blur(18px) saturate(0.82);
+  transform: scale(1.04);
+}
+.post-lock-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(22, 12, 20, 0.2) 0%, rgba(22, 12, 20, 0.5) 100%);
+}
+.post-unlock-btn {
+  border: 1px solid rgba(255, 196, 226, 0.7);
+  background: linear-gradient(180deg, rgba(29, 16, 24, 0.92) 0%, rgba(20, 12, 18, 0.94) 100%);
+  color: #ffe7f4;
+  border-radius: 999px;
+  padding: 0.62rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  box-shadow: 0 10px 24px rgba(18, 10, 16, 0.42);
+  cursor: pointer;
+}
+.post-unlock-btn:hover:not(:disabled) {
+  border-color: rgba(255, 213, 235, 0.92);
+  transform: translateY(-1px);
+}
+.post-unlock-btn:disabled {
+  opacity: 0.8;
+  cursor: wait;
+}
 .post-body {
   font-size: 1rem;
   line-height: 1.7;

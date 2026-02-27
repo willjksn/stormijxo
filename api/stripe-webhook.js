@@ -68,6 +68,7 @@ module.exports = async (req, res) => {
     const membersRef = db.collection("members");
     const tipsRef = db.collection("tips");
     const purchasesRef = db.collection("purchases");
+    const usersRef = db.collection("users");
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
@@ -76,6 +77,62 @@ module.exports = async (req, res) => {
       if (!session.subscription) {
         const meta = session.metadata || {};
         const isTreat = meta.type === "treat";
+        const isUnlockPost = meta.type === "unlock_post";
+
+        if (isUnlockPost) {
+          const unlockPostId =
+            typeof meta.unlock_post_id === "string" ? meta.unlock_post_id.trim() : "";
+          const unlockUid =
+            typeof meta.unlock_uid === "string" ? meta.unlock_uid.trim() : "";
+          const unlockEmail =
+            session.customer_email ||
+            (session.customer_details && session.customer_details.email) ||
+            null;
+
+          if (unlockPostId) {
+            const unlockPayload = {
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              unlockedAt: session.created
+                ? admin.firestore.Timestamp.fromMillis(session.created * 1000)
+                : admin.firestore.FieldValue.serverTimestamp(),
+              postId: unlockPostId,
+              uid: unlockUid || null,
+              email: unlockEmail,
+              amountCents: typeof session.amount_total === "number" ? session.amount_total : null,
+              currency: session.currency || "usd",
+              stripeCustomerId: session.customer || null,
+              stripeSessionId: session.id,
+              paymentStatus: session.payment_status || null,
+              source: "stripe_post_unlock",
+            };
+
+            await db.collection("postUnlocks").add(unlockPayload);
+
+            if (unlockUid) {
+              await usersRef.doc(unlockUid).set(
+                {
+                  unlockedPostIds: admin.firestore.FieldValue.arrayUnion(unlockPostId),
+                  updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                },
+                { merge: true }
+              );
+            } else if (unlockEmail) {
+              const byEmail = await usersRef.where("email", "==", unlockEmail).limit(1).get();
+              if (!byEmail.empty) {
+                await byEmail.docs[0].ref.set(
+                  {
+                    unlockedPostIds: admin.firestore.FieldValue.arrayUnion(unlockPostId),
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                  },
+                  { merge: true }
+                );
+              }
+            }
+          }
+
+          json(res, 200, { received: true });
+          return;
+        }
 
         if (isTreat) {
           const email = session.customer_email || (session.customer_details && session.customer_details.email) || null;

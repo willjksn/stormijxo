@@ -108,6 +108,7 @@ export type FeedPost = {
   hideLikes?: boolean;
   poll?: { question: string; options: string[]; optionVotes?: number[] };
   tipGoal?: { description: string; targetCents: number; raisedCents: number };
+  lockedContent?: { enabled?: boolean; priceCents?: number };
 };
 
 function displayPublicName(nameLike: string): string {
@@ -173,7 +174,9 @@ function FeedCard({
   onLikeUpdated?: (postId: string, likedBy: string[], likeCount: number) => void;
   currentUser: { uid: string; email: string | null; displayName: string | null } | null;
   savedPostIds: string[];
+  unlockedPostIds: string[];
   onSavedUpdated?: (savedIds: string[]) => void;
+  onUnlockRequest?: (postId: string) => Promise<boolean>;
 }) {
   const firstUrl = post.mediaUrls?.[0];
   const isVideo = post.mediaTypes?.[0] === "video" || (firstUrl && /\.(mp4|webm|mov|ogg)(\?|$)/i.test(firstUrl));
@@ -211,6 +214,11 @@ function FeedCard({
   const commentsForViewer = showAdminEdit ? post.comments : visibleComments;
   const isLiked = !!currentUser?.uid && (post.likedBy ?? []).includes(currentUser.uid);
   const isSaved = savedPostIds.includes(post.id);
+  const isLockedForViewer =
+    !!post.lockedContent?.enabled &&
+    (post.lockedContent?.priceCents ?? 0) >= 100 &&
+    !unlockedPostIds.includes(post.id);
+  const [unlockLoading, setUnlockLoading] = useState(false);
 
   const visibleEmojis = useMemo(() => {
     const q = emojiQuery.trim().toLowerCase();
@@ -376,6 +384,18 @@ function FeedCard({
     onSavedUpdated?.(nextSaved);
   };
 
+  const startUnlock = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!post.id || !onUnlockRequest || unlockLoading) return;
+    setUnlockLoading(true);
+    try {
+      await onUnlockRequest(post.id);
+    } finally {
+      setUnlockLoading(false);
+    }
+  };
+
   return (
     <article className={`feed-card${commentsOpen ? " comments-open" : ""}`} key={post.id}>
       <div className="feed-card-header">
@@ -396,9 +416,9 @@ function FeedCard({
       <Link href={`/post/${post.id}`} className="feed-card-media-wrap">
         {firstUrl &&
           (isVideo ? (
-            <video src={firstUrl} muted playsInline className="feed-card-media feed-card-media-video" preload="metadata" />
+            <video src={firstUrl} muted playsInline className={`feed-card-media feed-card-media-video${isLockedForViewer ? " feed-card-media-locked" : ""}`} preload="metadata" />
           ) : (
-            <img src={firstUrl} alt="" className="feed-card-media" loading="lazy" decoding="async" />
+            <img src={firstUrl} alt="" className={`feed-card-media${isLockedForViewer ? " feed-card-media-locked" : ""}`} loading="lazy" decoding="async" />
           ))}
         {showCaptionOnMedia && (
           <FeedCardCaptionOverlay caption={post.body} style={captionStyle} size={post.overlayTextSize} />
@@ -418,6 +438,15 @@ function FeedCard({
               </span>
             )}
           </span>
+        )}
+        {isLockedForViewer && (
+          <div className="feed-card-lock-overlay" aria-hidden={unlockLoading ? "true" : "false"}>
+            <button type="button" className="feed-card-unlock-btn" onClick={startUnlock} disabled={unlockLoading}>
+              {unlockLoading
+                ? "Opening checkout..."
+                : `Unlock for $${((post.lockedContent?.priceCents ?? 0) / 100).toFixed(0)}`}
+            </button>
+          </div>
         )}
       </Link>
 
@@ -700,6 +729,7 @@ export default function HomeFeedPage() {
   const [firestorePosts, setFirestorePosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [savedPostIds, setSavedPostIds] = useState<string[]>([]);
+  const [unlockedPostIds, setUnlockedPostIds] = useState<string[]>([]);
   const db = getFirebaseDb();
   const { user } = useAuth();
   const showAdminEdit = !!user && isAdminEmail(user.email ?? null);
@@ -731,6 +761,7 @@ export default function HomeFeedPage() {
             hideLikes: !!d.hideLikes,
             poll: d.poll as FeedPost["poll"] | undefined,
             tipGoal: d.tipGoal as FeedPost["tipGoal"] | undefined,
+            lockedContent: d.lockedContent as FeedPost["lockedContent"] | undefined,
           });
         });
         setFirestorePosts(list);
@@ -742,16 +773,53 @@ export default function HomeFeedPage() {
   useEffect(() => {
     if (!db || !user?.uid) {
       setSavedPostIds([]);
+      setUnlockedPostIds([]);
       return;
     }
     getDoc(doc(db, "users", user.uid))
       .then((snap) => {
         const d = snap.exists() ? snap.data() : {};
         const ids = Array.isArray(d.savedPostIds) ? (d.savedPostIds as unknown[]).map((v) => String(v)) : [];
+        const unlocked = Array.isArray(d.unlockedPostIds)
+          ? (d.unlockedPostIds as unknown[]).map((v) => String(v))
+          : [];
         setSavedPostIds(ids);
+        setUnlockedPostIds(unlocked);
       })
-      .catch(() => setSavedPostIds([]));
+      .catch(() => {
+        setSavedPostIds([]);
+        setUnlockedPostIds([]);
+      });
   }, [db, user?.uid]);
+
+  const startUnlockCheckout = async (postId: string): Promise<boolean> => {
+    if (!user) return false;
+    const base = typeof window !== "undefined" ? window.location.origin : "";
+    try {
+      const res = await fetch("/api/unlock-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postId,
+          uid: user.uid,
+          customer_email: user.email || "",
+          base_url: base,
+          success_url: `${base}/post/${encodeURIComponent(postId)}?unlocked=1`,
+          cancel_url: `${base}/post/${encodeURIComponent(postId)}`,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return true;
+      }
+      alert(data.error || "Could not start unlock checkout.");
+      return false;
+    } catch {
+      alert("Could not start unlock checkout.");
+      return false;
+    }
+  };
 
   const posts: FeedPost[] = useMemo(() => firestorePosts, [firestorePosts]);
 
@@ -786,7 +854,9 @@ export default function HomeFeedPage() {
             }}
             currentUser={user ? { uid: user.uid, email: user.email, displayName: user.displayName } : null}
             savedPostIds={savedPostIds}
+            unlockedPostIds={unlockedPostIds}
             onSavedUpdated={(savedIds) => setSavedPostIds(savedIds)}
+            onUnlockRequest={startUnlockCheckout}
           />
         ))}
       </div>

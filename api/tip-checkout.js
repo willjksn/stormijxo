@@ -22,6 +22,10 @@ module.exports = async (req, res) => {
     const subscriptionCheckoutHandler = require("./subscription-checkout");
     return subscriptionCheckoutHandler(req, res);
   }
+  if (requestPath.includes("unlock-checkout")) {
+    const unlockCheckoutHandler = require("./unlock-checkout");
+    return unlockCheckoutHandler(req, res);
+  }
 
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");

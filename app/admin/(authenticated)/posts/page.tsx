@@ -181,6 +181,8 @@ export default function AdminPostsPage() {
   const [tipGoalDescription, setTipGoalDescription] = useState("");
   const [tipGoalTargetDollars, setTipGoalTargetDollars] = useState("");
   const [tipGoalRaisedCents, setTipGoalRaisedCents] = useState(0);
+  const [lockEnabled, setLockEnabled] = useState(false);
+  const [lockPriceDollars, setLockPriceDollars] = useState("");
   const [overlaySectionOpen, setOverlaySectionOpen] = useState(false);
   const captionRef = useRef<HTMLTextAreaElement | null>(null);
   const pollQuestionRef = useRef<HTMLInputElement | null>(null);
@@ -333,6 +335,18 @@ export default function AdminPostsPage() {
           setTipGoalDescription("");
           setTipGoalTargetDollars("");
           setTipGoalRaisedCents(0);
+        }
+        const locked = d.lockedContent as { enabled?: boolean; priceCents?: number } | undefined;
+        if (locked?.enabled) {
+          setLockEnabled(true);
+          setLockPriceDollars(
+            typeof locked.priceCents === "number" && locked.priceCents > 0
+              ? String((locked.priceCents / 100).toFixed(2))
+              : ""
+          );
+        } else {
+          setLockEnabled(false);
+          setLockPriceDollars("");
         }
         const urls = (d.mediaUrls as string[]) ?? [];
         const types = (d.mediaTypes as ("image" | "video")[]) ?? [];
@@ -487,6 +501,11 @@ export default function AdminPostsPage() {
       setMessage({ type: "error", text: "Add media, a caption, or a poll." });
       return;
     }
+    const lockPriceCents = lockEnabled ? Math.round(parseFloat(lockPriceDollars || "0") * 100) : 0;
+    if (lockEnabled && (!Number.isFinite(lockPriceCents) || lockPriceCents < 100 || lockPriceCents > 100000)) {
+      setMessage({ type: "error", text: "Set unlock price between $1 and $1000." });
+      return;
+    }
     const now = new Date();
     let calendarDate: string;
     let calendarTime: string;
@@ -557,6 +576,10 @@ export default function AdminPostsPage() {
           raisedCents: tipGoalRaisedCents,
         };
       }
+      payload.lockedContent = {
+        enabled: lockEnabled,
+        priceCents: lockEnabled ? lockPriceCents : 0,
+      };
       if (calendarTime) payload.calendarTime = calendarTime;
 
       if (editId) {
@@ -594,6 +617,8 @@ export default function AdminPostsPage() {
         setTipGoalDescription("");
         setTipGoalTargetDollars("");
         setTipGoalRaisedCents(0);
+        setLockEnabled(false);
+        setLockPriceDollars("");
       }
       setShowScheduleModal(false);
       setScheduleDate("");
@@ -913,6 +938,54 @@ export default function AdminPostsPage() {
                     Save
                   </button>
                   <button type="button" className="btn btn-secondary admin-posts-poll-remove" onClick={() => { setTipGoalEnabled(false); setTipGoalDescription(""); setTipGoalTargetDollars(""); setTipGoalRaisedCents(0); }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section className="admin-posts-card-section">
+            <h2 className="admin-posts-card-heading">Lock / Unlock</h2>
+            {!lockEnabled ? (
+              <button type="button" className="admin-posts-poll-add" onClick={() => setLockEnabled(true)}>
+                + Lock this post behind paid unlock
+              </button>
+            ) : (
+              <div className="admin-posts-tip-goal-block">
+                <p className="admin-posts-hint">
+                  Blur all post media and require one-time payment to unlock permanently for that customer.
+                </p>
+                <div className="admin-posts-tip-goal-row">
+                  <label className="admin-posts-overlay-label">Unlock price ($)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="1000"
+                    step="1"
+                    value={lockPriceDollars}
+                    onChange={(e) => setLockPriceDollars(e.target.value)}
+                    placeholder="10"
+                    className="admin-posts-tip-goal-amount"
+                  />
+                </div>
+                <div className="admin-posts-poll-actions">
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => savePost("draft")}
+                    disabled={publishLoading || !(selectedMedia.length > 0 || caption.trim() || (poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2))}
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary admin-posts-poll-remove"
+                    onClick={() => {
+                      setLockEnabled(false);
+                      setLockPriceDollars("");
+                    }}
+                  >
                     Cancel
                   </button>
                 </div>
