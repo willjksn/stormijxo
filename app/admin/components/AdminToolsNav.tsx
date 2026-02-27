@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { getFirebaseDb } from "../../../lib/firebase";
 import { PURCHASES_COLLECTION } from "../../../lib/purchases";
 
@@ -16,8 +16,6 @@ const TOOLS_LINKS = [
   { id: "purchases", label: "Purchases", href: "/admin/purchases" },
   { id: "dms", label: "Messages", href: "/admin/dms" },
 ] as const;
-
-const BADGE_POLL_MS = 45_000;
 
 export function AdminToolsNav() {
   const pathname = usePathname();
@@ -32,52 +30,35 @@ export function AdminToolsNav() {
     mountedRef.current = true;
     const db = getFirebaseDb();
     if (!db) return;
-
-    const fetchCounts = () => {
-      if (!mountedRef.current) return;
-      getDocs(
-        query(
-          collection(db, PURCHASES_COLLECTION),
-          where("scheduleStatus", "==", "pending")
-        )
-      )
-        .then((snap) => {
-          if (!mountedRef.current) return;
-          let count = 0;
-          snap.forEach((d) => {
-            const data = d.data() as Record<string, unknown>;
-            if (data.treatId != null) count += 1;
-          });
-          setUnscheduledPurchasesCount(count);
-        })
-        .catch(() => {
-          if (mountedRef.current) setUnscheduledPurchasesCount(0);
+    const unsubPurchases = onSnapshot(
+      query(collection(db, PURCHASES_COLLECTION), where("scheduleStatus", "==", "pending")),
+      (snap) => {
+        if (!mountedRef.current) return;
+        let count = 0;
+        snap.forEach((d) => {
+          const data = d.data() as Record<string, unknown>;
+          if (data.treatId != null) count += 1;
         });
-
-      getDocs(
-        query(
-          collection(db, "conversations"),
-          where("firstMessageFromMember", "==", true)
-        )
-      )
-        .then((snap) => {
-          if (mountedRef.current) setRequestsCount(snap.size);
-        })
-        .catch(() => {
-          if (mountedRef.current) setRequestsCount(0);
-        });
-    };
-
-    fetchCounts();
-    const interval = setInterval(fetchCounts, BADGE_POLL_MS);
-
-    const onFocus = () => fetchCounts();
-    window.addEventListener("focus", onFocus);
+        setUnscheduledPurchasesCount(count);
+      },
+      () => {
+        if (mountedRef.current) setUnscheduledPurchasesCount(0);
+      }
+    );
+    const unsubRequests = onSnapshot(
+      query(collection(db, "conversations"), where("firstMessageFromMember", "==", true)),
+      (snap) => {
+        if (mountedRef.current) setRequestsCount(snap.size);
+      },
+      () => {
+        if (mountedRef.current) setRequestsCount(0);
+      }
+    );
 
     return () => {
       mountedRef.current = false;
-      clearInterval(interval);
-      window.removeEventListener("focus", onFocus);
+      unsubPurchases();
+      unsubRequests();
     };
   }, []);
 

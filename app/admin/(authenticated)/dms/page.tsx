@@ -624,7 +624,7 @@ export default function AdminDmsPage() {
         flexDirection: "column",
         flex: 1,
         minHeight: 0,
-        overflowX: "hidden",
+        overflowX: "auto",
         overflowY: "auto",
       }}
     >

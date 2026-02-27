@@ -497,9 +497,10 @@
 @media (min-width: 769px) and (max-width: 1180px) and (orientation: landscape) {
   .admin-main.admin-content-main {
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: auto;
   }
   .chat-page {
     min-height: calc(100vh - 220px);
+    min-width: 920px;
   }
 }
