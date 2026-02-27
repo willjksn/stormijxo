@@ -278,7 +278,7 @@ export default function MemberDmsPage() {
   }
 
   return (
-    <main className="member-main" style={{ padding: "1rem", height: "calc(100vh - var(--header-height, 80px) - 2rem)", minHeight: 420, display: "flex", flexDirection: "column", maxWidth: 800, margin: "0 auto" }}>
+    <main className="member-main" style={{ padding: "1rem", height: "calc(min(100vh, 100dvh) - var(--header-height, 80px) - 2rem)", minHeight: 420, display: "flex", flexDirection: "column", maxWidth: 800, margin: "0 auto" }}>
       <div className="chat-page" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
         <div className="chat-thread" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
           <div className="chat-thread-header">

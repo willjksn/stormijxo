@@ -467,7 +467,7 @@
   .chat-page {
     flex-direction: column;
     height: auto;
-    min-height: calc(100vh - 170px);
+    min-height: min(calc(100vh - 170px), calc(100dvh - 170px));
     min-width: 0;
     width: 100%;
   }
@@ -475,17 +475,21 @@
     width: 100%;
     min-width: 0;
     max-height: 38vh;
+    max-height: min(38vh, 38dvh);
     border-right: none;
     border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
   }
   .chat-thread {
-    min-height: 48vh;
+    flex: 1;
+    min-height: 0;
   }
   .chat-messages {
     min-height: 30vh;
+    min-height: min(30vh, 30dvh);
   }
   .admin-main.admin-content-main {
-    overflow-x: hidden;
+    overflow-x: auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
@@ -500,7 +504,7 @@
     overflow-x: auto;
   }
   .chat-page {
-    min-height: calc(100vh - 220px);
+    min-height: min(calc(100vh - 220px), calc(100dvh - 220px));
     min-width: 920px;
   }
 }
