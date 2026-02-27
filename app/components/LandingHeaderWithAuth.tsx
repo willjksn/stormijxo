@@ -70,6 +70,17 @@ export function LandingHeaderWithAuth() {
     setModalOpen(true);
   };
 
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const hadAuthParams = url.searchParams.has("auth") || url.searchParams.has("pay");
+    if (!hadAuthParams) return;
+    url.searchParams.delete("auth");
+    url.searchParams.delete("pay");
+    window.history.replaceState({}, "", url.pathname + (url.search ? `?${url.searchParams.toString()}` : "") + url.hash);
+  };
+
   return (
     <>
       <header className="site-header">
@@ -110,7 +121,7 @@ export function LandingHeaderWithAuth() {
       </header>
       <AuthModal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={handleCloseModal}
         initialTab={modalTab}
         redirectPath={redirect}
       />
