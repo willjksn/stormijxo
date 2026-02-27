@@ -12,6 +12,8 @@ export const DEFAULT_PRIVACY_HTML = `<p>This page describes how we use your info
 <p>We do not sell or share your personal information with third parties for marketing. Data is used only to provide and manage the service and as required by law.</p>
 <h2>Security</h2>
 <p>We take reasonable steps to protect your data. No method of transmission over the internet is 100% secure; we encourage you to use strong passwords and keep your account details private.</p>
+<h2>Content and member conduct</h2>
+<p>Members are prohibited from downloading, copying, selling, or using images, videos, or other content from the service for any reason. Unauthorized use may violate law and result in criminal or civil action. We may report violations to law enforcement and pursue legal remedies. See our Terms of Service for full prohibitions and consequences.</p>
 <h2>Changes</h2>
 <p>This policy may be updated from time to time. Continued use of the site after changes constitutes acceptance of the updated policy.</p>`;
 
@@ -24,7 +26,13 @@ export const DEFAULT_TERMS_HTML = `<p>By using this site and any subscription or
 <p>We may remove you or cancel your access at any time, for any reason. If you are removed, you keep access until the end of the period you have already paid for. You will not be charged again after that period.</p>
 <h2>Behavior</h2>
 <p>You are expected to be respectful when using the service. Abusive, harassing, or otherwise inappropriate behavior may result in immediate removal and cancellation of your membership without refund for the current period.</p>
-<h2>Use of content</h2>
-<p>Content provided through the service is for your personal use only. You may not screenshot, share, redistribute, or use it commercially without permission.</p>
+<h2>Use of content — personal viewing only</h2>
+<p>Content provided through the service (including all images, videos, text, and other media) is for your personal viewing only while you are a member in good standing. You may not screenshot, capture, record, share, redistribute, or use it commercially without express written permission.</p>
+<h2>Strict prohibition: no downloading, copying, saving, or use of images and videos</h2>
+<p><strong>You are strictly prohibited from downloading, copying, saving, capturing, screen-recording, photographing, distributing, selling, licensing, or using in any way—for any reason—any images, videos, or other media (“Content”) you access through this service.</strong> This includes, but is not limited to: saving to a device; sharing via messaging, social media, or file-sharing; using in another website or app; using for commercial purposes; using for training AI or other systems; or any other use outside of viewing within the service during your active membership. Violation of this provision is a material breach of these terms and may result in immediate termination of your access, forfeiture of any fees paid, and referral to law enforcement and/or civil action.</p>
+<h2>Legal consequences and enforcement</h2>
+<p>Unauthorized use, copying, distribution, or exploitation of Content may violate federal and state laws (including copyright, right of publicity, and computer-fraud statutes) and may result in <strong>criminal prosecution, imprisonment, fines, and/or civil liability</strong>. We reserve the right to pursue all available legal remedies, including but not limited to: reporting to law enforcement; seeking injunctions; and suing for damages (including statutory damages, attorneys’ fees, and profits derived from misuse). You may be held liable for monetary damages, including in amounts that significantly exceed any amount you paid for membership. By using the service, you acknowledge that violation of these content-use terms can lead to serious legal consequences, including the possibility of jail time, substantial fines, and being sued in civil court.</p>
+<h2>No permission granted</h2>
+<p>No license or right to use, copy, download, or exploit any Content is granted to you except the limited right to view Content in the service during your active membership. Any other use is unauthorized and prohibited.</p>
 <h2>Changes to terms</h2>
 <p>These terms may be updated. Continued use of the service after changes constitutes acceptance of the updated terms.</p>`;

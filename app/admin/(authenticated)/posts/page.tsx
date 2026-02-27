@@ -1369,7 +1369,6 @@ export default function AdminPostsPage() {
                       setExistingPosts((prev) => prev.filter((x) => x.id !== p.id));
                       setMessage({ type: "success", text: "Post deleted." });
                       if (editId === p.id) {
-                        setEditId(null);
                         router.push("/admin/posts");
                       }
                     } catch (err) {
