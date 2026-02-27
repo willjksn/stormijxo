@@ -13,7 +13,7 @@ Convert `Stormij_xo` from a multi-page static HTML app into a modern app experie
 ## Current Status (What Is Done)
 
 - App Router migration is fully active for member/admin/legal/checkout flows; the product now runs as a Next.js app-first experience.
-- Landing page (`app/page.tsx`) is live with refreshed copy/styling and Stripe pricing CTA.
+- Landing page (`app/page.tsx`) is live with refreshed copy/styling and Stripe pricing CTA. **Subscription** uses Checkout Session API (not Payment Link): “Join” calls **POST /api/subscription-checkout** with optional customer_email/uid; set **STRIPE_PRICE_ID_MONTHLY** (or STRIPE_SUBSCRIPTION_PRICE_ID) to your recurring price ID.
 - Member feed (`app/(member)/home/page.tsx`) now supports:
   - clickable likes per signed-in user (`likedBy` + `likeCount`)
   - comment modal (opens from comment icon) with inline composer
@@ -35,7 +35,7 @@ Convert `Stormij_xo` from a multi-page static HTML app into a modern app experie
   - calendar cards slightly smaller
   - media fill adjusted (no white edges)
   - preview cleaned: removed "X • Post" and "Export", delete moved into edit/reschedule controls
-- Landing pricing copy currently reflects `$12` in key visible CTA text.
+- Landing pricing copy currently reflects `$19` in key visible CTA text.
 - Best-effort media protection guardrails were added for member routes (context menu/drag/save-print shortcut deterrents + video download control restrictions). Note: screenshot prevention cannot be guaranteed on web.
 
 ## Important Context
@@ -106,7 +106,8 @@ Before editing:
 
 ## Next Steps (Suggested)
 
-1. **Subscription portal verification**: If users still fail to redirect, inspect prod member docs for `stripeCustomerId/stripeSubscriptionId` data quality and webhook history.
+1. **Roadmap:** See **docs/ROADMAP.md** for where to start: Stripe + members → Treats → DM / Go Live / Chat, and what’s still unwired.
+2. **Subscription portal verification**: If users still fail to redirect, inspect prod member docs for `stripeCustomerId/stripeSubscriptionId` data quality and webhook history.
 2. **Media protection hardening**: Consider signed/expiring media URLs and stricter delivery controls (UI-only protections are deterrents, not guarantees).
 3. **Treats relaunch switch**: Re-enable member Treats nav/page once checkout/inventory flow is stable.
 4. **Landing pricing consistency**: Ensure all legacy/static surfaces and Stripe product references match current offer copy.

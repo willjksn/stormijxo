@@ -184,6 +184,7 @@ module.exports = async (req, res) => {
           instagramHandle = customFields[0].text.value;
         }
         const tier = (session.metadata && session.metadata.tier) || null;
+        const uid = (session.metadata && session.metadata.uid) || null;
 
         await membersRef.add({
           email: email,
@@ -195,6 +196,7 @@ module.exports = async (req, res) => {
           stripeSessionId: session.id,
           tier: tier,
           source: "stripe",
+          ...(uid ? { uid, userId: uid } : {}),
         });
       }
     } else if (

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { LandingHeaderWithAuth } from "./components/LandingHeaderWithAuth";
 import { LandingCtaCount } from "./components/LandingContent";
 import { LandingSocialLinks } from "./components/LandingSocialLinks";
+import { SubscriptionCheckoutButton } from "./components/SubscriptionCheckoutButton";
 
 export default function LandingPage() {
   return (
@@ -109,15 +110,13 @@ export default function LandingPage() {
             <article className="tier-card tier-featured">
               <h3>Monthly membership</h3>
               <p className="price">
-                <span className="amount">$12.00</span>
+                <span className="amount">$19.00</span>
               </p>
               <ul>
                 <li>Keep it small.</li>
                 <li>Cancel anytime.</li>
               </ul>
-              <a href="https://buy.stripe.com/4gM4gB2LM5m4brQgHvds400" className="btn btn-primary btn-shine">
-                Join the Inner Circle - $12/mo
-              </a>
+              <SubscriptionCheckoutButton />
             </article>
           </div>
           <p className="trust-line">
@@ -173,7 +172,7 @@ export default function LandingPage() {
           <LandingCtaCount />
           <p className="preview-sub">Join the Inner Circle</p>
           <p className="hero-promise">
-            <span className="hero-promise-line">$12/month</span>
+            <span className="hero-promise-line">$19/month</span>
           </p>
           <p className="preview-sub">Keep it small.</p>
           <a href="#pricing" className="btn btn-primary btn-shine">
