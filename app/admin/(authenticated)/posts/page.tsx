@@ -964,11 +964,11 @@ export default function AdminPostsPage() {
                 <input type="file" accept="image/*,video/*" onChange={handleUpload} disabled={uploading} className="sr-only" />
                 {uploading ? `Uploading… ${Math.round(uploadProgress)}%` : "Upload from device"}
               </label>
-              <button type="button" className="admin-posts-btn-library" onClick={toggleVoiceRecording} disabled={uploading}>
-                {isRecordingVoice ? "Stop voice recording" : "Record voice"}
-              </button>
               <button type="button" className="admin-posts-btn-library" onClick={() => { loadLibrary(); setShowLibraryModal(true); }}>
                 From library
+              </button>
+              <button type="button" className="admin-posts-btn-library" onClick={toggleVoiceRecording} disabled={uploading}>
+                {isRecordingVoice ? "Stop voice recording" : "Record voice"}
               </button>
             </div>
             {isRecordingVoice && (
