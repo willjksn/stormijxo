@@ -15,7 +15,7 @@ import {
   updateDoc,
   deleteDoc,
 } from "firebase/firestore";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, deleteField } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseStorage } from "../../../../lib/firebase";
 import { listMediaLibrary, uploadToMediaLibrary, type MediaItem } from "../../../../lib/media-library";
 import { useAuth } from "../../../contexts/AuthContext";
@@ -176,6 +176,7 @@ export default function AdminPostsPage() {
   const [aiTone, setAiTone] = useState("");
   const [aiLength, setAiLength] = useState("");
   const [existingPosts, setExistingPosts] = useState<{ id: string; body: string; status?: PostStatus; createdAt: unknown }[]>([]);
+  const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showLibraryModal, setShowLibraryModal] = useState(false);
   const [scheduleDate, setScheduleDate] = useState("");
@@ -378,9 +379,9 @@ export default function AdminPostsPage() {
       .catch(() => {});
   }, [user, db]);
 
-  useEffect(() => {
+  const loadRecentPosts = useCallback(() => {
     if (!db) return;
-    getDocs(query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(50)))
+    getDocs(query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(5)))
       .then((snap) => {
         setExistingPosts(
           snap.docs.map((d) => {
@@ -396,6 +397,10 @@ export default function AdminPostsPage() {
       })
       .catch(() => {});
   }, [db]);
+
+  useEffect(() => {
+    loadRecentPosts();
+  }, [loadRecentPosts]);
 
   useEffect(() => {
     if (!emojiOpenFor) return;
@@ -518,6 +523,13 @@ export default function AdminPostsPage() {
       setMessage({ type: "error", text: "Set unlock price between $1 and $1000." });
       return;
     }
+    if (tipGoalEnabled && tipGoalDescription.trim()) {
+      const targetDollars = parseFloat(tipGoalTargetDollars);
+      if (!Number.isFinite(targetDollars) || targetDollars <= 0) {
+        setMessage({ type: "error", text: "Enter a tip goal target amount (e.g. 50 for $50)." });
+        return;
+      }
+    }
     const now = new Date();
     let calendarDate: string;
     let calendarTime: string;
@@ -577,17 +589,32 @@ export default function AdminPostsPage() {
         payload.overlayUnderline = overlayUnderline;
         payload.overlayItalic = overlayItalic;
         payload.overlayTextSize = overlayTextSize;
+      } else if (editId) {
+        payload.overlayText = deleteField();
+        payload.overlayTextColor = deleteField();
+        payload.overlayHighlight = deleteField();
+        payload.overlayUnderline = deleteField();
+        payload.overlayItalic = deleteField();
+        payload.overlayTextSize = deleteField();
       }
       if (poll?.question?.trim() && poll.options.filter((o) => o.trim()).length >= 2) {
         payload.poll = { question: poll.question.trim(), options: poll.options.map((o) => o.trim()).filter(Boolean) };
+      } else if (editId) {
+        payload.poll = deleteField();
       }
-      if (tipGoalEnabled && tipGoalDescription.trim() && tipGoalTargetDollars) {
+      if (tipGoalEnabled && tipGoalDescription.trim()) {
+        const targetDollars = parseFloat(tipGoalTargetDollars);
+        const targetCents = Number.isFinite(targetDollars) && targetDollars > 0
+          ? Math.max(100, Math.round(targetDollars * 100))
+          : 100;
         payload.tipGoal = {
           enabled: true,
           description: tipGoalDescription.trim(),
-          targetCents: Math.round(parseFloat(tipGoalTargetDollars) * 100) || 0,
+          targetCents,
           raisedCents: tipGoalRaisedCents,
         };
+      } else if (editId) {
+        payload.tipGoal = deleteField();
       }
       payload.lockedContent = {
         enabled: lockEnabled,
@@ -636,16 +663,7 @@ export default function AdminPostsPage() {
       setShowScheduleModal(false);
       setScheduleDate("");
       setScheduleTime("12:00");
-      getDocs(query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(50)))
-        .then((snap) => {
-          setExistingPosts(
-            snap.docs.map((d) => {
-              const data = d.data();
-              return { id: d.id, body: (data.body ?? "").slice(0, 60), status: data.status as PostStatus | undefined, createdAt: data.createdAt };
-            })
-          );
-        })
-        .catch(() => {});
+      loadRecentPosts();
     } catch (err) {
       setMessage({ type: "error", text: (err as Error).message || "Failed to save" });
     } finally {
@@ -922,8 +940,13 @@ export default function AdminPostsPage() {
                   >
                     Save
                   </button>
-                  <button type="button" className="btn btn-secondary admin-posts-poll-remove" onClick={() => setPoll(null)}>
-                    Cancel
+                  <button
+                    type="button"
+                    className="btn btn-secondary admin-posts-poll-remove"
+                    onClick={() => setPoll(null)}
+                    title="Remove poll from this post. Save the post to apply."
+                  >
+                    Remove poll
                   </button>
                 </div>
               </div>
@@ -974,11 +997,11 @@ export default function AdminPostsPage() {
                   <label className="admin-posts-overlay-label">Target ($)</label>
                   <input
                     type="number"
-                    min="1"
-                    step="1"
+                    min="0.01"
+                    step="0.01"
                     value={tipGoalTargetDollars}
                     onChange={(e) => setTipGoalTargetDollars(e.target.value)}
-                    placeholder="500"
+                    placeholder="e.g. 50"
                     className="admin-posts-tip-goal-amount"
                   />
                 </div>
@@ -1006,8 +1029,13 @@ export default function AdminPostsPage() {
                   >
                     Save
                   </button>
-                  <button type="button" className="btn btn-secondary admin-posts-poll-remove" onClick={() => { setTipGoalEnabled(false); setTipGoalDescription(""); setTipGoalTargetDollars(""); setTipGoalRaisedCents(0); }}>
-                    Cancel
+                  <button
+                    type="button"
+                    className="btn btn-secondary admin-posts-poll-remove"
+                    onClick={() => { setTipGoalEnabled(false); setTipGoalDescription(""); setTipGoalTargetDollars(""); setTipGoalRaisedCents(0); }}
+                    title="Remove tip goal from this post. Save the post to apply."
+                  >
+                    Remove tip goal
                   </button>
                 </div>
               </div>
@@ -1189,8 +1217,13 @@ export default function AdminPostsPage() {
                   >
                     Save
                   </button>
-                  <button type="button" className="btn btn-secondary admin-posts-poll-remove" onClick={() => setOverlaySectionOpen(false)}>
-                    Cancel
+                  <button
+                    type="button"
+                    className="btn btn-secondary admin-posts-poll-remove"
+                    onClick={() => { setOverlaySectionOpen(false); setOverlayText(""); setOverlayTextColor("#ffffff"); setOverlayHighlight(false); setOverlayUnderline(false); setOverlayItalic(false); setOverlayTextSize(18); }}
+                    title="Remove text overlay from this post. Save the post to apply."
+                  >
+                    Remove text overlay
                   </button>
                 </div>
               </>
@@ -1318,11 +1351,39 @@ export default function AdminPostsPage() {
 
       {existingPosts.length > 0 && (
         <section className="admin-posts-card-section admin-posts-recent">
-          <h2 className="admin-posts-card-heading">Recent posts</h2>
+          <h2 className="admin-posts-card-heading">Recent posts (last 5)</h2>
           <ul className="admin-posts-list">
             {existingPosts.map((p) => (
-              <li key={p.id}>
-                <Link href={`/post/${p.id}`} className="admin-posts-list-link">{p.body || "Untitled"}…</Link>
+              <li key={p.id} className="admin-posts-list-item">
+                <Link href={`/admin/posts?edit=${p.id}`} className="admin-posts-list-link">{p.body || "Untitled"}…</Link>
+                <button
+                  type="button"
+                  className="admin-posts-list-delete"
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    if (!db || deletingPostId) return;
+                    if (!confirm("Delete this post? This cannot be undone.")) return;
+                    setDeletingPostId(p.id);
+                    try {
+                      await deleteDoc(doc(db, "posts", p.id));
+                      setExistingPosts((prev) => prev.filter((x) => x.id !== p.id));
+                      setMessage({ type: "success", text: "Post deleted." });
+                      if (editId === p.id) {
+                        setEditId(null);
+                        router.push("/admin/posts");
+                      }
+                    } catch (err) {
+                      setMessage({ type: "error", text: (err as Error).message || "Failed to delete" });
+                    } finally {
+                      setDeletingPostId(null);
+                    }
+                  }}
+                  disabled={deletingPostId !== null}
+                  aria-label="Delete post"
+                  title="Delete post"
+                >
+                  {deletingPostId === p.id ? "…" : "×"}
+                </button>
               </li>
             ))}
           </ul>
