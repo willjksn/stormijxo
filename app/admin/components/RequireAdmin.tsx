@@ -42,23 +42,32 @@ export function RequireAdmin({ children, header }: RequireAdminProps) {
       setAdminDocEnsured(true);
       return;
     }
-    auth.currentUser
-      .getIdToken(true)
-      .then((token) =>
+    const doFetch = () =>
+      auth.currentUser!.getIdToken(true).then((token) =>
         fetch("/api/admin/ensure-admin-doc", {
           method: "GET",
           headers: { Authorization: `Bearer ${token}` },
         })
-      )
+      );
+    doFetch()
       .then((res) => {
-        if (!cancelled) setAdminDocEnsured(true);
+        if (cancelled) return;
+        if (res.ok) {
+          setAdminDocEnsured(true);
+          return;
+        }
+        return new Promise<Response>((r) => setTimeout(r, 600)).then(() => doFetch());
+      })
+      .then((res) => {
+        if (cancelled) return;
+        if (res?.ok) setAdminDocEnsured(true);
       })
       .catch(() => {
         if (!cancelled) setAdminDocEnsured(true);
       });
     const t = setTimeout(() => {
       if (!cancelled) setAdminDocEnsured(true);
-    }, 3000);
+    }, 4000);
     return () => {
       cancelled = true;
       clearTimeout(t);

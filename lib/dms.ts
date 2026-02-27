@@ -104,13 +104,20 @@ export function subscribeConversations(
     orderBy("lastMessageAt", "desc"),
     limit(100)
   );
-  return onSnapshot(q, (snap) => {
-    const list: ConversationDoc[] = [];
-    snap.forEach((d) => {
-      list.push(conversationFromDoc(d.id, d.data() as Record<string, unknown>));
-    });
-    onUpdate(list);
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      const list: ConversationDoc[] = [];
+      snap.forEach((d) => {
+        list.push(conversationFromDoc(d.id, d.data() as Record<string, unknown>));
+      });
+      onUpdate(list);
+    },
+    (err) => {
+      console.warn("[dms] subscribeConversations error:", err?.message ?? err);
+      onUpdate([]);
+    }
+  );
 }
 
 export function subscribeMessages(
@@ -123,13 +130,20 @@ export function subscribeMessages(
     orderBy("createdAt", "asc"),
     limit(200)
   );
-  return onSnapshot(q, (snap) => {
-    const list: MessageDoc[] = [];
-    snap.forEach((d) => {
-      list.push(messageFromDoc(d.id, d.data() as Record<string, unknown>));
-    });
-    onUpdate(list);
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      const list: MessageDoc[] = [];
+      snap.forEach((d) => {
+        list.push(messageFromDoc(d.id, d.data() as Record<string, unknown>));
+      });
+      onUpdate(list);
+    },
+    (err) => {
+      console.warn("[dms] subscribeMessages error:", err?.message ?? err);
+      onUpdate([]);
+    }
+  );
 }
 
 export async function ensureConversation(
