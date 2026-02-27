@@ -54,6 +54,27 @@ const PencilIcon = () => (
   </svg>
 );
 
+const ThreeDotsIcon = () => (
+  <svg className="feed-card-dots-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <circle cx="12" cy="6" r="1.5" />
+    <circle cx="12" cy="12" r="1.5" />
+    <circle cx="12" cy="18" r="1.5" />
+  </svg>
+);
+
+const PinIconOutline = () => (
+  <svg className="feed-card-pin-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 20V12M12 12V4M12 4l4 4-4 4-4-4 4-4z" />
+    <path d="M5 12h14" />
+  </svg>
+);
+
+const PinIconFilled = () => (
+  <svg className="feed-card-pin-icon feed-card-pin-icon-filled" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.5">
+    <path d="M16 12V4h1V2H7v2h1v8l-4 4v2h4.17a3 3 0 0 0 5.66 0H20v-2l-4-4z" />
+  </svg>
+);
+
 const MediaImageIcon = () => (
   <svg className="feed-card-count-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <rect x="3" y="5" width="18" height="14" rx="2" ry="2" />
@@ -172,8 +193,10 @@ function FeedCard({
   onLikeUpdated,
   currentUser,
   savedPostIds,
+  pinnedPostIds,
   unlockedPostIds,
   onSavedUpdated,
+  onPinUpdated,
   onUnlockRequest,
 }: {
   post: FeedPost;
@@ -182,8 +205,10 @@ function FeedCard({
   onLikeUpdated?: (postId: string, likedBy: string[], likeCount: number) => void;
   currentUser: { uid: string; email: string | null; displayName: string | null } | null;
   savedPostIds: string[];
+  pinnedPostIds: string[];
   unlockedPostIds: string[];
   onSavedUpdated?: (savedIds: string[]) => void;
+  onPinUpdated?: (pinnedIds: string[]) => void;
   onUnlockRequest?: (postId: string) => Promise<boolean>;
 }) {
   const firstUrl = post.mediaUrls?.[0];
@@ -222,12 +247,30 @@ function FeedCard({
   const commentsForViewer = showAdminEdit ? post.comments : visibleComments;
   const isLiked = !!currentUser?.uid && (post.likedBy ?? []).includes(currentUser.uid);
   const isSaved = savedPostIds.includes(post.id);
+  const isPinned = pinnedPostIds.includes(post.id);
   const isLockedForViewer =
     !!post.lockedContent?.enabled &&
     (post.lockedContent?.priceCents ?? 0) >= 100 &&
     !unlockedPostIds.includes(post.id);
   const [unlockLoading, setUnlockLoading] = useState(false);
   const [tipModalOpen, setTipModalOpen] = useState(false);
+  const [postMenuOpen, setPostMenuOpen] = useState(false);
+  const postMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!postMenuOpen) return;
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node | null;
+      if (postMenuRef.current?.contains(target)) return;
+      setPostMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+    };
+  }, [postMenuOpen]);
 
   const visibleEmojis = useMemo(() => {
     const q = emojiQuery.trim().toLowerCase();
@@ -393,6 +436,27 @@ function FeedCard({
     onSavedUpdated?.(nextSaved);
   };
 
+  const togglePin = async () => {
+    if (!db || !currentUser?.uid || !post.id || !onPinUpdated) return;
+    const userRef = doc(db, "users", currentUser.uid);
+    const has = pinnedPostIds.includes(post.id);
+    const nextPinned = has
+      ? pinnedPostIds.filter((id) => id !== post.id)
+      : [post.id, ...pinnedPostIds.filter((id) => id !== post.id)];
+    await runTransaction(db, async (tx) => {
+      tx.set(
+        userRef,
+        {
+          pinnedPostIds: nextPinned,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    });
+    onPinUpdated(nextPinned);
+    setPostMenuOpen(false);
+  };
+
   const startUnlock = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -415,10 +479,45 @@ function FeedCard({
           <span className="feed-card-username">stormij</span>
         </div>
         <span className="feed-card-time">{dateStr}</span>
+        {isPinned && (
+          <span className="feed-card-pinned-badge" title="Pinned to profile" aria-label="Pinned to profile">
+            <PinIconFilled />
+          </span>
+        )}
         {showAdminEdit && (
-          <Link href={`/admin/posts?edit=${post.id}`} className="feed-card-edit" title="Edit post" aria-label="Edit post">
-            <PencilIcon />
-          </Link>
+          <div className="feed-card-header-menu-wrap" ref={postMenuRef}>
+            <button
+              type="button"
+              className="feed-card-dots-btn"
+              onClick={() => setPostMenuOpen((o) => !o)}
+              aria-label="Post options"
+              aria-expanded={postMenuOpen}
+              aria-haspopup="true"
+            >
+              <ThreeDotsIcon />
+            </button>
+            {postMenuOpen && (
+              <div className="feed-card-header-menu">
+                <Link
+                  href={`/admin/posts?edit=${post.id}`}
+                  className="feed-card-header-menu-item"
+                  onClick={() => setPostMenuOpen(false)}
+                >
+                  <PencilIcon />
+                  <span>Edit</span>
+                </Link>
+                <button
+                  type="button"
+                  className="feed-card-header-menu-item"
+                  onClick={togglePin}
+                  aria-label={isPinned ? "Unpin from profile" : "Pin to profile"}
+                >
+                  {isPinned ? <PinIconFilled /> : <PinIconOutline />}
+                  <span>{isPinned ? "Unpin from profile" : "Pin to profile"}</span>
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -759,6 +858,7 @@ export default function HomeFeedPage() {
   const [firestorePosts, setFirestorePosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [savedPostIds, setSavedPostIds] = useState<string[]>([]);
+  const [pinnedPostIds, setPinnedPostIds] = useState<string[]>([]);
   const [unlockedPostIds, setUnlockedPostIds] = useState<string[]>([]);
   const db = getFirebaseDb();
   const { user } = useAuth();
@@ -804,6 +904,7 @@ export default function HomeFeedPage() {
   useEffect(() => {
     if (!db || !user?.uid) {
       setSavedPostIds([]);
+      setPinnedPostIds([]);
       setUnlockedPostIds([]);
       return;
     }
@@ -811,14 +912,17 @@ export default function HomeFeedPage() {
       .then((snap) => {
         const d = snap.exists() ? snap.data() : {};
         const ids = Array.isArray(d.savedPostIds) ? (d.savedPostIds as unknown[]).map((v) => String(v)) : [];
+        const pinned = Array.isArray(d.pinnedPostIds) ? (d.pinnedPostIds as unknown[]).map((v) => String(v)) : [];
         const unlocked = Array.isArray(d.unlockedPostIds)
           ? (d.unlockedPostIds as unknown[]).map((v) => String(v))
           : [];
         setSavedPostIds(ids);
+        setPinnedPostIds(pinned);
         setUnlockedPostIds(unlocked);
       })
       .catch(() => {
         setSavedPostIds([]);
+        setPinnedPostIds([]);
         setUnlockedPostIds([]);
       });
   }, [db, user?.uid]);
@@ -852,7 +956,18 @@ export default function HomeFeedPage() {
     }
   };
 
-  const posts: FeedPost[] = useMemo(() => firestorePosts, [firestorePosts]);
+  const posts: FeedPost[] = useMemo(() => {
+    if (pinnedPostIds.length === 0) return firestorePosts;
+    const pinnedSet = new Set(pinnedPostIds);
+    const pinned: FeedPost[] = [];
+    const rest: FeedPost[] = [];
+    for (const p of firestorePosts) {
+      if (pinnedSet.has(p.id)) pinned.push(p);
+      else rest.push(p);
+    }
+    pinned.sort((a, b) => pinnedPostIds.indexOf(a.id) - pinnedPostIds.indexOf(b.id));
+    return [...pinned, ...rest];
+  }, [firestorePosts, pinnedPostIds]);
 
   return (
     <main className="member-main member-feed-main">
@@ -885,8 +1000,10 @@ export default function HomeFeedPage() {
             }}
             currentUser={user ? { uid: user.uid, email: user.email, displayName: user.displayName } : null}
             savedPostIds={savedPostIds}
+            pinnedPostIds={pinnedPostIds}
             unlockedPostIds={unlockedPostIds}
             onSavedUpdated={(savedIds) => setSavedPostIds(savedIds)}
+            onPinUpdated={(pinnedIds) => setPinnedPostIds(pinnedIds)}
             onUnlockRequest={startUnlockCheckout}
           />
         ))}

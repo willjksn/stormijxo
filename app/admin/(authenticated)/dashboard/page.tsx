@@ -128,17 +128,49 @@ export default function AdminDashboardPage() {
     ])
       .then(([membersSnap, tipsSnap, purchasesSnap, subscriptionSnap]) => {
         const now = new Date();
-        const monthBuckets: Array<{ key: string; label: string }> = [];
-        const monthIndexByKey: Record<string, number> = {};
-        for (let i = 11; i >= 0; i--) {
-          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-          monthIndexByKey[key] = monthBuckets.length;
-          monthBuckets.push({
+        const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        const allMonthKeys = new Set<string>([currentKey]); // always include current month
+
+        const addKey = (when: Date | null) => {
+          if (!when) return;
+          const key = `${when.getFullYear()}-${String(when.getMonth() + 1).padStart(2, "0")}`;
+          allMonthKeys.add(key);
+        };
+        membersSnap.forEach((docSnap) => {
+          const d = docSnap.data();
+          const joined = (d.joinedAt as Timestamp)?.toDate?.() ?? null;
+          addKey(joined);
+        });
+        tipsSnap.forEach((docSnap) => {
+          const d = docSnap.data();
+          const tippedAt = (d.tippedAt as Timestamp)?.toDate?.() ?? (d.createdAt as Timestamp)?.toDate?.() ?? null;
+          addKey(tippedAt);
+        });
+        purchasesSnap.forEach((docSnap: { data: () => Record<string, unknown> }) => {
+          const d = docSnap.data();
+          const createdAt = (d.createdAt as Timestamp)?.toDate?.() ?? (d.purchasedAt as Timestamp)?.toDate?.() ?? null;
+          addKey(createdAt);
+        });
+        subscriptionSnap.forEach((docSnap: { data: () => Record<string, unknown> }) => {
+          const d = docSnap.data();
+          const paidAt = (d.paidAt as Timestamp)?.toDate?.() ?? (d.createdAt as Timestamp)?.toDate?.() ?? null;
+          addKey(paidAt);
+        });
+
+        const sortedKeys = Array.from(allMonthKeys).sort();
+        const last12Keys = sortedKeys.slice(-12).reverse(); // descending: current month on top
+        const monthBuckets: Array<{ key: string; label: string }> = last12Keys.map((key) => {
+          const [y, m] = key.split("-").map(Number);
+          const d = new Date(y, m - 1, 1);
+          return {
             key,
             label: d.toLocaleString(undefined, { month: "short", year: "2-digit" }),
-          });
-        }
+          };
+        });
+        const monthIndexByKey: Record<string, number> = {};
+        monthBuckets.forEach((m, idx) => {
+          monthIndexByKey[m.key] = idx;
+        });
         const monthly = monthBuckets.map((m) => ({
           label: m.label,
           totalCents: 0,

@@ -79,14 +79,37 @@
 .feed-card-creator { flex: 1; min-width: 0; }
 .feed-card-username { font-weight: 600; font-size: 0.95rem; color: var(--accent); letter-spacing: 0.01em; }
 .feed-card-time { font-size: 0.8rem; color: #9a8a92; font-weight: 400; }
-.feed-card-edit {
+.feed-card-header-menu-wrap { position: relative; }
+.feed-card-dots-btn {
   display: flex; align-items: center; justify-content: center;
   width: 36px; height: 36px; padding: 0; border: none; background: transparent;
-  color: var(--text-muted); border-radius: 10px; text-decoration: none;
+  color: var(--text-muted); border-radius: 10px; cursor: pointer;
   transition: color 0.2s ease, background 0.2s ease;
 }
-.feed-card-edit:hover { color: var(--accent); background: var(--accent-soft); }
-.feed-card-edit svg { width: 18px; height: 18px; }
+.feed-card-dots-btn:hover { color: var(--accent); background: var(--accent-soft); }
+.feed-card-dots-icon { width: 18px; height: 18px; }
+.feed-card-header-menu {
+  position: absolute; top: 100%; right: 0; margin-top: 4px; min-width: 180px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(45, 31, 36, 0.12); z-index: 10;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.feed-card-header-menu-item {
+  display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.85rem;
+  font-size: 0.9rem; color: var(--text); text-decoration: none; border: none;
+  background: none; width: 100%; text-align: left; cursor: pointer;
+  font-family: inherit; transition: background 0.2s ease;
+}
+.feed-card-header-menu-item:hover { background: var(--accent-soft); color: var(--accent); }
+.feed-card-header-menu-item svg { flex-shrink: 0; width: 18px; height: 18px; }
+.feed-card-edit-icon { width: 18px; height: 18px; }
+.feed-card-pin-icon { width: 18px; height: 18px; }
+.feed-card-pin-icon-filled { opacity: 0.95; }
+.feed-card-pinned-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--accent); margin-right: 2px;
+}
+.feed-card-pinned-badge svg { width: 14px; height: 14px; }
 
 /* Image - framed with subtle glow */
 .feed-card-media-wrap {
