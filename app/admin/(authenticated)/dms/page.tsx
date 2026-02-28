@@ -864,9 +864,6 @@ export default function AdminDmsPage() {
                 />
                 <button type="button" className="send-btn" onClick={handleSend} disabled={sending || uploading || (!text.trim() && selectedFilesCount === 0)}>{sending ? "…" : "Send"}</button>
               </div>
-              <p style={{ margin: 0, padding: "0 1rem 0.35rem", color: "var(--text-muted)", fontSize: "0.78rem" }}>
-                DM attachments are stored in messages and are not added to My Vault.
-              </p>
               {selectedFilesCount > 0 && (
                 <p style={{ margin: 0, padding: "0 1rem 0.35rem", color: "var(--text-muted)", fontSize: "0.8rem" }}>
                   {selectedFilesCount} file{selectedFilesCount === 1 ? "" : "s"} selected

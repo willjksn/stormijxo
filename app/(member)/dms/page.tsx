@@ -356,7 +356,7 @@ export default function MemberDmsPage() {
               {convError}
             </p>
           )}
-          <div className="chat-messages">
+          <div className="chat-messages" style={{ maxHeight: "none" }}>
             {messages.length === 0 && !sending && (
               <p className="chat-empty-state">No messages yet. Say hi below.</p>
             )}
@@ -434,14 +434,6 @@ export default function MemberDmsPage() {
             <button type="button" className="icon-btn" onClick={() => fileInputRef.current?.click()} disabled={sending || uploading} title="Photo / video">
               <ImageIcon />
             </button>
-            <input
-              type="text"
-              className="chat-input-field"
-              placeholder="Message"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-            />
             <button
               type="button"
               className="icon-btn"
@@ -452,6 +444,14 @@ export default function MemberDmsPage() {
             >
               <MicIcon />
             </button>
+            <input
+              type="text"
+              className="chat-input-field"
+              placeholder="Message"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+            />
             <button type="button" className="send-btn" onClick={handleSend} disabled={sending || uploading || (!text.trim() && selectedFilesCount === 0)}>{sending ? "…" : "Send"}</button>
           </div>
           {selectedFilesCount > 0 && (
@@ -459,9 +459,11 @@ export default function MemberDmsPage() {
               {selectedFilesCount} file{selectedFilesCount === 1 ? "" : "s"} selected
             </p>
           )}
-          <p style={{ padding: "0.25rem 1rem", margin: 0, fontSize: "0.8rem", color: "var(--text-muted)" }}>
-            Voice notes and attachments sent here stay in messages and are not added to My Vault.
-          </p>
+          {uploading && (
+            <p style={{ padding: "0.25rem 1rem", margin: 0, fontSize: "0.8rem", color: "var(--text-muted)" }}>
+              Uploading attachment{selectedFilesCount === 1 ? "" : "s"}…
+            </p>
+          )}
           {isRecording && (
             <p style={{ padding: "0.25rem 1rem", margin: 0, fontSize: "0.85rem", color: "var(--error, #c53030)" }}>
               Recording voice… tap mic again to send.
