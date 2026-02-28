@@ -61,6 +61,7 @@ export default function AdminContentPage() {
   });
   const [legalModal, setLegalModal] = useState<null | "privacy" | "terms">(null);
   const [legalDraft, setLegalDraft] = useState("");
+  const legalEditRef = useRef<HTMLDivElement>(null);
   const [showMediaPicker, setShowMediaPicker] = useState(false);
   const [mediaPickerFor, setMediaPickerFor] = useState<null | "tip" | "aboutImage" | "aboutVideo">(null);
   const [aboutUploading, setAboutUploading] = useState<"image" | "video" | null>(null);
@@ -243,6 +244,12 @@ export default function AdminContentPage() {
     setLegalModal(which);
   };
 
+  useLayoutEffect(() => {
+    if (!legalModal || !legalEditRef.current) return;
+    const defaultHtml = legalModal === "privacy" ? DEFAULT_PRIVACY_HTML : DEFAULT_TERMS_HTML;
+    legalEditRef.current.innerHTML = prepareLegalHtml((legalDraft || defaultHtml).trim());
+  }, [legalModal, legalDraft]);
+
   const saveLegalModal = async () => {
     if (!legalModal) return;
     const dbNow = getFirebaseDb();
@@ -250,11 +257,12 @@ export default function AdminContentPage() {
       showMessage("error", "Not connected. Please refresh the page.");
       return;
     }
+    const rawHtml = legalEditRef.current?.innerHTML?.trim() ?? legalDraft.trim();
     const today = todayYMD();
     const payload =
       legalModal === "privacy"
-        ? { privacyPolicyHtml: legalDraft.trim(), privacyPolicyLastUpdated: today }
-        : { termsHtml: legalDraft.trim(), termsLastUpdated: today };
+        ? { privacyPolicyHtml: rawHtml, privacyPolicyLastUpdated: today }
+        : { termsHtml: rawHtml, termsLastUpdated: today };
     setSaving(true);
     setMessage(null);
     try {
@@ -839,35 +847,30 @@ export default function AdminContentPage() {
       {legalModal && (
         <div className="admin-content-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="legal-modal-title" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setLegalModal(null)}>
           <div className="admin-content-modal" style={{ width: "min(92vw, 900px)", maxHeight: "95vh", display: "flex", flexDirection: "column", background: "var(--bg-card)", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.2)", overflow: "hidden" }} onClick={(e) => e.stopPropagation()}>
-            <h2 id="legal-modal-title" style={{ margin: 0, padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)", fontSize: "1.1rem" }}>
+            <h2 id="legal-modal-title" style={{ margin: 0, padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)", fontSize: "1.1rem", flexShrink: 0 }}>
               {legalModal === "privacy" ? "Edit Privacy Policy" : "Edit Terms of Service"}
             </h2>
-            <textarea
-              value={legalDraft}
-              onChange={(e) => setLegalDraft(e.target.value)}
-              placeholder="HTML content (e.g. <p>...</p>, <h2>...</h2>)"
-              rows={22}
-              className="admin-content-input"
-              style={{ flex: 1, minHeight: 320, margin: "1rem 1.25rem", padding: "0.75rem", border: "1px solid var(--border)", borderRadius: 8, fontSize: "0.9rem", background: "var(--bg)", color: "var(--text)", resize: "vertical" }}
+            <p style={{ margin: 0, padding: "0.5rem 1.25rem 0", color: "var(--text-muted)", fontSize: "0.85rem", flexShrink: 0 }}>
+              Edit the content below. Save to update the page and set “Last updated” to today.
+            </p>
+            <div
+              ref={legalEditRef}
+              contentEditable
+              suppressContentEditableWarning
+              className="legal-body"
+              style={{
+                flex: 1,
+                minHeight: 280,
+                overflowY: "auto",
+                margin: "1rem 1.25rem",
+                padding: "0.85rem",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                background: "var(--bg)",
+                outline: "none",
+              }}
             />
-            <div style={{ padding: "0 1.25rem 1rem" }}>
-              <p style={{ margin: "0 0 0.5rem", color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 600 }}>
-                Live preview
-              </p>
-              <div
-                className="legal-body"
-                style={{
-                  maxHeight: "260px",
-                  overflowY: "auto",
-                  border: "1px solid var(--border)",
-                  borderRadius: 8,
-                  padding: "0.85rem",
-                  background: "var(--bg)",
-                }}
-                dangerouslySetInnerHTML={{ __html: prepareLegalHtml(legalDraft.trim() || (legalModal === "privacy" ? DEFAULT_PRIVACY_HTML : DEFAULT_TERMS_HTML)) }}
-              />
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", padding: "1rem 1.25rem", borderTop: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", padding: "1rem 1.25rem", borderTop: "1px solid var(--border)", flexShrink: 0 }}>
               <button type="button" className="btn btn-secondary" onClick={() => { setLegalModal(null); setLegalDraft(""); }}>
                 Cancel
               </button>

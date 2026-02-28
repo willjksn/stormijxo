@@ -100,24 +100,26 @@ export function LandingHeaderWithAuth() {
           />
           <span className="logo-fallback" style={{ display: "none", fontWeight: 600, fontSize: "1.1rem", color: "var(--text)" }} aria-hidden>Inner Circle</span>
         </Link>
-        <nav className="header-nav">
+        <nav className="header-nav" aria-label="Main">
+          {/* When signed in with active membership (or admin): show Home + Profile. When signed out: show Sign up + Log in. */}
           {showMemberNav ? (
-            <Link href="/home" className="header-link">
-              Home
-            </Link>
+            <>
+              <Link href="/home" className="header-link">
+                Home
+              </Link>
+              <Link href="/profile" className="header-login">
+                Profile
+              </Link>
+            </>
           ) : (
-            <button type="button" className="header-link" onClick={openSignup}>
-              Sign up
-            </button>
-          )}
-          {showMemberNav ? (
-            <Link href="/profile" className="header-login">
-              Profile
-            </Link>
-          ) : (
-            <button type="button" className="header-login" onClick={openLogin}>
-              Log in
-            </button>
+            <>
+              <button type="button" className="header-link" onClick={openSignup}>
+                Sign up
+              </button>
+              <button type="button" className="header-login" onClick={openLogin}>
+                Log in
+              </button>
+            </>
           )}
         </nav>
       </header>
