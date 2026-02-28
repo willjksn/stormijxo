@@ -90,6 +90,12 @@ const MediaVideoIcon = () => (
   </svg>
 );
 
+const PlayIcon = () => (
+  <svg className="feed-card-play-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <path d="M8 5v14l11-7L8 5z" />
+  </svg>
+);
+
 const TipIcon = () => (
   <span className="feed-card-tip-icon feed-card-tip-dollar" aria-hidden>$</span>
 );
@@ -258,6 +264,8 @@ function FeedCard({
   const [tipModalOpen, setTipModalOpen] = useState(false);
   const [postMenuOpen, setPostMenuOpen] = useState(false);
   const postMenuRef = useRef<HTMLDivElement | null>(null);
+  const feedVideoRef = useRef<HTMLVideoElement | null>(null);
+  const [feedVideoPlaying, setFeedVideoPlaying] = useState(false);
 
   useEffect(() => {
     if (!postMenuOpen) return;
@@ -524,12 +532,75 @@ function FeedCard({
       </div>
 
       {firstUrl ? (
+        isVideo ? (
+          <div
+            className="feed-card-media-wrap feed-card-media-wrap-video"
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.preventDefault();
+              const v = feedVideoRef.current;
+              if (!v || isLockedForViewer) return;
+              if (v.paused) v.play();
+              else v.pause();
+            }}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter" && e.key !== " ") return;
+              e.preventDefault();
+              const v = feedVideoRef.current;
+              if (!v || isLockedForViewer) return;
+              if (v.paused) v.play();
+              else v.pause();
+            }}
+            aria-label={feedVideoPlaying ? "Pause video" : "Play video"}
+          >
+            <video
+              ref={feedVideoRef}
+              src={firstUrl}
+              muted
+              playsInline
+              className={`feed-card-media feed-card-media-video${isLockedForViewer ? " feed-card-media-locked" : ""}`}
+              preload="metadata"
+              onPlay={() => setFeedVideoPlaying(true)}
+              onPause={() => setFeedVideoPlaying(false)}
+            />
+            {!isLockedForViewer && !feedVideoPlaying && (
+              <span className="feed-card-play-overlay" aria-hidden>
+                <PlayIcon />
+              </span>
+            )}
+            {showCaptionOnMedia && (
+              <FeedCardCaptionOverlay caption={post.body} style={captionStyle} size={post.overlayTextSize} />
+            )}
+            {(mediaTotals.images + mediaTotals.videos) > 1 && (
+              <span className="feed-card-count">
+                {mediaTotals.images > 0 && (
+                  <span className="feed-card-count-item">
+                    <MediaImageIcon />
+                    {mediaTotals.images} image{mediaTotals.images === 1 ? "" : "s"}
+                  </span>
+                )}
+                {mediaTotals.videos > 0 && (
+                  <span className="feed-card-count-item">
+                    <MediaVideoIcon />
+                    {mediaTotals.videos} video{mediaTotals.videos === 1 ? "" : "s"}
+                  </span>
+                )}
+              </span>
+            )}
+            {isLockedForViewer && (
+              <div className="feed-card-lock-overlay" aria-hidden={unlockLoading ? "true" : "false"}>
+                <button type="button" className="feed-card-unlock-btn" onClick={startUnlock} disabled={unlockLoading}>
+                  {unlockLoading
+                    ? "Opening checkout..."
+                    : `Unlock for $${((post.lockedContent?.priceCents ?? 0) / 100).toFixed(0)}`}
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
         <Link href={`/post/${post.id}`} className="feed-card-media-wrap">
-          {isVideo ? (
-            <video src={firstUrl} muted playsInline className={`feed-card-media feed-card-media-video${isLockedForViewer ? " feed-card-media-locked" : ""}`} preload="metadata" />
-          ) : (
-            <img src={firstUrl} alt="" className={`feed-card-media${isLockedForViewer ? " feed-card-media-locked" : ""}`} loading="lazy" decoding="async" />
-          )}
+          <img src={firstUrl} alt="" className={`feed-card-media${isLockedForViewer ? " feed-card-media-locked" : ""}`} loading="lazy" decoding="async" />
           {showCaptionOnMedia && (
             <FeedCardCaptionOverlay caption={post.body} style={captionStyle} size={post.overlayTextSize} />
           )}
@@ -559,6 +630,7 @@ function FeedCard({
             </div>
           )}
         </Link>
+        )
       ) : null}
       {Array.isArray(post.audioUrls) && post.audioUrls.length > 0 && (
         <div className="feed-card-body" style={{ paddingTop: firstUrl ? 0 : undefined }}>

@@ -73,7 +73,7 @@ export default function AdminContentPage() {
   const aboutBioPickerContainerRef = useRef<HTMLDivElement | null>(null);
   const [aboutBioEmojiOpen, setAboutBioEmojiOpen] = useState(false);
   const [aboutBioEmojiQuery, setAboutBioEmojiQuery] = useState("");
-  const [aboutBioPickerPosition, setAboutBioPickerPosition] = useState<{ top: number; right: number } | null>(null);
+  const [aboutBioPickerPosition, setAboutBioPickerPosition] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [mediaLoading, setMediaLoading] = useState(false);
   const db = getFirebaseDb();
@@ -257,7 +257,7 @@ export default function AdminContentPage() {
       showMessage("error", "Not connected. Please refresh the page.");
       return;
     }
-    const rawHtml = legalEditRef.current?.innerHTML?.trim() ?? legalDraft.trim();
+    const rawHtml = (legalEditRef.current?.innerHTML?.trim() || legalDraft.trim()) || "";
     const today = todayYMD();
     const payload =
       legalModal === "privacy"
@@ -267,12 +267,10 @@ export default function AdminContentPage() {
     setMessage(null);
     try {
       const latest = contentRef.current;
+      const toWrite = stripUndefined({ ...latest, ...payload } as Record<string, unknown>);
       await setDoc(
         doc(dbNow, CONTENT_DOC_PATH, SITE_CONFIG_CONTENT_ID),
-        {
-          ...latest,
-          ...payload,
-        },
+        toWrite,
         { merge: true }
       );
       setContent((c) => ({ ...c, ...payload }));
@@ -326,11 +324,14 @@ export default function AdminContentPage() {
     }
     const rect = aboutBioEmojiWrapRef.current.getBoundingClientRect();
     const gap = 6;
-    const pickerWidth = 320;
-    setAboutBioPickerPosition({
-      top: rect.bottom + gap,
-      right: Math.max(8, window.innerWidth - rect.right),
-    });
+    const pickerHeight = 320;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openAbove = spaceBelow < pickerHeight && rect.top >= pickerHeight + gap;
+    setAboutBioPickerPosition(
+      openAbove
+        ? { bottom: window.innerHeight - rect.top + gap, right: Math.max(8, window.innerWidth - rect.right) }
+        : { top: rect.bottom + gap, right: Math.max(8, window.innerWidth - rect.right) }
+    );
   }, [aboutBioEmojiOpen]);
 
   const insertAboutBioEmoji = useCallback((emoji: string) => {
@@ -723,6 +724,11 @@ export default function AdminContentPage() {
                 placeholder="A few lines about Stormi J…"
                 rows={5}
                 className="admin-posts-caption-input"
+                style={{
+                  color: content.aboutStormiJTextColor || "#2f1a24",
+                  fontSize: `${content.aboutStormiJTextFontSize ?? 16}px`,
+                  fontFamily: content.aboutStormiJTextFontFamily ?? "DM Sans",
+                }}
               />
               <button
                 type="button"
@@ -740,7 +746,8 @@ export default function AdminContentPage() {
                   ref={aboutBioPickerContainerRef}
                   style={{
                     position: "fixed",
-                    top: aboutBioPickerPosition.top,
+                    ...(aboutBioPickerPosition.top != null ? { top: aboutBioPickerPosition.top } : {}),
+                    ...(aboutBioPickerPosition.bottom != null ? { bottom: aboutBioPickerPosition.bottom } : {}),
                     right: aboutBioPickerPosition.right,
                     left: "auto",
                     width: "min(320px, calc(100vw - 1.5rem))",
@@ -857,6 +864,9 @@ export default function AdminContentPage() {
               ref={legalEditRef}
               contentEditable
               suppressContentEditableWarning
+              onInput={() => {
+                if (legalEditRef.current) setLegalDraft(legalEditRef.current.innerHTML);
+              }}
               className="legal-body"
               style={{
                 flex: 1,
