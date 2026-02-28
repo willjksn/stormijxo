@@ -556,11 +556,28 @@ function FeedCard({
           >
             <video
               ref={feedVideoRef}
-              src={firstUrl}
+              src={firstUrl.includes("#t=") ? firstUrl : `${firstUrl}#t=0.1`}
               muted
               playsInline
               className={`feed-card-media feed-card-media-video${isLockedForViewer ? " feed-card-media-locked" : ""}`}
-              preload="metadata"
+              preload="auto"
+              onLoadedMetadata={(e) => {
+                const video = e.currentTarget;
+                try {
+                  if (Number.isFinite(video.duration) && video.duration > 0.15) {
+                    video.currentTime = 0.1;
+                  }
+                } catch {
+                  // ignore
+                }
+              }}
+              onSeeked={(e) => {
+                try {
+                  e.currentTarget.pause();
+                } catch {
+                  // ignore
+                }
+              }}
               onPlay={() => setFeedVideoPlaying(true)}
               onPause={() => setFeedVideoPlaying(false)}
             />
@@ -894,7 +911,30 @@ function FeedCard({
               {firstUrl && (
                 <div className="feed-comments-modal-media-wrap">
                   {isVideo ? (
-                    <video src={firstUrl} controls playsInline className="feed-comments-modal-media feed-comments-modal-media-video" preload="metadata" />
+                    <video
+                    src={firstUrl.includes("#t=") ? firstUrl : `${firstUrl}#t=0.1`}
+                    controls
+                    playsInline
+                    className="feed-comments-modal-media feed-comments-modal-media-video"
+                    preload="auto"
+                    onLoadedMetadata={(e) => {
+                      const video = e.currentTarget;
+                      try {
+                        if (Number.isFinite(video.duration) && video.duration > 0.15) {
+                          video.currentTime = 0.1;
+                        }
+                      } catch {
+                        // ignore
+                      }
+                    }}
+                    onSeeked={(e) => {
+                      try {
+                        e.currentTarget.pause();
+                      } catch {
+                        // ignore
+                      }
+                    }}
+                  />
                   ) : (
                     <img src={firstUrl} alt="" className="feed-comments-modal-media" />
                   )}

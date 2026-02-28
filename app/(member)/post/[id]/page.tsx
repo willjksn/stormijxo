@@ -384,9 +384,27 @@ export default function PostByIdPage() {
               <div className="post-media-item">
                 {visibleIsVideo ? (
                   <video
-                    src={visibleUrl}
+                    src={visibleUrl.includes("#t=") ? visibleUrl : `${visibleUrl}#t=0.1`}
                     controls
                     playsInline
+                    preload="auto"
+                    onLoadedMetadata={(e) => {
+                      const video = e.currentTarget;
+                      try {
+                        if (Number.isFinite(video.duration) && video.duration > 0.15) {
+                          video.currentTime = 0.1;
+                        }
+                      } catch {
+                        // ignore
+                      }
+                    }}
+                    onSeeked={(e) => {
+                      try {
+                        e.currentTarget.pause();
+                      } catch {
+                        // ignore
+                      }
+                    }}
                     controlsList="nodownload noplaybackrate noremoteplayback"
                     disablePictureInPicture
                     onContextMenu={(e) => e.preventDefault()}

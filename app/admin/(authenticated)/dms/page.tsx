@@ -801,6 +801,23 @@ export default function AdminDmsPage() {
                               controls
                               playsInline
                               preload="auto"
+                              onLoadedMetadata={(e) => {
+                                const video = e.currentTarget;
+                                try {
+                                  if (Number.isFinite(video.duration) && video.duration > 0.15) {
+                                    video.currentTime = 0.1;
+                                  }
+                                } catch {
+                                  // Some browsers block seek before metadata settles; ignore.
+                                }
+                              }}
+                              onSeeked={(e) => {
+                                try {
+                                  e.currentTarget.pause();
+                                } catch {
+                                  // ignore
+                                }
+                              }}
                               controlsList="nodownload noplaybackrate noremoteplayback"
                               disablePictureInPicture
                               onContextMenu={(e) => e.preventDefault()}
