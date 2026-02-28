@@ -338,9 +338,22 @@ export default function MemberDmsPage() {
   }
 
   return (
-    <main className="member-main" style={{ padding: "1rem", height: "calc(min(100vh, 100dvh) - var(--header-height, 80px) - 2rem)", minHeight: 420, display: "flex", flexDirection: "column", maxWidth: 800, margin: "0 auto" }}>
-      <div className="chat-page" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-        <div className="chat-thread" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+    <main
+      className="member-main"
+      style={{
+        padding: "1rem",
+        height: "calc(min(100vh, 100dvh) - var(--header-height, 80px) - 2rem)",
+        minHeight: 420,
+        display: "flex",
+        flexDirection: "column",
+        maxWidth: 800,
+        margin: "0 auto",
+        boxSizing: "border-box",
+        overflow: "hidden",
+      }}
+    >
+      <div className="chat-page" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, height: "100%" }}>
+        <div className="chat-thread" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
           <div className="chat-thread-header">
             {avatarUrl ? (
               <span className="chat-thread-avatar">
@@ -356,7 +369,7 @@ export default function MemberDmsPage() {
               {convError}
             </p>
           )}
-          <div className="chat-messages" style={{ maxHeight: "none" }}>
+          <div className="chat-messages" style={{ maxHeight: "none", minHeight: 0, overflowY: "auto" }}>
             {messages.length === 0 && !sending && (
               <p className="chat-empty-state">No messages yet. Say hi below.</p>
             )}
@@ -387,6 +400,8 @@ export default function MemberDmsPage() {
                           key={url}
                           src={url}
                           controls
+                          playsInline
+                          preload="metadata"
                           controlsList="nodownload noplaybackrate noremoteplayback"
                           disablePictureInPicture
                           onContextMenu={(e) => e.preventDefault()}

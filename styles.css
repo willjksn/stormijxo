@@ -2402,6 +2402,18 @@ main:not([class]) .section-title::after {
   background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 100;
 }
+@media (max-width: 768px) {
+  .member-header .notification-bell-dropdown {
+    position: fixed;
+    top: calc(var(--header-height, 80px) + 0.25rem);
+    right: 0.75rem;
+    left: auto;
+    margin-top: 0;
+    width: min(360px, calc(100vw - 1.5rem));
+    max-height: min(62vh, 520px);
+    z-index: 1200;
+  }
+}
 .notification-bell-dropdown-header {
   padding: 0.65rem 1rem; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 0.9rem; color: var(--text);
 }

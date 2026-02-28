@@ -558,6 +558,16 @@ export default function ProfilePage() {
         <section className="profile-card profile-account-card">
           <h2>Account</h2>
           <p className="profile-account-desc">Change your password. You must enter your current password to confirm.</p>
+          <p className="profile-account-desc" style={{ marginTop: "-0.5rem" }}>
+            Legal:{" "}
+            <a href="/privacy" style={{ textDecoration: "underline" }}>
+              Privacy Policy
+            </a>{" "}
+            {" · "}
+            <a href="/terms" style={{ textDecoration: "underline" }}>
+              Terms of Service
+            </a>
+          </p>
 
           <div className="profile-account-collapsible">
             <button

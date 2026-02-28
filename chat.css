@@ -379,7 +379,12 @@
 }
 
 .chat-bubble-videos video {
-  max-width: 100%;
+  width: 100%;
+  max-width: 260px;
+  max-height: 240px;
+  display: block;
+  background: #111;
+  object-fit: cover;
   border-radius: 8px;
   margin-top: 0.25rem;
 }
@@ -501,6 +506,9 @@
   .chat-messages {
     min-height: 30vh;
     min-height: min(30vh, 30dvh);
+  }
+  .chat-bubble-videos video {
+    max-width: 100%;
   }
   .admin-main.admin-content-main {
     overflow-x: auto;
