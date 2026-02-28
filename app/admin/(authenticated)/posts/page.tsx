@@ -848,6 +848,9 @@ export default function AdminPostsPage() {
         <form onSubmit={(e) => e.preventDefault()} className="admin-posts-form">
           <section className="admin-posts-card-section">
             <h2 className="admin-posts-card-heading">Media</h2>
+            <p className="admin-posts-hint" style={{ marginBottom: "0.5rem" }}>
+              Uploads and voice notes here are saved to your media library. Deleting a feed post does not delete items from your library.
+            </p>
             <div className="admin-posts-selected">
             {selectedMedia.map((m, i) => (
               <div key={i} className="admin-posts-thumb-wrap">

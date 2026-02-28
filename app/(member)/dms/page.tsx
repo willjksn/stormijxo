@@ -58,6 +58,16 @@ function MicIcon() {
   );
 }
 
+function ImageIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <polyline points="21 15 16 10 5 21" />
+    </svg>
+  );
+}
+
 export default function MemberDmsPage() {
   const { user } = useAuth();
   const db = getFirebaseDb();
@@ -65,6 +75,8 @@ export default function MemberDmsPage() {
   const [messages, setMessages] = useState<MessageDoc[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [selectedFilesCount, setSelectedFilesCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [convError, setConvError] = useState<string | null>(null);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
@@ -77,6 +89,7 @@ export default function MemberDmsPage() {
   const audioChunksRef = useRef<BlobPart[]>([]);
   const countdownIntervalRef = useRef<number | null>(null);
   const recentRecordingStopAtRef = useRef(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const initials = useInitials(user?.displayName ?? null, user?.email ?? null);
   const avatarUrl = profileAvatarUrl ?? user?.photoURL ?? null;
@@ -235,10 +248,56 @@ export default function MemberDmsPage() {
   }, [stopRecordingTracks, clearCountdown]);
 
   const handleSend = useCallback(async () => {
-    if (!db || !user || !text.trim()) return;
+    if (!db || !user) return;
+    const hasText = text.trim().length > 0;
+    const hasFiles = selectedFilesCount > 0;
+    if (!hasText && !hasFiles) return;
     setSending(true);
     setError(null);
     try {
+      if (hasFiles) {
+        if (!storage) {
+          throw new Error("File upload is not available right now. Please refresh and try again.");
+        }
+        setUploading(true);
+        const files = fileInputRef.current?.files;
+        if (!files || files.length === 0) {
+          throw new Error("No files were selected.");
+        }
+        const imageUrls: string[] = [];
+        const videoUrls: string[] = [];
+        const audioUrls: string[] = [];
+        const placeholderRef = await addDoc(collection(db, "conversations", user.uid, "messages"), {
+          senderId: user.uid,
+          senderEmail: user.email ?? null,
+          text: text.trim(),
+          imageUrls: [],
+          videoUrls: [],
+          audioUrls: [],
+          createdAt: serverTimestamp(),
+        });
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const url = await uploadDmFile(storage, user.uid, placeholderRef.id, file);
+          if (file.type.startsWith("video/")) videoUrls.push(url);
+          else imageUrls.push(url);
+        }
+        await updateDoc(placeholderRef, { imageUrls, videoUrls, audioUrls });
+        await updateDoc(doc(db, "conversations", user.uid), {
+          updatedAt: serverTimestamp(),
+          lastMessageAt: serverTimestamp(),
+          lastMessagePreview: text.trim() || "(attachment)",
+        });
+        await createNotificationForAdmin(
+          text.trim()
+            ? (user.displayName || user.email || "A member") + ": " + text.trim().slice(0, 60) + (text.length > 60 ? "…" : "")
+            : "New attachment from member."
+        );
+        setText("");
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        setSelectedFilesCount(0);
+        return;
+      }
       await sendMessage(db, user.uid, user.uid, user.email ?? null, text.trim());
       await createNotificationForAdmin(
         (user.displayName || user.email || "A member") + ": " + text.trim().slice(0, 60) + (text.length > 60 ? "…" : "")
@@ -249,8 +308,9 @@ export default function MemberDmsPage() {
       setError(msg || "Failed to send.");
     } finally {
       setSending(false);
+      setUploading(false);
     }
-  }, [db, user, text, createNotificationForAdmin]);
+  }, [db, user, text, selectedFilesCount, storage, createNotificationForAdmin]);
 
   const messagesWithDates = useMemo(() => {
     type Item = { type: "date"; date: Date } | { type: "message"; message: MessageDoc };
@@ -361,6 +421,20 @@ export default function MemberDmsPage() {
           </div>
           <div className="chat-input-bar">
             <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*,video/*"
+              multiple
+              style={{ display: "none" }}
+              onChange={(e) => {
+                setSelectedFilesCount(e.target.files?.length ?? 0);
+                setError(null);
+              }}
+            />
+            <button type="button" className="icon-btn" onClick={() => fileInputRef.current?.click()} disabled={sending || uploading} title="Photo / video">
+              <ImageIcon />
+            </button>
+            <input
               type="text"
               className="chat-input-field"
               placeholder="Message"
@@ -372,14 +446,22 @@ export default function MemberDmsPage() {
               type="button"
               className="icon-btn"
               onClick={toggleVoiceRecording}
-              disabled={sending}
+              disabled={sending || uploading}
               title={isRecording ? "Stop recording" : "Record voice message"}
               style={isRecording ? { color: "var(--error, #c53030)" } : undefined}
             >
               <MicIcon />
             </button>
-            <button type="button" className="send-btn" onClick={handleSend} disabled={sending || !text.trim()}>{sending ? "…" : "Send"}</button>
+            <button type="button" className="send-btn" onClick={handleSend} disabled={sending || uploading || (!text.trim() && selectedFilesCount === 0)}>{sending ? "…" : "Send"}</button>
           </div>
+          {selectedFilesCount > 0 && (
+            <p style={{ padding: "0.25rem 1rem", margin: 0, fontSize: "0.8rem", color: "var(--text-muted)" }}>
+              {selectedFilesCount} file{selectedFilesCount === 1 ? "" : "s"} selected
+            </p>
+          )}
+          <p style={{ padding: "0.25rem 1rem", margin: 0, fontSize: "0.8rem", color: "var(--text-muted)" }}>
+            Voice notes and attachments sent here stay in messages and are not added to My Vault.
+          </p>
           {isRecording && (
             <p style={{ padding: "0.25rem 1rem", margin: 0, fontSize: "0.85rem", color: "var(--error, #c53030)" }}>
               Recording voice… tap mic again to send.

@@ -396,6 +396,9 @@ export default function AdminMediaPage() {
           <div>
             <h1>My Vault</h1>
             <p className="admin-media-intro">Upload and manage images, videos, and voice notes you can reuse in posts.</p>
+            <p className="admin-media-intro" style={{ fontSize: "0.85rem", marginTop: "0.35rem" }}>
+              Deleting from My Vault only removes the library copy. Feed posts keep their own saved copies.
+            </p>
           </div>
           <label className="admin-media-upload-btn">
             <input
