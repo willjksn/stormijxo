@@ -797,8 +797,10 @@ export default function AdminDmsPage() {
                           {item.message.videoUrls.map((url) => (
                             <video
                               key={url}
-                              src={url}
+                              src={url.includes("#t=") ? url : `${url}#t=0.1`}
                               controls
+                              playsInline
+                              preload="auto"
                               controlsList="nodownload noplaybackrate noremoteplayback"
                               disablePictureInPicture
                               onContextMenu={(e) => e.preventDefault()}
