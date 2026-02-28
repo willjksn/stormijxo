@@ -62,6 +62,9 @@ export function NotificationBell({ variant, userEmail }: NotificationBellProps) 
           items.push(notificationFromDoc(d.id, d.data() as Record<string, unknown>));
         });
         setList(items);
+        if (variant === "member") {
+          setUnreadDmsCount(items.filter((n) => n.type === "dm" && !n.read).length);
+        }
         setLoading(false);
       },
       () => {
