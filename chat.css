@@ -292,6 +292,19 @@
   gap: 0.5rem;
 }
 
+/* Tablet: cap the message box height so there's no big white gap below the input */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .chat-page {
+    max-height: min(72vh, 720px);
+  }
+  .chat-thread {
+    min-height: 0;
+  }
+  .chat-messages {
+    max-height: min(48vh, 420px);
+  }
+}
+
 .chat-date-separator {
   display: flex;
   align-items: center;
