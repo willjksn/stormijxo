@@ -79,6 +79,31 @@ module.exports = async (req, res) => {
         const meta = session.metadata || {};
         const isTreat = meta.type === "treat";
         const isUnlockPost = meta.type === "unlock_post";
+        const isUnlockDmMedia = meta.type === "unlock_dm_media";
+
+        if (isUnlockDmMedia) {
+          const conversationId = (meta.conversationId || "").toString().trim();
+          const messageId = (meta.messageId || "").toString().trim();
+          const unlockId = (meta.unlockId || "").toString().trim();
+          const uid = (meta.uid || "").toString().trim();
+          const amountCents = typeof session.amount_total === "number" ? session.amount_total : 0;
+          const email = (session.customer_email || (session.customer_details && session.customer_details.email) || "").toString().trim() || null;
+          if (conversationId && messageId && unlockId && uid) {
+            const mediaUnlocksRef = db.collection("mediaUnlocks");
+            const docId = [conversationId, messageId, unlockId, uid].join("_");
+            await mediaUnlocksRef.doc(docId).set({
+              conversationId,
+              messageId,
+              unlockId,
+              uid,
+              amountCents,
+              email,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+          json(res, 200, { received: true });
+          return;
+        }
 
         if (isUnlockPost) {
           const unlockPostId =

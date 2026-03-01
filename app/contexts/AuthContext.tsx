@@ -3,7 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import { onAuthStateChanged, signOut as firebaseSignOut } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, collection, getDocs, query, where, limit, updateDoc } from "firebase/firestore";
 import { getFirebaseAuth, getFirebaseDb } from "../../lib/firebase";
 
 type AuthState = {
@@ -40,6 +40,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!db || !user?.uid || !email) return;
     const emailLower = email.toLowerCase();
     setDoc(doc(db, "users", user.uid), { email_lower: emailLower }, { merge: true }).catch(() => {});
+
+    // Sync member doc so members.uid = auth.uid for chat sessions and DMs
+    getDocs(query(collection(db, "members"), where("email", "==", emailLower), limit(1)))
+      .then((snap) => {
+        if (snap.empty) return;
+        const memberRef = snap.docs[0].ref;
+        return updateDoc(memberRef, { uid: user.uid, userId: user.uid });
+      })
+      .catch(() => {});
   }, [user?.uid, user?.email]);
 
   const signOut = useCallback(async () => {

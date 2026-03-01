@@ -26,6 +26,12 @@ export function AdminTabs() {
         Users
       </Link>
       <Link
+        href="/admin/profiles"
+        className={`tab${pathname === "/admin/profiles" ? " active" : ""}`}
+      >
+        Profiles
+      </Link>
+      <Link
         href="/admin/dashboard?panel=tools"
         className={`tab${isTools ? " active" : ""}`}
       >

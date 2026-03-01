@@ -12,6 +12,8 @@ export type TreatDoc = {
   description: string;
   quantityLeft: number;
   order: number;
+  /** If true, treat is hidden from the store (admin can toggle). */
+  hidden?: boolean;
 };
 
 /** Default treats for seeding when collection is empty (from original treats-data). */
@@ -22,6 +24,10 @@ export const DEFAULT_TREATS: TreatDoc[] = [
   { id: "birthday", name: "Birthday Message", price: 50, description: "Custom video. Don't make it weird.", quantityLeft: 6, order: 3 },
   { id: "overthinking", name: "Overthinking Response", price: 30, description: "Tell me what's stuck in your head. I'll answer.", quantityLeft: 15, order: 4 },
   { id: "check-in", name: "Random Check-In", price: 20, description: "A short message from me when you least expect it.", quantityLeft: 20, order: 5 },
+  { id: "chat-session-15", name: "15-Min Live Chat", price: 40, description: "A live 1:1 chat session with me at a time we agree on.", quantityLeft: 20, order: 6 },
+  { id: "chat-session-30", name: "30-Min Live Chat", price: 75, description: "A 30-minute live chat session. We'll pick a time together.", quantityLeft: 15, order: 7 },
+  { id: "chat-session-45", name: "45-Min Live Chat", price: 100, description: "A 45-minute live chat session. We'll pick a time together.", quantityLeft: 10, order: 8 },
+  { id: "chat-session-60", name: "1-Hour Live Chat", price: 125, description: "A full hour live chat session. We'll pick a time together.", quantityLeft: 10, order: 9 },
 ];
 
 /** Generate a URL-safe id from name for new treats. */

@@ -15,6 +15,10 @@ const TOOLS_LINKS = [
   { id: "treats", label: "Treats", href: "/admin/treats" },
   { id: "purchases", label: "Purchases", href: "/admin/purchases" },
   { id: "dms", label: "Messages", href: "/admin/dms" },
+  { id: "chat-session", label: "Chat session", href: "/admin/chat-session" },
+  { id: "interactive-prompts", label: "Interactive prompts", href: "/admin/interactive-prompts" },
+  { id: "rating-prompts", label: "Rating prompts", href: "/admin/rating-prompts" },
+  { id: "ai-training", label: "AI Training", href: "/admin/ai-training" },
 ] as const;
 
 export function AdminToolsNav() {
@@ -67,6 +71,10 @@ export function AdminToolsNav() {
     if (pathname === "/admin/treats") return "treats";
     if (pathname === "/admin/purchases") return "purchases";
     if (pathname === "/admin/dms") return "dms";
+    if (pathname === "/admin/chat-session") return "chat-session";
+    if (pathname === "/admin/interactive-prompts") return "interactive-prompts";
+    if (pathname === "/admin/rating-prompts") return "rating-prompts";
+    if (pathname === "/admin/ai-training") return "ai-training";
     if (pathname === "/admin/dashboard" && panel === "tools" && toolParam) {
       return TOOLS_LINKS.some((t) => t.id === toolParam) ? toolParam : "calendar";
     }

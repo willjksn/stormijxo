@@ -26,6 +26,7 @@ export default function AdminTreatsPage() {
     description: "",
     quantityLeft: 0,
     order: 0,
+    hidden: false,
   });
   const db = getFirebaseDb();
 
@@ -51,6 +52,7 @@ export default function AdminTreatsPage() {
             description: (data.description ?? "").toString(),
             quantityLeft: typeof data.quantityLeft === "number" ? data.quantityLeft : 0,
             order: typeof data.order === "number" ? data.order : 0,
+            hidden: data.hidden === true,
           });
         });
         setFirestoreIds(new Set(byId.keys()));
@@ -118,6 +120,7 @@ export default function AdminTreatsPage() {
         description: editForm.description,
         quantityLeft: Math.max(0, editForm.quantityLeft),
         order: editForm.order,
+        hidden: editForm.hidden === true,
       });
       setEditingId(null);
       setEditForm(null);
@@ -132,6 +135,31 @@ export default function AdminTreatsPage() {
           : "";
       showMsg("error", msg + hint);
       if (typeof console !== "undefined" && console.error) console.error("Treats save error:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleHidden = async (t: TreatDoc) => {
+    if (!db || !firestoreIds.has(t.id)) {
+      if (!firestoreIds.has(t.id)) showMsg("error", "Save this treat first to add it to the store, then you can hide it.");
+      return;
+    }
+    const auth = getFirebaseAuth();
+    if (!auth?.currentUser) {
+      showMsg("error", "Session expired or not signed in. Please sign in again and retry.");
+      return;
+    }
+    setSaving(true);
+    setMessage(null);
+    const nextHidden = !t.hidden;
+    try {
+      await setDoc(doc(db, TREATS_COLLECTION, t.id), { ...t, hidden: nextHidden }, { merge: true });
+      setTreats((prev) => prev.map((x) => (x.id === t.id ? { ...x, hidden: nextHidden } : x)));
+      showMsg("ok", nextHidden ? "Treat hidden from store." : "Treat visible in store.");
+    } catch (err) {
+      const e = err as { message?: string };
+      showMsg("error", e?.message ?? "Failed to update.");
     } finally {
       setSaving(false);
     }
@@ -203,10 +231,11 @@ export default function AdminTreatsPage() {
         description: (newTreat.description ?? "").toString().trim(),
         quantityLeft: Math.max(0, Number(newTreat.quantityLeft) || 0),
         order: treats.length,
+        hidden: newTreat.hidden === true,
       };
       await setDoc(doc(db, TREATS_COLLECTION, id), treat);
       setTreats((prev) => [...prev, treat].sort((a, b) => a.order - b.order));
-      setNewTreat({ name: "", price: 0, description: "", quantityLeft: 0, order: treats.length + 1 });
+      setNewTreat({ name: "", price: 0, description: "", quantityLeft: 0, order: treats.length + 1, hidden: false });
       setShowAddForm(false);
       showMsg("ok", "Treat added.");
     } catch (err) {
@@ -332,7 +361,7 @@ export default function AdminTreatsPage() {
                 className="btn btn-secondary"
                 onClick={() => {
                   setShowAddForm(false);
-                  setNewTreat({ name: "", price: 0, description: "", quantityLeft: 0, order: 0 });
+                  setNewTreat({ name: "", price: 0, description: "", quantityLeft: 0, order: 0, hidden: false });
                 }}
               >
                 Cancel
@@ -441,20 +470,30 @@ export default function AdminTreatsPage() {
                 </>
               ) : (
                 <>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem", flexWrap: "wrap" }}>
-                    <div>
-                      <h3 style={{ margin: "0 0 0.25rem", fontSize: "1.1rem" }}>{t.name}</h3>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <h3 style={{ margin: "0 0 0.25rem", fontSize: "1.1rem", fontWeight: 600 }}>{t.name}</h3>
                       <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.9rem" }}>
                         ${t.price} · <strong>{t.quantityLeft}</strong> left
+                        {t.hidden && (
+                          <span style={{ marginLeft: "0.5rem", color: "var(--accent)", fontWeight: 600 }}>(Hidden)</span>
+                        )}
                         {!firestoreIds.has(t.id) && (
-                          <span style={{ marginLeft: "0.5rem", color: "var(--text-muted)", fontStyle: "italic" }}>
-                            — Not in store yet (save to activate)
-                          </span>
+                          <span style={{ marginLeft: "0.5rem", fontStyle: "italic" }}>— Not in store yet (save to activate)</span>
                         )}
                       </p>
-                      <p style={{ margin: "0.5rem 0 0", fontSize: "0.9rem" }}>{t.description}</p>
+                      <p style={{ margin: "0.5rem 0 0", fontSize: "0.9rem", lineHeight: 1.4 }}>{t.description || "—"}</p>
                     </div>
-                    <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
+                    <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0, alignItems: "flex-start" }}>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => handleToggleHidden(t)}
+                        disabled={saving || !firestoreIds.has(t.id)}
+                        title={!firestoreIds.has(t.id) ? "Save this treat first to add it to the store." : t.hidden ? "Show in store" : "Hide from store"}
+                      >
+                        {t.hidden ? "Show" : "Hide"}
+                      </button>
                       <button type="button" className="btn btn-secondary" onClick={() => handleStartEdit(t)}>
                         Edit
                       </button>

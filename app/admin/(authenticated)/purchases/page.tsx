@@ -13,6 +13,7 @@ import {
   serverTimestamp,
   Timestamp,
   where,
+  limit,
 } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseAuth } from "../../../../lib/firebase";
 import {
@@ -20,6 +21,11 @@ import {
   PURCHASES_COLLECTION,
   type PurchaseDoc,
 } from "../../../../lib/purchases";
+import {
+  CHAT_SESSIONS_COLLECTION,
+  isChatSessionTreatId,
+  parseChatSessionDurationMinutes,
+} from "../../../../lib/chat-sessions";
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "—";
@@ -123,6 +129,9 @@ export default function AdminPurchasesPage() {
         scheduledAt: Timestamp.fromDate(scheduledAt),
         updatedAt: serverTimestamp(),
       });
+      if (isChatSessionTreatId(p.treatId)) {
+        await createChatSessionForPurchase(db, p, scheduledAt);
+      }
       await createNotificationForMember(db, p, scheduleDate.trim(), scheduleTime);
       setEditingId(null);
       setScheduleDate("");
@@ -286,12 +295,15 @@ async function createNotificationForMember(
   if (!db || !p.email) return;
   const dateStr = formatDate(scheduledDate);
   const timeStr = formatTime(scheduledTime);
+  const isChatSession = isChatSessionTreatId(p.treatId);
   await addDoc(collection(db, "notifications"), {
     forMemberEmail: p.email.trim().toLowerCase(),
     type: "treat_scheduled",
-    title: "Treat scheduled",
-    body: `${p.productName || "Your treat"} is scheduled for ${dateStr} at ${timeStr}.`,
-    link: "/treats",
+    title: isChatSession ? "Live chat scheduled" : "Treat scheduled",
+    body: isChatSession
+      ? `Your live chat is scheduled for ${dateStr} at ${timeStr}. When it's time, open the app and go to Chat session to join.`
+      : `${p.productName || "Your treat"} is scheduled for ${dateStr} at ${timeStr}.`,
+    link: isChatSession ? "/chat-session" : "/treats",
     read: false,
     purchaseId: p.id,
     scheduledDate,
@@ -308,5 +320,33 @@ async function createNotificationForMember(
     read: false,
     purchaseId: p.id,
     createdAt: serverTimestamp(),
+  });
+}
+
+async function createChatSessionForPurchase(
+  db: ReturnType<typeof getFirebaseDb>,
+  p: PurchaseDoc,
+  scheduledAt: Date
+) {
+  if (!db || !p.email) return;
+  const emailNorm = p.email.trim().toLowerCase();
+  const memberSnap = await getDocs(
+    query(collection(db, "members"), where("email", "==", emailNorm), limit(1))
+  );
+  const memberDoc = memberSnap.docs[0];
+  const conversationId = memberDoc
+    ? (memberDoc.data().uid || memberDoc.data().userId || `member-${memberDoc.id}`)
+    : "";
+  const memberName = memberDoc?.data().displayName ?? memberDoc?.data().note ?? null;
+  await addDoc(collection(db, CHAT_SESSIONS_COLLECTION), {
+    purchaseId: p.id,
+    conversationId,
+    memberEmail: emailNorm,
+    memberName: memberName != null ? String(memberName) : null,
+    scheduledStart: Timestamp.fromDate(scheduledAt),
+    durationMinutes: parseChatSessionDurationMinutes(p.treatId ?? "chat-session-15"),
+    status: "scheduled",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   });
 }

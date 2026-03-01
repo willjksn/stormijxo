@@ -116,5 +116,41 @@ service cloud.firestore {
         isAdmin()
       );
     }
+    // Premium Studio usage (caption/AI daily limits); server-only write via Admin SDK
+    match /studio_caption_usage/{docId} {
+      allow read, write: if false;
+    }
+    // studioSettings: AI Training (creator personality, sliders); admin reads/writes own
+    match /studioSettings/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /studio_ai_usage/{docId} {
+      allow read, write: if false;
+    }
+    // chatSessions: scheduled live chat; admin creates when scheduling a chat-session purchase; member reads own by email
+    match /chatSessions/{sessionId} {
+      allow read: if request.auth != null && (
+        resource.data.memberEmail == request.auth.token.email ||
+        (request.auth.token.email_lower != null && resource.data.memberEmail == request.auth.token.email_lower) ||
+        isAdmin()
+      );
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        request.auth != null &&
+        resource.data.memberEmail == request.auth.token.email &&
+        request.resource.data.conversationId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['conversationId', 'updatedAt'])
+      );
+    }
+    // mediaUnlocks: which user unlocked which DM locked media; written by server (webhook); member reads own; admin reads all (for spend tracking)
+    match /mediaUnlocks/{unlockDocId} {
+      allow read: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+    // postUnlocks: feed/post paid unlocks; written by server (webhook); admin reads all (for spend tracking)
+    match /postUnlocks/{unlockId} {
+      allow read: if request.auth != null && (resource.data.uid == request.auth.uid || resource.data.email == request.auth.token.email || isAdmin());
+      allow write: if false;
+    }
   }
 }

@@ -348,7 +348,9 @@
 .um-btn-add { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.85rem; font-size: 0.85rem; font-weight: 500; color: #fff; background: var(--accent); border: none; border-radius: 6px; cursor: pointer; font-family: inherit; text-decoration: none; }
 .um-btn-add:hover { background: var(--accent-hover); color: #fff; }
 .um-btn-add svg { width: 1rem; height: 1rem; flex-shrink: 0; }
-.um-search { padding: 0.45rem 0.65rem 0.45rem 2rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; width: 100%; min-width: 200px; max-width: 260px; background: var(--bg-card); color: var(--text); }
+.um-search { padding: 0.45rem 0.65rem 0.45rem 2rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; width: 100%; min-width: 200px; max-width: 260px; background: var(--bg-card); color: var(--text); outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+.um-search:focus,
+.um-search:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .um-search::placeholder { color: var(--text-muted); }
 .um-search-wrap { position: relative; }
 .um-search-wrap .um-search-icon { position: absolute; left: 0.65rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }

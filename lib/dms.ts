@@ -12,6 +12,7 @@ import {
   updateDoc,
   serverTimestamp,
   query,
+  where,
   orderBy,
   limit,
   getDocs,
@@ -25,6 +26,8 @@ import type { FirebaseStorage } from "firebase/storage";
 export const CONVERSATIONS_COLLECTION = "conversations";
 export const MESSAGES_SUBCOLLECTION = "messages";
 export const DM_STORAGE_PREFIX = "dm-attachments";
+/** Tracks which user has unlocked which locked media (conversationId, messageId, unlockId, uid). */
+export const MEDIA_UNLOCKS_COLLECTION = "mediaUnlocks";
 
 export type ConversationDoc = {
   id: string;
@@ -39,6 +42,13 @@ export type ConversationDoc = {
   firstMessageFromMember?: boolean | null;
 };
 
+export type LockedMediaItem = {
+  url: string;
+  priceCents: number;
+  unlockId: string;
+  type: "image" | "video";
+};
+
 export type MessageDoc = {
   id: string;
   senderId: string;
@@ -47,6 +57,8 @@ export type MessageDoc = {
   imageUrls: string[];
   videoUrls: string[];
   audioUrls: string[];
+  /** Pay-to-unlock media (blurred until fan pays). */
+  lockedMedia?: LockedMediaItem[];
   createdAt: Date | null;
 };
 
@@ -72,6 +84,15 @@ export function messageFromDoc(id: string, data: Record<string, unknown>): Messa
   const imageUrls = Array.isArray(data.imageUrls) ? (data.imageUrls as string[]) : [];
   const videoUrls = Array.isArray(data.videoUrls) ? (data.videoUrls as string[]) : [];
   const audioUrls = Array.isArray(data.audioUrls) ? (data.audioUrls as string[]) : [];
+  const rawLocked = Array.isArray(data.lockedMedia) ? data.lockedMedia : [];
+  const lockedMedia: LockedMediaItem[] = rawLocked
+    .filter((i: unknown) => i && typeof i === "object" && "url" in i && "priceCents" in i && "unlockId" in i && "type" in i)
+    .map((i: Record<string, unknown>) => ({
+      url: String(i.url),
+      priceCents: Number(i.priceCents) || 0,
+      unlockId: String(i.unlockId),
+      type: (i.type === "video" ? "video" : "image") as "image" | "video",
+    }));
   return {
     id,
     senderId: (data.senderId as string) ?? "",
@@ -80,6 +101,7 @@ export function messageFromDoc(id: string, data: Record<string, unknown>): Messa
     imageUrls,
     videoUrls,
     audioUrls,
+    lockedMedia: lockedMedia.length > 0 ? lockedMedia : undefined,
     createdAt,
   };
 }
@@ -198,18 +220,30 @@ export async function sendMessage(
   text: string,
   imageUrls: string[] = [],
   videoUrls: string[] = [],
-  audioUrls: string[] = []
+  audioUrls: string[] = [],
+  lockedMedia?: LockedMediaItem[],
+  existingMessageId?: string
 ): Promise<string> {
   const messagesRef = collection(db, CONVERSATIONS_COLLECTION, conversationId, MESSAGES_SUBCOLLECTION);
-  const docRef = await addDoc(messagesRef, {
+  const payload = {
     senderId,
     senderEmail: senderEmail?.trim().toLowerCase() ?? null,
     text: (text || "").trim(),
-    imageUrls,
-    videoUrls,
-    audioUrls,
+    imageUrls: imageUrls ?? [],
+    videoUrls: videoUrls ?? [],
+    audioUrls: audioUrls ?? [],
+    ...(lockedMedia && lockedMedia.length > 0 ? { lockedMedia } : {}),
     createdAt: serverTimestamp(),
-  });
+  };
+  let messageId: string;
+  if (existingMessageId) {
+    const messageRef = doc(db, CONVERSATIONS_COLLECTION, conversationId, MESSAGES_SUBCOLLECTION, existingMessageId);
+    await setDoc(messageRef, payload);
+    messageId = existingMessageId;
+  } else {
+    const docRef = await addDoc(messagesRef, payload);
+    messageId = docRef.id;
+  }
   const preview = (text || "").trim().slice(0, 80) + ((text || "").length > 80 ? "\u2026" : "");
   const convRef = doc(db, CONVERSATIONS_COLLECTION, conversationId);
   const wasFirstMessage = await getDocs(query(messagesRef, limit(2))).then((snap) => snap.size === 1);
@@ -219,7 +253,7 @@ export async function sendMessage(
     lastMessagePreview: preview || "(attachment)",
     ...(wasFirstMessage ? { firstMessageFromMember: senderId === conversationId } : {}),
   });
-  return docRef.id;
+  return messageId;
 }
 
 /** Call after adding a message (e.g. via file upload path) to set firstMessageFromMember if this was the first message. */
@@ -233,5 +267,96 @@ export async function setFirstMessageFlagIfFirst(
   if (snap.size !== 1) return;
   await updateDoc(doc(db, CONVERSATIONS_COLLECTION, conversationId), {
     firstMessageFromMember: senderId === conversationId,
+  });
+}
+
+/** Generate a stable unlock id for a locked media item. */
+export function generateUnlockId(): string {
+  return "ul-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+}
+
+/** Get a new message document ref/id for uploading attachments before sending. */
+export function getNewMessageRef(db: Firestore, conversationId: string): { ref: ReturnType<typeof doc>; id: string } {
+  const messageRef = doc(
+    collection(db, CONVERSATIONS_COLLECTION, conversationId, MESSAGES_SUBCOLLECTION)
+  );
+  return { ref: messageRef, id: messageRef.id };
+}
+
+/** Subscribe to media unlocks for a user in a conversation (to know which locked items they've unlocked). */
+export function subscribeMediaUnlocks(
+  db: Firestore,
+  conversationId: string,
+  uid: string,
+  onUpdate: (unlockIds: Set<string>) => void
+): Unsubscribe {
+  const q = query(
+    collection(db, MEDIA_UNLOCKS_COLLECTION),
+    where("conversationId", "==", conversationId),
+    where("uid", "==", uid)
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      const set = new Set<string>();
+      snap.forEach((d) => {
+        const data = d.data();
+        const key = [data.messageId, data.unlockId].filter(Boolean).join(":");
+        if (key) set.add(key);
+      });
+      onUpdate(set);
+    },
+    () => onUpdate(new Set())
+  );
+}
+
+/** Subscribe to new media unlocks in a conversation (for creator to show "Fan paid" banner). Calls onNewUnlock when a new unlock doc appears after initial load. */
+export function subscribeNewMediaUnlocks(
+  db: Firestore,
+  conversationId: string,
+  onNewUnlock: (amountCents: number, email: string | null) => void
+): Unsubscribe {
+  const q = query(
+    collection(db, MEDIA_UNLOCKS_COLLECTION),
+    where("conversationId", "==", conversationId)
+  );
+  const seenIds = new Set<string>();
+  let initialLoad = true;
+  return onSnapshot(
+    q,
+    (snap) => {
+      if (initialLoad) {
+        initialLoad = false;
+        snap.forEach((d) => seenIds.add(d.id));
+        return;
+      }
+      snap.forEach((d) => {
+        if (seenIds.has(d.id)) return;
+        seenIds.add(d.id);
+        const data = d.data();
+        const amountCents = typeof data.amountCents === "number" ? data.amountCents : 0;
+        const email = data.email != null ? String(data.email) : null;
+        onNewUnlock(amountCents, email);
+      });
+    },
+    () => {}
+  );
+}
+
+/** Record that a user unlocked a locked media item (called from server after payment). */
+export async function recordMediaUnlock(
+  db: Firestore,
+  conversationId: string,
+  messageId: string,
+  unlockId: string,
+  uid: string
+): Promise<void> {
+  const id = [conversationId, messageId, unlockId, uid].join("_");
+  await setDoc(doc(db, MEDIA_UNLOCKS_COLLECTION, id), {
+    conversationId,
+    messageId,
+    unlockId,
+    uid,
+    createdAt: serverTimestamp(),
   });
 }

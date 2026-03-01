@@ -17,11 +17,12 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseAuth } from "../../../../lib/firebase";
+import { MEDIA_UNLOCKS_COLLECTION } from "../../../../lib/dms";
 import { ALLOWED_ADMIN_EMAILS } from "../../../../lib/auth-redirect";
 import { MemberProfileCard } from "../../components/MemberProfileCard";
 import { TREATS_COLLECTION, type TreatDoc } from "../../../../lib/treats";
 
-type SpendEntry = { monthlyCents: number; storeItems: string[] };
+type SpendEntry = { monthlyCents: number; storeItems: string[]; tipTotalCents?: number; unlockTotalCents?: number };
 type TipperEntry = {
   email: string;
   name: string;
@@ -42,6 +43,8 @@ type UserRow = {
   accessEndsAt: Date | null;
   monthlySpendCents: number;
   storeItems: string[];
+  tipTotalCents?: number;
+  unlockTotalCents?: number;
   authOnly?: boolean;
   freeTreatRedeems?: number;
   /** Per-treat redeem counts (treatId -> number). */
@@ -56,6 +59,8 @@ type TipperRow = {
   signupDate: Date | null;
   monthlySpendCents: number;
   storeItems: string[];
+  tipTotalCents?: number;
+  unlockTotalCents?: number;
 };
 
 function norm(email: string): string {
@@ -69,6 +74,18 @@ function formatDate(d: Date | null): string {
 
 function formatMonthYear(): string {
   return new Date().toLocaleString(undefined, { month: "long", year: "numeric" });
+}
+
+function formatStoreCell(u: { storeItems?: string[] }): string {
+  return u.storeItems?.length ? u.storeItems.join(", ") : "—";
+}
+
+function formatTipCents(cents: number | undefined): string {
+  return typeof cents === "number" && cents > 0 ? "$" + (cents / 100).toFixed(2) : "—";
+}
+
+function formatUnlockCents(cents: number | undefined): string {
+  return typeof cents === "number" && cents > 0 ? "$" + (cents / 100).toFixed(2) : "—";
 }
 
 function parseDateLike(value: unknown): Date | null {
@@ -270,7 +287,9 @@ export default function AdminUsersPage() {
     Promise.all([
       getDocs(collection(db, "tips")).catch(() => ({ forEach: () => {} })),
       getDocs(collection(db, "purchases")).catch(() => ({ forEach: () => {} })),
-    ]).then(([tipsSnap, purchasesSnap]) => {
+      getDocs(collection(db, MEDIA_UNLOCKS_COLLECTION)).catch(() => ({ forEach: () => {} })),
+      getDocs(collection(db, "postUnlocks")).catch(() => ({ forEach: () => {} })),
+    ]).then(([tipsSnap, purchasesSnap, unlocksSnap, postUnlocksSnap]) => {
       const spend: Record<string, SpendEntry> = {};
       const tippers: Record<string, TipperEntry> = {};
       (tipsSnap as { forEach: (fn: (d: { data: () => unknown; id: string }) => void) => void }).forEach(
@@ -280,6 +299,7 @@ export default function AdminUsersPage() {
           if (!email) return;
           if (!spend[email]) spend[email] = { monthlyCents: 0, storeItems: [] };
           const cents = (typeof d.amountCents === "number" ? d.amountCents : 0) as number;
+          spend[email].tipTotalCents = (spend[email].tipTotalCents ?? 0) + cents;
           const tippedAt = (d.tippedAt as { toDate?: () => Date })?.toDate?.() ?? null;
           if (tippedAt && tippedAt >= monthStart) spend[email].monthlyCents += cents;
           if (!tippers[email]) {
@@ -319,6 +339,33 @@ export default function AdminUsersPage() {
           if (createdAt && createdAt >= monthStart) spend[email].monthlyCents += cents;
           const name = ((d.productName || d.productId || d.sku) ?? "Item").toString();
           if (name && !spend[email].storeItems.includes(name)) spend[email].storeItems.push(name);
+        }
+      );
+      (unlocksSnap as { forEach: (fn: (d: { data: () => unknown }) => void) => void }).forEach(
+        (doc: { data: () => unknown }) => {
+          const d = doc.data() as Record<string, unknown>;
+          const email = norm((d.email as string) ?? "");
+          if (!email) return;
+          if (!spend[email]) spend[email] = { monthlyCents: 0, storeItems: [] };
+          const cents = (typeof d.amountCents === "number" ? d.amountCents : 0) as number;
+          spend[email].unlockTotalCents = (spend[email].unlockTotalCents ?? 0) + cents;
+          const createdAt = (d.createdAt as { toDate?: () => Date })?.toDate?.() ?? null;
+          if (createdAt && createdAt >= monthStart) spend[email].monthlyCents += cents;
+        }
+      );
+      (postUnlocksSnap as { forEach: (fn: (d: { data: () => unknown }) => void) => void }).forEach(
+        (doc: { data: () => unknown }) => {
+          const d = doc.data() as Record<string, unknown>;
+          const email = norm((d.email as string) ?? "");
+          if (!email) return;
+          if (!spend[email]) spend[email] = { monthlyCents: 0, storeItems: [] };
+          const cents = (typeof d.amountCents === "number" ? d.amountCents : 0) as number;
+          spend[email].unlockTotalCents = (spend[email].unlockTotalCents ?? 0) + cents;
+          const createdAt =
+            (d.createdAt as { toDate?: () => Date })?.toDate?.() ??
+            (d.unlockedAt as { toDate?: () => Date })?.toDate?.() ??
+            null;
+          if (createdAt && createdAt >= monthStart) spend[email].monthlyCents += cents;
         }
       );
       setSpendByEmail(spend);
@@ -366,6 +413,8 @@ export default function AdminUsersPage() {
         isAdmin: adminEmails.has(email),
         monthlySpendCents: spend.monthlyCents,
         storeItems: spend.storeItems,
+        tipTotalCents: spend.tipTotalCents,
+        unlockTotalCents: spend.unlockTotalCents,
       });
     });
     adminUsers.forEach((a) => {
@@ -376,6 +425,8 @@ export default function AdminUsersPage() {
         ...a,
         monthlySpendCents: spend.monthlyCents,
         storeItems: spend.storeItems,
+        tipTotalCents: spend.tipTotalCents,
+        unlockTotalCents: spend.unlockTotalCents,
       });
     });
     // Always ensure allowlist admins appear (will_jackson, stormijxo)
@@ -394,6 +445,8 @@ export default function AdminUsersPage() {
         accessEndsAt: null,
         monthlySpendCents: spendByEmail[email]?.monthlyCents ?? 0,
         storeItems: spendByEmail[email]?.storeItems ?? [],
+        tipTotalCents: spendByEmail[email]?.tipTotalCents,
+        unlockTotalCents: spendByEmail[email]?.unlockTotalCents,
         authOnly: true,
       });
     });
@@ -418,6 +471,8 @@ export default function AdminUsersPage() {
         signupDate: t.lastTippedAt,
         monthlySpendCents: spend.monthlyCents,
         storeItems: [tipSummary],
+        tipTotalCents: t.totalCents,
+        unlockTotalCents: spend.unlockTotalCents,
       });
     });
     list.sort((a, b) => {
@@ -766,6 +821,8 @@ export default function AdminUsersPage() {
                       <th>Remaining access</th>
                       <th>Monthly Spend</th>
                       <th>Store purchases</th>
+                      <th>Tips</th>
+                      <th>Unlocks</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -790,6 +847,8 @@ export default function AdminUsersPage() {
                           {totalMonthlyCents > 0 ? "$" + (totalMonthlyCents / 100).toFixed(2) : "—"}
                         </span>
                       </td>
+                      <td>—</td>
+                      <td>—</td>
                       <td>—</td>
                       <td>—</td>
                     </tr>
@@ -818,7 +877,9 @@ export default function AdminUsersPage() {
                         <td>{formatDate(u.signupDate)}</td>
                         <td><span className="um-remaining">{remainingAccessText(u.accessEndsAt ?? null, u.status)}</span></td>
                         <td><span className="um-spend">{u.monthlySpendCents > 0 ? "$" + (u.monthlySpendCents / 100).toFixed(2) : "—"}</span></td>
-                        <td>{u.storeItems?.length ? u.storeItems.join(", ") : "—"}</td>
+                        <td>{formatStoreCell(u)}</td>
+                        <td>{formatTipCents(u.tipTotalCents)}</td>
+                        <td>{formatUnlockCents(u.unlockTotalCents)}</td>
                         <td>
                           <div className="um-actions">
                             <button type="button" className="link manage" onClick={() => openManage(u, "manage")}>Manage</button>
@@ -835,7 +896,7 @@ export default function AdminUsersPage() {
                     {/* Members section header */}
                     {(admins.length > 0 || membersList.length > 0) && membersList.length > 0 && (
                       <tr className="um-sep-row">
-                        <td colSpan={7}>Members</td>
+                        <td colSpan={9}>Members</td>
                       </tr>
                     )}
                     {membersList.map((u) => (
@@ -868,13 +929,15 @@ export default function AdminUsersPage() {
                         <td><span className="um-remaining">{remainingAccessText(u.accessEndsAt ?? null, u.status)}</span></td>
                         <td><span className="um-spend">{u.monthlySpendCents > 0 ? "$" + (u.monthlySpendCents / 100).toFixed(2) : "—"}</span></td>
                         <td>
-                          {u.storeItems?.length ? u.storeItems.join(", ") : "—"}
+                          {formatStoreCell(u)}
                           {(() => {
                             const tr = u.treatRedeems ?? {};
                             const total = Object.values(tr).reduce((s, n) => s + n, 0) + (u.freeTreatRedeems ?? 0);
                             return total > 0 ? <span className="um-free-redeems" title="Free treat redeems"> · {total} free redeem(s)</span> : null;
                           })()}
                         </td>
+                        <td>{formatTipCents(u.tipTotalCents)}</td>
+                        <td>{formatUnlockCents(u.unlockTotalCents)}</td>
                         <td>
                           <div className="um-actions" style={{ position: "relative" }}>
                             <button type="button" className="link manage" onClick={() => openManage(u, "manage")}>Manage</button>
@@ -915,7 +978,7 @@ export default function AdminUsersPage() {
                     ))}
                     {/* Tippers section header */}
                     <tr className="um-sep-row">
-                      <td colSpan={7}>Tippers</td>
+                      <td colSpan={9}>Tippers</td>
                     </tr>
                     {filteredTippers.length > 0 ? (
                       filteredTippers.map((t) => (
@@ -937,13 +1000,15 @@ export default function AdminUsersPage() {
                           <td>{formatDate(t.signupDate)}</td>
                           <td>—</td>
                           <td><span className="um-spend">{t.monthlySpendCents > 0 ? "$" + (t.monthlySpendCents / 100).toFixed(2) : "—"}</span></td>
-                          <td>{t.storeItems?.length ? t.storeItems.join(", ") : "—"}</td>
+                          <td>{formatStoreCell(t)}</td>
+                          <td>{formatTipCents(t.tipTotalCents)}</td>
+                          <td>{formatUnlockCents(t.unlockTotalCents)}</td>
                           <td>—</td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={7} className="um-empty-cell">No tippers yet.</td>
+                        <td colSpan={9} className="um-empty-cell">No tippers yet.</td>
                       </tr>
                     )}
                   </tbody>

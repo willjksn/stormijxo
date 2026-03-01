@@ -265,6 +265,9 @@ export function MemberHeader({ active }: MemberHeaderProps) {
           <Link href="/profile" onClick={() => setDropdownOpen(false)}>
             Your Profile
           </Link>
+          <Link href="/chat-session" onClick={() => setDropdownOpen(false)}>
+            Chat session
+          </Link>
           <a href="mailto:stormijxo@gmail.com?subject=Report%20a%20problem" onClick={() => setDropdownOpen(false)}>
             Report a Problem
           </a>

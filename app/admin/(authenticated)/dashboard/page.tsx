@@ -31,7 +31,7 @@ function ToolsPanel({ currentTool }: { currentTool: string }) {
         )}
         {currentTool === "posts" && (
           <p className="tools-placeholder-text">
-            <Link href="/admin/posts" className="tools-outbound-link">Open Post</Link> to manage posts.
+            <Link href="/admin/posts" className="tools-outbound-link">Open Post</Link> to manage posts and use AI captions.
           </p>
         )}
       </div>

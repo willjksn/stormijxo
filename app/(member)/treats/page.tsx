@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { collection, doc, getDocs, query, where, updateDoc } from "firebase/firestore";
+import Link from "next/link";
+import { collection, doc, getDocs, query, where, updateDoc, onSnapshot } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseAuth } from "../../../lib/firebase";
 import { TREATS_COLLECTION, DEFAULT_TREATS, type TreatDoc } from "../../../lib/treats";
 import { PURCHASES_COLLECTION, purchaseFromDoc, type PurchaseDoc } from "../../../lib/purchases";
+import { CHAT_SESSIONS_COLLECTION, chatSessionFromDoc, type ChatSessionDoc } from "../../../lib/chat-sessions";
 
 const STORE_ENABLED =
   typeof process.env.NEXT_PUBLIC_TREATS_STORE !== "undefined"
@@ -31,6 +33,7 @@ function formatScheduledTime(timeStr: string): string {
 export default function TreatsPage() {
   const [treats, setTreats] = useState<TreatDoc[]>([]);
   const [scheduled, setScheduled] = useState<PurchaseDoc[]>([]);
+  const [upcomingChatSessions, setUpcomingChatSessions] = useState<ChatSessionDoc[]>([]);
   const [loading, setLoading] = useState<string | null>(null);
   const [listLoading, setListLoading] = useState(true);
   const db = getFirebaseDb();
@@ -68,6 +71,38 @@ export default function TreatsPage() {
   }, [loadScheduled]);
 
   useEffect(() => {
+    if (!db || !auth?.currentUser?.email) {
+      setUpcomingChatSessions([]);
+      return;
+    }
+    const emailNorm = auth.currentUser.email.trim().toLowerCase();
+    const q = query(
+      collection(db, CHAT_SESSIONS_COLLECTION),
+      where("memberEmail", "==", emailNorm)
+    );
+    return onSnapshot(
+      q,
+      (snap) => {
+        const now = Date.now();
+        const list: ChatSessionDoc[] = [];
+        snap.forEach((d) => {
+          const parsed = chatSessionFromDoc(d.id, d.data() as Record<string, unknown>);
+          if (!parsed || parsed.status === "ended") return;
+          const start = parsed.scheduledStart?.getTime() ?? 0;
+          if (start > now) list.push(parsed);
+        });
+        list.sort((a, b) => {
+          const ta = a.scheduledStart?.getTime() ?? 0;
+          const tb = b.scheduledStart?.getTime() ?? 0;
+          return ta - tb;
+        });
+        setUpcomingChatSessions(list);
+      },
+      () => setUpcomingChatSessions([])
+    );
+  }, [db, auth?.currentUser?.email]);
+
+  useEffect(() => {
     if (!db || !auth?.currentUser?.email) return;
     const unreadTreatNotificationsQ = query(
       collection(db, "notifications"),
@@ -98,6 +133,7 @@ export default function TreatsPage() {
             description: (data.description ?? "").toString(),
             quantityLeft: typeof data.quantityLeft === "number" ? data.quantityLeft : 0,
             order: typeof data.order === "number" ? data.order : 0,
+            hidden: data.hidden === true,
           });
         });
         // Always show default treats; Firestore overrides by id so DB is source of truth when present
@@ -175,6 +211,51 @@ export default function TreatsPage() {
         <p className="treats-subhead">Personal messages, voice notes, and more — just for you.</p>
       </section>
 
+      {upcomingChatSessions.length > 0 && (
+        <section className="treats-scheduled-section" style={{ marginBottom: "2rem" }}>
+          <h2 className="treats-section-title" style={{ fontSize: "1.15rem", margin: "0 0 0.75rem", fontWeight: 600 }}>
+            Upcoming chat sessions
+          </h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            {upcomingChatSessions.map((s) => (
+              <div
+                key={s.id}
+                style={{
+                  padding: "1rem 1.25rem",
+                  borderRadius: 12,
+                  border: "1px solid rgba(212, 85, 139, 0.35)",
+                  background: "rgba(212, 85, 139, 0.08)",
+                }}
+              >
+                <p style={{ margin: "0 0 0.25rem", fontWeight: 600 }}>
+                  Live chat ({s.durationMinutes} min)
+                </p>
+                <p style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-muted)" }}>
+                  {s.scheduledStart
+                    ? s.scheduledStart.toLocaleString(undefined, {
+                        weekday: "long",
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                        hour12: true,
+                      })
+                    : "—"}
+                </p>
+                <Link
+                  href="/chat-session"
+                  className="btn btn-secondary"
+                  style={{ marginTop: "0.75rem", display: "inline-block" }}
+                >
+                  Open chat session
+                </Link>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {scheduled.length > 0 && (
         <section className="treats-scheduled-section" style={{ marginBottom: "2rem" }}>
           <h2 className="treats-section-title" style={{ fontSize: "1.15rem", margin: "0 0 0.75rem", fontWeight: 600 }}>
@@ -203,10 +284,10 @@ export default function TreatsPage() {
       )}
 
       <div className="treats-grid">
-        {treats.length === 0 ? (
+        {treats.filter((t) => !t.hidden).length === 0 ? (
           <p style={{ color: "var(--text-muted)", gridColumn: "1 / -1" }}>No treats available right now.</p>
         ) : (
-          treats.map((treat) => (
+          treats.filter((t) => !t.hidden).map((treat) => (
             <button
               key={treat.id}
               type="button"

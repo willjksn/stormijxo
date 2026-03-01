@@ -7,7 +7,7 @@ import { RequireAuth } from "../components/RequireAuth";
 
 export default function MemberLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const active = pathname === "/treats" ? "treats" : pathname === "/tip" ? "tip" : pathname === "/dms" ? "dms" : "home";
+  const active = pathname === "/treats" ? "treats" : pathname === "/tip" ? "tip" : pathname === "/dms" ? "dms" : pathname === "/chat-session" ? "home" : "home";
 
   useEffect(() => {
     const protectVideos = () => {

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { doc, getDoc, collection, query, where, getDocs, limit } from "firebase/firestore";
 import { getFirebaseDb } from "../../../lib/firebase";
 import { PURCHASES_COLLECTION } from "../../../lib/purchases";
+import { MEDIA_UNLOCKS_COLLECTION } from "../../../lib/dms";
 
 export type MemberProfileCardMember = {
   uid?: string | null;
@@ -20,6 +21,7 @@ type ProfileData = {
 
 type PurchaseRow = { productName: string | null; amountCents: number | null };
 type TipsRow = { totalCents: number; count: number };
+type UnlocksRow = { totalCents: number };
 
 type MemberProfileCardProps = {
   member: MemberProfileCardMember;
@@ -32,6 +34,7 @@ export function MemberProfileCard({ member, anchorRef, open, onClose }: MemberPr
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [purchases, setPurchases] = useState<PurchaseRow[]>([]);
   const [tips, setTips] = useState<TipsRow>({ totalCents: 0, count: 0 });
+  const [unlocks, setUnlocks] = useState<UnlocksRow>({ totalCents: 0 });
   const [loading, setLoading] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -59,8 +62,10 @@ export function MemberProfileCard({ member, anchorRef, open, onClose }: MemberPr
       loadUserProfile(),
       hasEmail ? getDocs(query(collection(db, PURCHASES_COLLECTION), where("email", "==", email))) : Promise.resolve(null),
       hasEmail ? getDocs(query(collection(db, "tips"), where("email", "==", email))) : Promise.resolve(null),
+      hasEmail ? getDocs(query(collection(db, MEDIA_UNLOCKS_COLLECTION), where("email", "==", email))) : Promise.resolve(null),
+      hasEmail ? getDocs(query(collection(db, "postUnlocks"), where("email", "==", email))) : Promise.resolve(null),
     ])
-      .then(([userSnapOrDoc, purchasesSnap, tipsSnap]) => {
+      .then(([userSnapOrDoc, purchasesSnap, tipsSnap, mediaUnlocksSnap, postUnlocksSnap]) => {
         const d: Record<string, unknown> = userSnapOrDoc ? userSnapOrDoc.data() ?? {} : {};
         setProfile({
           photoURL: (d.photoURL ?? d.avatarUrl ?? null) != null ? String(d.photoURL ?? d.avatarUrl) : null,
@@ -92,11 +97,27 @@ export function MemberProfileCard({ member, anchorRef, open, onClose }: MemberPr
           });
         }
         setTips({ totalCents, count });
+
+        let unlockCents = 0;
+        if (mediaUnlocksSnap && !mediaUnlocksSnap.empty) {
+          mediaUnlocksSnap.forEach((d) => {
+            const data = d.data() as Record<string, unknown>;
+            unlockCents += typeof data.amountCents === "number" ? data.amountCents : 0;
+          });
+        }
+        if (postUnlocksSnap && !postUnlocksSnap.empty) {
+          postUnlocksSnap.forEach((d) => {
+            const data = d.data() as Record<string, unknown>;
+            unlockCents += typeof data.amountCents === "number" ? data.amountCents : 0;
+          });
+        }
+        setUnlocks({ totalCents: unlockCents });
       })
       .catch(() => {
         setProfile(null);
         setPurchases([]);
         setTips({ totalCents: 0, count: 0 });
+        setUnlocks({ totalCents: 0 });
       })
       .finally(() => setLoading(false));
   }, [open, member.uid, member.email, onClose]);
@@ -179,6 +200,10 @@ export function MemberProfileCard({ member, anchorRef, open, onClose }: MemberPr
             <p style={{ margin: "0.75rem 0 0.5rem", fontWeight: 600, fontSize: "0.85rem", color: "var(--text-muted)" }}>Tips paid</p>
             <p style={{ margin: 0, fontSize: "0.9rem" }}>
               {tips.count === 0 ? "None" : `$${(tips.totalCents / 100).toFixed(2)} (${tips.count} tip${tips.count !== 1 ? "s" : ""})`}
+            </p>
+            <p style={{ margin: "0.75rem 0 0.5rem", fontWeight: 600, fontSize: "0.85rem", color: "var(--text-muted)" }}>Unlocks</p>
+            <p style={{ margin: 0, fontSize: "0.9rem" }}>
+              {unlocks.totalCents === 0 ? "None" : `$${(unlocks.totalCents / 100).toFixed(2)} (feed + chat)`}
             </p>
           </>
         )}
