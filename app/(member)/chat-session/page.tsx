@@ -151,7 +151,7 @@ export default function ChatSessionPage() {
 
   const handleSend = useCallback(async () => {
     const t = text.trim();
-    const cid = activeSession?.conversationId === user?.uid ? user.uid : activeSession?.conversationId;
+    const cid = activeSession?.conversationId === user?.uid ? user?.uid : activeSession?.conversationId;
     if ((!t && !pendingFile) || !db || !user?.uid || !activeSession || !cid) return;
     setSending(true);
     setText("");
