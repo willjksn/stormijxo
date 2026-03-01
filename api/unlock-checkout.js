@@ -71,7 +71,17 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const postId = typeof body.postId === "string" ? body.postId.trim() : "";
+  const postId = (
+    typeof body.postId === "string"
+      ? body.postId
+      : typeof body.post_id === "string"
+        ? body.post_id
+        : typeof body.id === "string"
+          ? body.id
+          : typeof body.unlock_post_id === "string"
+            ? body.unlock_post_id
+            : ""
+  ).trim();
   const uid = typeof body.uid === "string" ? body.uid.trim() : "";
   if (!postId) {
     // If request looks like admin user management (misrouted), proxy to correct admin API.

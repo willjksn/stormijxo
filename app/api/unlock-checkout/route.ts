@@ -49,7 +49,17 @@ export async function POST(req: NextRequest) {
     return tipCheckoutPost(tipForwardReq as unknown as NextRequest);
   }
 
-  const postId = typeof body.postId === "string" ? body.postId.trim() : "";
+  const postId = (
+    typeof body.postId === "string"
+      ? body.postId
+      : typeof (body as { post_id?: string }).post_id === "string"
+        ? (body as { post_id?: string }).post_id
+        : typeof (body as { id?: string }).id === "string"
+          ? (body as { id?: string }).id
+          : typeof (body as { unlock_post_id?: string }).unlock_post_id === "string"
+            ? (body as { unlock_post_id?: string }).unlock_post_id
+            : ""
+  ).trim();
   const uid = typeof body.uid === "string" ? body.uid.trim() : "";
   // If request looks like admin user management (wrong endpoint), forward to correct handler.
   if (!postId) {
