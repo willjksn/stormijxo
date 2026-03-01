@@ -2741,9 +2741,25 @@ main:not([class]) .section-title::after {
   border-radius: 12px;
 }
 
-.chat-session-msg-you { text-align: right; margin-bottom: 0.5rem; }
-.chat-session-msg-fan { text-align: left; margin-bottom: 0.5rem; }
-.chat-session-msg-label { font-size: 0.8rem; font-weight: 600; color: var(--accent); display: block; margin-bottom: 0.2rem; }
+.chat-session-msg-you {
+  text-align: right;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+}
+.chat-session-msg-fan {
+  text-align: left;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+.chat-session-msg-you .chat-session-msg-label { color: var(--accent); font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 0.2rem; }
+.chat-session-msg-fan .chat-session-msg-label { color: #0d9488; font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 0.2rem; }
+.chat-session-msg-label { font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 0.2rem; }
 .chat-session-msg-text { margin: 0; font-size: 0.9rem; color: var(--text); line-height: 1.4; }
 
 .chat-session-back-btn {

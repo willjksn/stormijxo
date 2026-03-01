@@ -10,6 +10,7 @@ import {
   getNewMessageRef,
   generateUnlockId,
   subscribeNewMediaUnlocks,
+  deleteMessage,
   type MessageDoc,
   type LockedMediaItem,
 } from "../../../../lib/dms";
@@ -740,16 +741,27 @@ export function SextingSessionPanel({ getToken, adminUid, adminEmail, usageRemai
                   const isYou = m.senderId === adminUid;
                   return (
                     <div key={m.id} className={isYou ? "chat-session-msg-you" : "chat-session-msg-fan"}>
-                      <span className="chat-session-msg-label">{isYou ? "You" : "Fan"}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
+                        <span className="chat-session-msg-label">{isYou ? "You" : "Fan"}</span>
+                        {isYou && (
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            style={{ padding: "0.2rem 0.5rem", fontSize: "0.75rem" }}
+                            onClick={() => selectedUid && db && deleteMessage(db, selectedUid, m.id).catch(() => {})}
+                            aria-label="Remove message"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
                       {m.text ? (
                         <p className="chat-session-msg-text">{m.text}</p>
                       ) : null}
                       {m.imageUrls?.length ? (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem", marginTop: "0.25rem" }}>
                           {m.imageUrls.map((url, i) => (
-                            <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                              <img src={url} alt="" style={{ maxWidth: "100%", maxHeight: 280, borderRadius: 8, objectFit: "contain" }} />
-                            </a>
+                            <img key={i} src={url} alt="" style={{ maxWidth: "100%", maxHeight: 280, borderRadius: 8, objectFit: "contain" }} />
                           ))}
                         </div>
                       ) : null}

@@ -308,24 +308,47 @@ export default function ChatSessionPage() {
                     </p>
                   ) : null}
                   {m.imageUrls?.map((url, i) => (
-                    <a key={i} href={url} target="_blank" rel="noopener noreferrer" style={{ display: "block", marginTop: "0.25rem" }}>
-                      <img src={url} alt="" style={{ maxWidth: "100%", maxHeight: 280, borderRadius: 8, objectFit: "contain" }} />
-                    </a>
+                    <div key={i} style={{ marginTop: "0.25rem" }}>
+                      <img
+                        src={url}
+                        alt=""
+                        style={{ maxWidth: "100%", maxHeight: 280, borderRadius: 8, objectFit: "contain" }}
+                        onContextMenu={(e) => e.preventDefault()}
+                        draggable={false}
+                      />
+                    </div>
                   ))}
                   {m.videoUrls?.map((url, i) => (
-                    <video key={i} src={url} controls style={{ maxWidth: "100%", maxHeight: 280, borderRadius: 8, marginTop: "0.25rem" }} />
+                    <video
+                      key={i}
+                      src={url}
+                      controls
+                      style={{ maxWidth: "100%", maxHeight: 280, borderRadius: 8, marginTop: "0.25rem" }}
+                      onContextMenu={(e) => e.preventDefault()}
+                    />
                   ))}
                   {m.lockedMedia?.map((item, i) => {
                     const key = `${m.id}:${item.unlockId}`;
                     const unlocked = unlockedKeys.has(key);
                     const price = (item.priceCents / 100).toFixed(2);
                     return (
-                      <div key={i} style={{ marginTop: "0.25rem", position: "relative" }}>
+                      <div key={i} style={{ marginTop: "0.25rem", position: "relative" }} onContextMenu={(e) => e.preventDefault()}>
                         {unlocked ? (
                           item.type === "image" ? (
-                            <img src={item.url} alt="" style={{ maxWidth: "100%", maxHeight: 280, borderRadius: 8, objectFit: "contain" }} />
+                            <img
+                              src={item.url}
+                              alt=""
+                              style={{ maxWidth: "100%", maxHeight: 280, borderRadius: 8, objectFit: "contain" }}
+                              onContextMenu={(e) => e.preventDefault()}
+                              draggable={false}
+                            />
                           ) : (
-                            <video src={item.url} controls style={{ maxWidth: "100%", maxHeight: 280, borderRadius: 8 }} />
+                            <video
+                              src={item.url}
+                              controls
+                              style={{ maxWidth: "100%", maxHeight: 280, borderRadius: 8 }}
+                              onContextMenu={(e) => e.preventDefault()}
+                            />
                           )
                         ) : (
                           <>

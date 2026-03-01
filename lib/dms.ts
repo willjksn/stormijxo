@@ -10,6 +10,7 @@ import {
   setDoc,
   addDoc,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
   query,
   where,
@@ -254,6 +255,16 @@ export async function sendMessage(
     ...(wasFirstMessage ? { firstMessageFromMember: senderId === conversationId } : {}),
   });
   return messageId;
+}
+
+/** Delete a message (creator only). Removes the message doc; conversation lastMessageAt is not updated. */
+export async function deleteMessage(
+  db: Firestore,
+  conversationId: string,
+  messageId: string
+): Promise<void> {
+  const messageRef = doc(db, CONVERSATIONS_COLLECTION, conversationId, MESSAGES_SUBCOLLECTION, messageId);
+  await deleteDoc(messageRef);
 }
 
 /** Call after adding a message (e.g. via file upload path) to set firstMessageFromMember if this was the first message. */
