@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   const postId = typeof body.postId === "string" ? body.postId.trim() : "";
   const uid = typeof body.uid === "string" ? body.uid.trim() : "";
   // If request looks like admin user management (wrong endpoint), forward to correct handler.
-  if (!postId || !uid) {
+  if (!postId) {
     const b = body as { memberId?: string; email?: string; newPassword?: string };
     const memberId = typeof b.memberId === "string" ? b.memberId.trim() : "";
     const email = typeof b.email === "string" ? b.email.trim() : "";
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       const { POST: changePasswordPost } = await import("../admin/change-password/route");
       return changePasswordPost(req);
     }
-    return NextResponse.json({ error: "Missing postId or uid." }, { status: 400 });
+    return NextResponse.json({ error: "Missing postId." }, { status: 400 });
   }
 
   let priceCents = 0;

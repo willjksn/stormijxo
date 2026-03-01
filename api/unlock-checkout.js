@@ -73,7 +73,7 @@ module.exports = async (req, res) => {
 
   const postId = typeof body.postId === "string" ? body.postId.trim() : "";
   const uid = typeof body.uid === "string" ? body.uid.trim() : "";
-  if (!postId || !uid) {
+  if (!postId) {
     // If request looks like admin user management (misrouted), proxy to correct admin API.
     const memberId = typeof body.memberId === "string" ? String(body.memberId).trim() : "";
     const email = typeof body.email === "string" ? String(body.email).trim() : "";
@@ -158,7 +158,7 @@ module.exports = async (req, res) => {
         return;
       }
     }
-    json(res, 400, { error: "Missing postId or uid." });
+    json(res, 400, { error: "Missing postId." });
     return;
   }
 
