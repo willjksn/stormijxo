@@ -170,7 +170,7 @@ export default function AdminRatingPromptsPage() {
         return;
       }
       if (res.description) {
-        setFanDetails((prev) => (prev ? `${prev}\n\n--- Analyzed from upload ---\n\n${res.description}` : res.description));
+        setFanDetails((prev) => (prev ? `${prev}\n\n--- Analyzed from upload ---\n\n${res.description}` : (res.description ?? "")));
       }
     } catch (err) {
       setMediaAnalyzeError(err instanceof Error ? err.message : "Analysis failed.");
