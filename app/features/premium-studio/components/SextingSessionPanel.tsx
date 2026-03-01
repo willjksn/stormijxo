@@ -439,14 +439,15 @@ export function SextingSessionPanel({ getToken, adminUid, adminEmail, usageRemai
     if (last.role !== "user") return;
     if (recentMessages.length <= lastFetchedMessageCountRef.current) return;
     lastFetchedMessageCountRef.current = recentMessages.length;
-    const toneId = tone.toLowerCase() as "playful" | "intimate" | "tease" | "sweet";
+    const toneId = tone.toLowerCase();
+    const toneParam = toneId === "teasing" ? "tease" : toneId === "playful" || toneId === "intimate" || toneId === "tease" || toneId === "sweet" ? toneId : "playful";
     getToken().then((token) => {
       if (!token) return;
       return generateSextingSuggestion(token, {
         recentMessages: recentMessages,
         fanName: selectedFan?.displayName ?? selectedFan?.email ?? undefined,
         creatorPersona: creatorPersonality,
-        tone: toneId === "teasing" ? "tease" : toneId in { playful: 1, intimate: 1, tease: 1, sweet: 1 } ? toneId : "playful",
+        tone: toneParam as "playful" | "intimate" | "tease" | "sweet",
         numSuggestions: 6,
         profanity: profanity !== undefined ? profanity : undefined,
         spiciness: spiciness !== undefined ? spiciness : undefined,
