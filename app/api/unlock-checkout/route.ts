@@ -24,19 +24,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Stripe secret is not configured" }, { status: 500 });
   }
 
-  let body: {
+  type Body = {
     checkoutType?: string;
     amountCents?: number | string;
     amount?: number | string;
     postId?: string;
+    post_id?: string;
+    id?: string;
+    unlock_post_id?: string;
     uid?: string;
     customer_email?: string;
     base_url?: string;
     success_url?: string;
     cancel_url?: string;
+    memberId?: string;
+    email?: string;
+    newPassword?: string;
   };
+  let body: Body;
   try {
-    body = await req.json();
+    const raw = await req.json();
+    if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    }
+    body = raw as Body;
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -52,21 +63,20 @@ export async function POST(req: NextRequest) {
   const postId = (
     typeof body.postId === "string"
       ? body.postId
-      : typeof (body as { post_id?: string }).post_id === "string"
-        ? (body as { post_id?: string }).post_id
-        : typeof (body as { id?: string }).id === "string"
-          ? (body as { id?: string }).id
-          : typeof (body as { unlock_post_id?: string }).unlock_post_id === "string"
-            ? (body as { unlock_post_id?: string }).unlock_post_id
+      : typeof body.post_id === "string"
+        ? body.post_id
+        : typeof body.id === "string"
+          ? body.id
+          : typeof body.unlock_post_id === "string"
+            ? body.unlock_post_id
             : ""
   ).trim();
   const uid = typeof body.uid === "string" ? body.uid.trim() : "";
   // If request looks like admin user management (wrong endpoint), forward to correct handler.
   if (!postId) {
-    const b = body as { memberId?: string; email?: string; newPassword?: string };
-    const memberId = typeof b.memberId === "string" ? b.memberId.trim() : "";
-    const email = typeof b.email === "string" ? b.email.trim() : "";
-    const newPassword = typeof b.newPassword === "string" ? b.newPassword.trim() : "";
+    const memberId = typeof body.memberId === "string" ? body.memberId.trim() : "";
+    const email = typeof body.email === "string" ? body.email.trim() : "";
+    const newPassword = typeof body.newPassword === "string" ? body.newPassword.trim() : "";
     if (memberId) {
       const { POST: deleteMemberPost } = await import("../admin/delete-member/route");
       return deleteMemberPost(req);
