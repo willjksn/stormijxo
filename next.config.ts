@@ -18,6 +18,7 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     return [
+      { source: "/favicon.ico", destination: "/icon.svg" },
       { source: "/admin/dashboard.html", destination: "/admin/dashboard" },
       { source: "/admin/users.html", destination: "/admin/users" },
       { source: "/admin/posts.html", destination: "/admin/posts" },

@@ -6,11 +6,20 @@ export type CaptionTone = "" | "flirty" | "casual" | "motivational" | "premium" 
 export type CaptionLength = "" | "short" | "medium" | "long";
 
 export interface GenerateCaptionRequest {
+  mediaUrl?: string;
+  mediaUrls?: string[];
+  mediaData?: { data: string; mimeType: string };
+  goal?: string;
+  tone?: CaptionTone | string;
+  promptText?: string;
+  platforms?: string[];
+  emojiEnabled?: boolean;
+  emojiIntensity?: number;
+  creatorPersonality?: string;
   imageUrl?: string;
   imageUrls?: string[];
   hasVideo?: boolean;
   bio?: string;
-  tone?: CaptionTone;
   length?: CaptionLength;
   starterText?: string;
   count?: number;
@@ -19,6 +28,7 @@ export interface GenerateCaptionRequest {
   empathy?: number;
   profanity?: number;
   spiciness?: number;
+  emoji?: number;
 }
 
 export interface GenerateCaptionResponse {
@@ -42,6 +52,7 @@ export interface GenerateSextingSuggestionRequest {
   empathy?: number;
   profanity?: number;
   spiciness?: number;
+  emoji?: number;
   /** When true, AI should gently wrap up the session and soft upsell, not pushy. */
   wrappingUp?: boolean;
   /** Optional context from previous sessions with this fan (e.g. what they like). */
@@ -98,6 +109,7 @@ export interface GenerateInteractiveIdeasRequest {
   empathy?: number;
   profanity?: number;
   spiciness?: number;
+  emoji?: number;
 }
 
 export interface GenerateInteractiveIdeasResponse {
@@ -128,6 +140,7 @@ export interface GenerateRatingPromptsRequest {
   empathy?: number;
   profanity?: number;
   spiciness?: number;
+  emoji?: number;
 }
 
 export interface GenerateRatingPromptsResponse {
@@ -154,6 +167,7 @@ export interface GenerateRatingLongRequest {
   empathy?: number;
   profanity?: number;
   spiciness?: number;
+  emoji?: number;
 }
 
 export interface GenerateRatingLongResponse {

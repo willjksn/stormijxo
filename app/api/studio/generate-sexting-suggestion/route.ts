@@ -7,6 +7,56 @@ import { getCachedSuggestion, setCachedSuggestion, makeSuggestionCacheKey } from
 import { generateSextingSuggestionWithGemini, generateSextingSuggestionsWithGemini } from "../../../../lib/studio/gemini-shared";
 import { handleApiError, rateLimitResponse } from "../../../../lib/studio/error-handler";
 
+function extractPrimaryReplyFromJsonish(text: string): string | null {
+  const trimmed = (text || "").trim();
+  if (!trimmed) return null;
+
+  const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidates = [
+    trimmed,
+    codeBlockMatch?.[1]?.trim() || "",
+    trimmed.replace(/\\"/g, "\""),
+    (codeBlockMatch?.[1]?.trim() || "").replace(/\\"/g, "\""),
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as { primary_reply?: unknown };
+      if (typeof parsed?.primary_reply === "string" && parsed.primary_reply.trim()) {
+        return parsed.primary_reply.trim();
+      }
+    } catch {
+      // ignore
+    }
+
+    const quoted = candidate.match(/"primary_reply"\s*:\s*("(?:\\.|[^"\\])*")/i);
+    if (quoted?.[1]) {
+      try {
+        const value = JSON.parse(quoted[1]);
+        if (typeof value === "string" && value.trim()) return value.trim();
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  return null;
+}
+
+function normalizeSuggestionText(input: unknown): string {
+  if (typeof input !== "string") return "";
+  const trimmed = input.trim();
+  if (!trimmed) return "";
+
+  const extracted = extractPrimaryReplyFromJsonish(trimmed);
+  if (extracted) return extracted;
+
+  // Never surface raw JSON object text in chat UI.
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) return "Hey 😊";
+
+  return trimmed;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const authResult = await verifyAuth(req.headers.get("authorization"));
@@ -40,19 +90,26 @@ export async function POST(req: NextRequest) {
           empathy: sanitized.empathy,
           profanity: sanitized.profanity,
           spiciness: sanitized.spiciness,
+          emoji: sanitized.emoji,
           wrappingUp: sanitized.wrappingUp,
           fanSessionContext: sanitized.fanSessionContext || undefined,
         });
       } catch (geminiErr) {
         return handleApiError(geminiErr, "Suggestion generation failed.");
       }
+      const normalizedSuggestions = suggestions
+        .map((s) => normalizeSuggestionText(s))
+        .filter((s) => s.length > 0);
       await incrementAiUsage(uid);
-      return NextResponse.json({ suggestion: suggestions[0] ?? "", suggestions });
+      return NextResponse.json({
+        suggestion: normalizedSuggestions[0] ?? "Hey 😊",
+        suggestions: normalizedSuggestions.length > 0 ? normalizedSuggestions : ["Hey 😊"],
+      });
     }
 
     const cacheKey = makeSuggestionCacheKey(sanitized);
     const cached = getCachedSuggestion(cacheKey);
-    if (cached) return NextResponse.json({ suggestion: cached });
+    if (cached) return NextResponse.json({ suggestion: normalizeSuggestionText(cached) || "Hey 😊" });
 
     let suggestion: string;
     try {
@@ -66,6 +123,7 @@ export async function POST(req: NextRequest) {
         empathy: sanitized.empathy,
         profanity: sanitized.profanity,
         spiciness: sanitized.spiciness,
+        emoji: sanitized.emoji,
         wrappingUp: sanitized.wrappingUp,
         fanSessionContext: sanitized.fanSessionContext || undefined,
       });
@@ -73,10 +131,11 @@ export async function POST(req: NextRequest) {
       return handleApiError(geminiErr, "Suggestion generation failed.");
     }
 
-    setCachedSuggestion(cacheKey, suggestion);
+    const normalizedSuggestion = normalizeSuggestionText(suggestion) || "Hey 😊";
+    setCachedSuggestion(cacheKey, normalizedSuggestion);
     await incrementAiUsage(uid);
 
-    return NextResponse.json({ suggestion });
+    return NextResponse.json({ suggestion: normalizedSuggestion });
   } catch (err) {
     return handleApiError(err);
   }

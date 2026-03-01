@@ -17,6 +17,45 @@ import type {
   GenerateRatingLongResponse,
 } from "../types";
 
+function extractPrimaryReplyFromJsonish(input: unknown): string {
+  if (typeof input !== "string") return "";
+  const trimmed = input.trim();
+  if (!trimmed) return "";
+
+  const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidates = [
+    trimmed,
+    codeBlockMatch?.[1]?.trim() || "",
+    trimmed.replace(/\\"/g, "\""),
+    (codeBlockMatch?.[1]?.trim() || "").replace(/\\"/g, "\""),
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as { primary_reply?: unknown };
+      if (typeof parsed?.primary_reply === "string" && parsed.primary_reply.trim()) {
+        return parsed.primary_reply.trim();
+      }
+    } catch {
+      // ignore
+    }
+
+    const quoted = candidate.match(/"primary_reply"\s*:\s*("(?:\\.|[^"\\])*")/i);
+    if (quoted?.[1]) {
+      try {
+        const value = JSON.parse(quoted[1]);
+        if (typeof value === "string" && value.trim()) return value.trim();
+      } catch {
+        // ignore
+      }
+    }
+  }
+  const normalized = candidates.join("\n");
+  if (normalized.includes("primary_reply")) return "";
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) return "";
+  return trimmed;
+}
+
 export async function generateCaptions(
   idToken: string,
   body: GenerateCaptionRequest
@@ -28,9 +67,22 @@ export async function generateCaptions(
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    return { captions: [], error: data.error || "Caption generation failed" };
+    const message = data?.message ?? data?.error ?? (data?.details?.[0]?.message) ?? "Caption generation failed";
+    return { captions: [], error: message };
   }
-  return { captions: Array.isArray(data.captions) ? data.captions : [data.caption || ""], error: data.error };
+  if (Array.isArray(data)) {
+    const captions = data.map((c: { caption?: string } | string) =>
+      typeof c === "string" ? c : (c?.caption ?? "")
+    ).filter(Boolean);
+    return { captions, error: undefined };
+  }
+  if (Array.isArray(data.captions)) {
+    const captions = data.captions.map((c: { caption?: string } | string) =>
+      typeof c === "string" ? c : (c?.caption ?? "")
+    ).filter(Boolean);
+    return { captions, error: data.error };
+  }
+  return { captions: [data.caption || ""].filter(Boolean), error: data.error };
 }
 
 export async function generateSextingSuggestion(
@@ -46,8 +98,15 @@ export async function generateSextingSuggestion(
   if (!res.ok) {
     return { suggestion: "", error: data.error || "Suggestion failed" };
   }
-  const suggestions = Array.isArray(data.suggestions) ? data.suggestions : undefined;
-  return { suggestion: data.suggestion ?? "", suggestions, error: data.error };
+  const normalizedSuggestions = Array.isArray(data.suggestions)
+    ? data.suggestions.map((s: unknown) => extractPrimaryReplyFromJsonish(s)).filter(Boolean)
+    : undefined;
+  const normalizedSuggestion = extractPrimaryReplyFromJsonish(data.suggestion);
+  return {
+    suggestion: normalizedSuggestion || normalizedSuggestions?.[0] || "",
+    suggestions: normalizedSuggestions,
+    error: data.error,
+  };
 }
 
 export async function fetchUsage(idToken: string): Promise<UsageLimit> {

@@ -11,6 +11,8 @@ firebase-config.js
 
 # Firebase
 .firebase/
+*service-account*.json
+*firebase*key*.json
 *.log
 
 # OS

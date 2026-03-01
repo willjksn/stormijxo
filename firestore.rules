@@ -124,6 +124,47 @@ service cloud.firestore {
     match /studioSettings/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+    // Studio subcollections under users: strict ownership (creator-only)
+    match /users/{userId}/studio_fan_preferences/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /users/{userId}/studio_content_brain_history/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /users/{userId}/studio_used_captions/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /users/{userId}/studio_sexting_sessions/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /users/{userId}/studio_saved_interactive/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /users/{userId}/studio_saved_ratings/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    // OnlyFans/Fansly/Fanvue-style studio subcollections (same ownership)
+    match /users/{userId}/onlyfans_fan_preferences/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /users/{userId}/onlyfans_content_brain_history/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /users/{userId}/onlyfans_used_captions/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /users/{userId}/onlyfans_sexting_sessions/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /users/{userId}/onlyfans_saved_interactive/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /users/{userId}/onlyfans_saved_ratings/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /users/{userId}/onlyfans_media_library/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
     match /studio_ai_usage/{docId} {
       allow read, write: if false;
     }

@@ -15,8 +15,8 @@ interface AISuggestionsPanelProps {
   formality?: number;
   humor?: number;
   empathy?: number;
+  emoji?: number;
   tone?: string;
-  onSuggestionSelect?: (text: string) => void;
   onUseSuggestion?: (text: string) => void;
   usageRemaining?: number;
   cardMode?: boolean;
@@ -34,6 +34,40 @@ const TONES = [
   { id: "sweet", label: "Sweet" },
 ] as const;
 
+function normalizeSuggestionText(input: string): string {
+  const trimmed = (input || "").trim();
+  if (!trimmed) return "";
+  const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidates = [
+    trimmed,
+    codeBlockMatch?.[1]?.trim() || "",
+    trimmed.replace(/\\"/g, "\""),
+    (codeBlockMatch?.[1]?.trim() || "").replace(/\\"/g, "\""),
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as { primary_reply?: unknown };
+      if (typeof parsed?.primary_reply === "string" && parsed.primary_reply.trim()) {
+        return parsed.primary_reply.trim();
+      }
+    } catch {
+      // ignore parse failures and continue
+    }
+    const quoted = candidate.match(/"primary_reply"\s*:\s*("(?:\\.|[^"\\])*")/i);
+    if (quoted?.[1]) {
+      try {
+        const value = JSON.parse(quoted[1]);
+        if (typeof value === "string" && value.trim()) return value.trim();
+      } catch {
+        // ignore
+      }
+    }
+  }
+  if (trimmed.includes("primary_reply")) return "";
+  return trimmed;
+}
+
 export function AISuggestionsPanel({
   getToken,
   recentMessages,
@@ -44,8 +78,8 @@ export function AISuggestionsPanel({
   formality,
   humor,
   empathy,
+  emoji,
   tone: toneProp,
-  onSuggestionSelect,
   onUseSuggestion,
   usageRemaining = 200,
   cardMode = false,
@@ -79,6 +113,7 @@ export function AISuggestionsPanel({
         formality: formality !== undefined ? formality : undefined,
         humor: humor !== undefined ? humor : undefined,
         empathy: empathy !== undefined ? empathy : undefined,
+        emoji: emoji !== undefined ? emoji : undefined,
       });
       if (res.error) {
         setError(res.error);
@@ -95,7 +130,9 @@ export function AISuggestionsPanel({
   }, [getToken, recentMessages, fanName, creatorPersona, profanity, spiciness, formality, humor, empathy, tone, cardMode]);
 
   if (cardMode) {
-    const displaySuggestions = initialSuggestions.length > 0 ? initialSuggestions : suggestionsList;
+    const displaySuggestions = (initialSuggestions.length > 0 ? initialSuggestions : suggestionsList)
+      .map((s) => normalizeSuggestionText(s))
+      .filter(Boolean);
     return (
       <div className="chat-session-ai-cards-wrap">
         {onRequestSuggestions && (
@@ -118,7 +155,6 @@ export function AISuggestionsPanel({
               <p className="chat-session-suggestion-card-text">{text}</p>
               <p className="chat-session-suggestion-card-confidence">Confidence: 85%</p>
               <div className="chat-session-suggestion-card-actions">
-                <button type="button" className="chat-session-card-link" onClick={() => onSuggestionSelect?.(text)}>Copy</button>
                 <button type="button" className="chat-session-card-link" onClick={() => onUseSuggestion?.(text)}>Use</button>
               </div>
             </div>
@@ -173,7 +209,7 @@ export function AISuggestionsPanel({
             type="button"
             className="admin-posts-option-btn active"
             style={{ width: "100%", textAlign: "left", padding: "0.75rem" }}
-            onClick={() => onSuggestionSelect?.(suggestion)}
+            onClick={() => onUseSuggestion?.(suggestion)}
           >
             {suggestion}
           </button>

@@ -24,6 +24,7 @@ function sanitize(body: Record<string, unknown>) {
     empathy: num(body.empathy),
     profanity: num(body.profanity),
     spiciness: num(body.spiciness),
+    emoji: num(body.emoji),
   };
 }
 

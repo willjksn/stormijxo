@@ -21,8 +21,8 @@ function SparklesIcon() {
 
 export default function AdminInteractivePromptsPage() {
   const { user } = useAuth();
-  const { creatorPersonality, profanity, spiciness, formality, humor, empathy } = useStudioSettings();
-  const [personalityOpen, setPersonalityOpen] = useState(false);
+  const { creatorPersonality, profanity, spiciness, formality, humor, empathy, emoji } = useStudioSettings();
+  const [useCreatorPersonality, setUseCreatorPersonality] = useState(false);
   const [tone, setTone] = useState("Playful");
   const [interactiveFocus, setInteractiveFocus] = useState("");
   const [objective, setObjective] = useState("comments");
@@ -51,7 +51,7 @@ export default function AdminInteractivePromptsPage() {
       const res = await generateInteractiveIdeas(token, {
         tone_suggestion: tone.toLowerCase(),
         interactive_focus: interactiveFocus.trim() || undefined,
-        creator_voice: creatorPersonality.trim() || undefined,
+        creator_voice: useCreatorPersonality ? (creatorPersonality.trim() || undefined) : undefined,
         objective,
         constraints: constraints.trim() || undefined,
         profanity: profanity !== undefined ? profanity : undefined,
@@ -59,6 +59,7 @@ export default function AdminInteractivePromptsPage() {
         formality: formality !== undefined ? formality : undefined,
         humor: humor !== undefined ? humor : undefined,
         empathy: empathy !== undefined ? empathy : undefined,
+        emoji: emoji !== undefined ? emoji : undefined,
       });
       if (res.error) {
         setError(res.error);
@@ -74,7 +75,7 @@ export default function AdminInteractivePromptsPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, getToken, tone, interactiveFocus, creatorPersonality, profanity, spiciness, formality, humor, empathy, objective, constraints]);
+  }, [user, getToken, tone, interactiveFocus, creatorPersonality, useCreatorPersonality, profanity, spiciness, formality, humor, empathy, emoji, objective, constraints]);
 
   const copyToClipboard = useCallback((text: string) => {
     if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
@@ -138,15 +139,15 @@ export default function AdminInteractivePromptsPage() {
             <div className="chat-session-personality-wrap" style={{ marginTop: "0.5rem" }}>
               <button
                 type="button"
-                className={`chat-session-personality-btn ${personalityOpen ? "active" : ""}`}
-                onClick={() => setPersonalityOpen((o) => !o)}
-                aria-expanded={personalityOpen}
+                className={`chat-session-personality-btn ${useCreatorPersonality ? "active" : ""}`}
+                onClick={() => setUseCreatorPersonality((on) => !on)}
+                aria-pressed={useCreatorPersonality}
                 style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
               >
                 <span className="chat-session-personality-icon"><SparklesIcon /></span>
-                Creator Personality
+                Creator Personality: {useCreatorPersonality ? "On" : "Off"}
               </button>
-              {personalityOpen && (
+              {useCreatorPersonality && (
                 <div className="chat-session-personality-content" style={{ marginTop: "0.5rem" }}>
                   <p className="admin-posts-hint" style={{ marginBottom: "0.5rem" }}>
                     From <a href="/admin/ai-training" style={{ color: "var(--accent)" }}>AI Training</a>. Used for all AI features.

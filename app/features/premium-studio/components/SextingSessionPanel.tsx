@@ -38,10 +38,43 @@ function subscriberToFan(s: SubscriberDoc): FanOption {
   };
 }
 
+function normalizeChatText(input: string): string {
+  const trimmed = (input || "").trim();
+  if (!trimmed) return "";
+  const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidates = [
+    trimmed,
+    codeBlockMatch?.[1]?.trim() || "",
+    trimmed.replace(/\\"/g, "\""),
+    (codeBlockMatch?.[1]?.trim() || "").replace(/\\"/g, "\""),
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as { primary_reply?: unknown };
+      if (typeof parsed?.primary_reply === "string" && parsed.primary_reply.trim()) {
+        return parsed.primary_reply.trim();
+      }
+    } catch {
+      // ignore parse failures and continue
+    }
+    const quoted = candidate.match(/"primary_reply"\s*:\s*("(?:\\.|[^"\\])*")/i);
+    if (quoted?.[1]) {
+      try {
+        const value = JSON.parse(quoted[1]);
+        if (typeof value === "string" && value.trim()) return value.trim();
+      } catch {
+        // ignore
+      }
+    }
+  }
+  if (trimmed.includes("primary_reply")) return "";
+  return trimmed;
+}
+
 function messagesToContext(messages: MessageDoc[], adminUid: string): SextingContextMessage[] {
   return messages.map((m) => ({
     role: m.senderId === adminUid ? "assistant" : "user",
-    content: m.text?.trim() || "(media)",
+    content: normalizeChatText(m.text || "") || "(media)",
   }));
 }
 
@@ -83,11 +116,11 @@ interface SextingSessionPanelProps {
 
 export function SextingSessionPanel({ getToken, adminUid, adminEmail, usageRemaining = 200 }: SextingSessionPanelProps) {
   const db = getFirebaseDb();
-  const { creatorPersonality, profanity, spiciness, formality, humor, empathy } = useStudioSettings();
+  const { creatorPersonality, profanity, spiciness, formality, humor, empathy, emoji } = useStudioSettings();
   const [subscribers, setSubscribers] = useState<SubscriberDoc[]>([]);
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageDoc[]>([]);
-  const [personalityOpen, setPersonalityOpen] = useState(false);
+  const [useCreatorPersonality, setUseCreatorPersonality] = useState(false);
   const [roleplayType, setRoleplayType] = useState<string>("GFE");
   const [tone, setTone] = useState<string>("Teasing");
   const [sessionEndModalOpen, setSessionEndModalOpen] = useState(false);
@@ -233,12 +266,6 @@ export function SextingSessionPanel({ getToken, adminUid, adminEmail, usageRemai
   const fans: FanOption[] = subscribers.map(subscriberToFan);
   const selectedFan = fans.find((f) => f.uid === selectedUid);
   const recentMessages = messagesToContext(messages, adminUid);
-
-  const handleSuggestionSelect = useCallback((text: string) => {
-    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(text);
-    }
-  }, []);
 
   const handleStartSession = useCallback(() => {
     if (!selectedUid) return;
@@ -395,7 +422,7 @@ export function SextingSessionPanel({ getToken, adminUid, adminEmail, usageRemai
         return generateSextingSuggestion(token, {
           recentMessages,
           fanName: selectedFan?.displayName ?? selectedFan?.email ?? undefined,
-          creatorPersona: creatorPersonality,
+          creatorPersona: useCreatorPersonality ? creatorPersonality : undefined,
           tone: toneParam as "playful" | "intimate" | "tease" | "sweet",
           numSuggestions: 1,
           profanity: profanity !== undefined ? profanity : undefined,
@@ -403,6 +430,7 @@ export function SextingSessionPanel({ getToken, adminUid, adminEmail, usageRemai
           formality: formality !== undefined ? formality : undefined,
           humor: humor !== undefined ? humor : undefined,
           empathy: empathy !== undefined ? empathy : undefined,
+          emoji: emoji !== undefined ? emoji : undefined,
           wrappingUp,
           fanSessionContext: fanSessionContext ?? undefined,
         });
@@ -422,10 +450,12 @@ export function SextingSessionPanel({ getToken, adminUid, adminEmail, usageRemai
     recentMessages,
     tone,
     creatorPersonality,
+    useCreatorPersonality,
     profanity,
     formality,
     humor,
     empathy,
+    emoji,
     getToken,
     selectedFan,
     adminUid,
@@ -447,7 +477,7 @@ export function SextingSessionPanel({ getToken, adminUid, adminEmail, usageRemai
       return generateSextingSuggestion(token, {
         recentMessages: recentMessages,
         fanName: selectedFan?.displayName ?? selectedFan?.email ?? undefined,
-        creatorPersona: creatorPersonality,
+        creatorPersona: useCreatorPersonality ? creatorPersonality : undefined,
         tone: toneParam as "playful" | "intimate" | "tease" | "sweet",
         numSuggestions: 6,
         profanity: profanity !== undefined ? profanity : undefined,
@@ -455,13 +485,14 @@ export function SextingSessionPanel({ getToken, adminUid, adminEmail, usageRemai
         formality: formality !== undefined ? formality : undefined,
         humor: humor !== undefined ? humor : undefined,
         empathy: empathy !== undefined ? empathy : undefined,
+        emoji: emoji !== undefined ? emoji : undefined,
         fanSessionContext: fanSessionContext ?? undefined,
       });
     }).then((res) => {
       if (res?.error || !res?.suggestions?.length) return;
       setAutoSuggestions(res.suggestions);
     }).catch(() => {});
-  }, [sessionStarted, selectedUid, recentMessages, creatorPersonality, profanity, tone, getToken, selectedFan, chatBotEnabled, fanSessionContext]);
+  }, [sessionStarted, selectedUid, recentMessages, creatorPersonality, useCreatorPersonality, profanity, tone, emoji, getToken, selectedFan, chatBotEnabled, fanSessionContext]);
 
   const handleSendMyMessage = useCallback(async () => {
     const t = myMessageInput.trim();
@@ -600,7 +631,7 @@ export function SextingSessionPanel({ getToken, adminUid, adminEmail, usageRemai
       return generateSextingSuggestion(token, {
         recentMessages,
         fanName: selectedFan?.displayName ?? selectedFan?.email ?? undefined,
-        creatorPersona: creatorPersonality,
+        creatorPersona: useCreatorPersonality ? creatorPersonality : undefined,
         tone: toneParam as "playful" | "intimate" | "tease" | "sweet",
         numSuggestions: 6,
         profanity: profanity !== undefined ? profanity : undefined,
@@ -608,12 +639,13 @@ export function SextingSessionPanel({ getToken, adminUid, adminEmail, usageRemai
         formality: formality !== undefined ? formality : undefined,
         humor: humor !== undefined ? humor : undefined,
         empathy: empathy !== undefined ? empathy : undefined,
+        emoji: emoji !== undefined ? emoji : undefined,
         fanSessionContext: fanSessionContext ?? undefined,
       });
     }).then((res) => {
       if (res?.suggestions?.length) setAutoSuggestions(res.suggestions);
     }).catch(() => {}).finally(() => setSuggestionsLoading(false));
-  }, [selectedUid, recentMessages, tone, creatorPersonality, profanity, getToken, selectedFan, fanSessionContext]);
+  }, [selectedUid, recentMessages, tone, creatorPersonality, useCreatorPersonality, profanity, emoji, getToken, selectedFan, fanSessionContext]);
 
   const handleEndSession = useCallback(() => {
     setSessionEndModalOpen(false);
@@ -755,8 +787,8 @@ export function SextingSessionPanel({ getToken, adminUid, adminEmail, usageRemai
                           </button>
                         )}
                       </div>
-                      {m.text ? (
-                        <p className="chat-session-msg-text">{m.text}</p>
+                      {normalizeChatText(m.text || "") ? (
+                        <p className="chat-session-msg-text">{normalizeChatText(m.text || "")}</p>
                       ) : null}
                       {m.imageUrls?.length ? (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem", marginTop: "0.25rem" }}>
@@ -837,7 +869,7 @@ export function SextingSessionPanel({ getToken, adminUid, adminEmail, usageRemai
                           )}
                         </div>
                       ) : null}
-                      {!m.text && !(m.imageUrls?.length) && !(m.videoUrls?.length) && !(m.lockedMedia?.length) ? (
+                      {!normalizeChatText(m.text || "") && !(m.imageUrls?.length) && !(m.videoUrls?.length) && !(m.lockedMedia?.length) ? (
                         <p className="chat-session-msg-text">(media)</p>
                       ) : null}
                     </div>
@@ -1081,14 +1113,14 @@ export function SextingSessionPanel({ getToken, adminUid, adminEmail, usageRemai
               getToken={getToken}
               recentMessages={recentMessages}
               fanName={selectedFan?.displayName ?? selectedFan?.email ?? undefined}
-              creatorPersona={creatorPersonality}
+              creatorPersona={useCreatorPersonality ? creatorPersonality : undefined}
               profanity={profanity}
               spiciness={spiciness}
               formality={formality}
               humor={humor}
               empathy={empathy}
+              emoji={emoji}
               tone={tone}
-              onSuggestionSelect={handleSuggestionSelect}
               onUseSuggestion={handleUseSuggestion}
               usageRemaining={usageRemaining}
               cardMode
@@ -1128,12 +1160,12 @@ export function SextingSessionPanel({ getToken, adminUid, adminEmail, usageRemai
           <div className="chat-session-personality-duration-row">
             <button
               type="button"
-              className={`chat-session-personality-btn ${personalityOpen ? "active" : ""}`}
-              onClick={() => setPersonalityOpen((o) => !o)}
-              aria-expanded={personalityOpen}
+              className={`chat-session-personality-btn ${useCreatorPersonality ? "active" : ""}`}
+              onClick={() => setUseCreatorPersonality((on) => !on)}
+              aria-pressed={useCreatorPersonality}
             >
               <span className="chat-session-personality-icon"><SparklesIcon /></span>
-              Personality
+              Personality: {useCreatorPersonality ? "On" : "Off"}
             </button>
             <div className="chat-session-duration-wrap">
               <label className="chat-session-label">Session duration</label>
@@ -1174,11 +1206,11 @@ export function SextingSessionPanel({ getToken, adminUid, adminEmail, usageRemai
             )}
           </div>
           </div>
-          {personalityOpen && (
+          {useCreatorPersonality && (
             <div className="chat-session-personality-content">
               <label className="chat-session-label">Creator personality (from AI Training)</label>
               <p className="admin-posts-hint" style={{ marginBottom: "0.5rem" }}>
-                Set and edit in <a href="/admin/ai-training" className="admin-posts-message" style={{ color: "var(--accent)" }}>AI Training</a>. Used for all AI features.
+                Set and edit in <a href="/admin/ai-training" className="admin-posts-message" style={{ color: "var(--accent)" }}>AI Training</a>. Personality is currently enabled and used first.
               </p>
               <div
                 className="admin-posts-caption-input"

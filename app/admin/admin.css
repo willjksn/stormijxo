@@ -258,6 +258,27 @@
   transition: background 0.2s; z-index: 111; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 .admin-media-preview-close:hover { background: rgba(255,255,255,0.35); }
+
+.admin-posts-ai-btn-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.admin-posts-ai-spinner {
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: admin-posts-spin 0.75s linear infinite;
+}
+
+@keyframes admin-posts-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .admin-media-preview-media {
   max-width: 90vw; max-height: 80vh; object-fit: contain; border-radius: 8px; background: #000;
 }

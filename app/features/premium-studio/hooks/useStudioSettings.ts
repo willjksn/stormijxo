@@ -11,7 +11,7 @@ import {
 import { useAuth } from "../../../contexts/AuthContext";
 
 export function useStudioSettings() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const uid = user?.uid ?? null;
   const [data, setData] = useState<StudioSettingsData>({
     creatorPersonality: "",
@@ -20,26 +20,28 @@ export function useStudioSettings() {
     empathy: 70,
     profanity: 50,
     spiciness: 100,
+    emoji: 60,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const db = getFirebaseDb();
-    if (!db || !uid) {
-      setLoading(false);
+    if (!db || authLoading || !uid) {
+      if (!authLoading) setLoading(false);
       return;
     }
     setLoading(true);
     getStudioSettings(db, uid)
       .then(setData)
+      .catch(() => setData((prev) => prev))
       .finally(() => setLoading(false));
-  }, [uid]);
+  }, [uid, authLoading]);
 
   useEffect(() => {
     const db = getFirebaseDb();
-    if (!db || !uid) return;
+    if (!db || authLoading || !uid) return;
     return subscribeStudioSettings(db, uid, setData);
-  }, [uid]);
+  }, [uid, authLoading]);
 
   const saveCreatorPersonality = useCallback(() => {
     const db = getFirebaseDb();
@@ -48,7 +50,7 @@ export function useStudioSettings() {
   }, [uid, data.creatorPersonality]);
 
   const saveSliders = useCallback(
-    (sliders: Partial<Pick<StudioSettingsData, "formality" | "humor" | "empathy" | "profanity" | "spiciness">>) => {
+    (sliders: Partial<Pick<StudioSettingsData, "formality" | "humor" | "empathy" | "profanity" | "spiciness" | "emoji">>) => {
       const db = getFirebaseDb();
       if (!db || !uid) return;
       setStudioSettings(db, uid, sliders).catch(() => {});
@@ -63,12 +65,14 @@ export function useStudioSettings() {
     empathy: data.empathy,
     profanity: data.profanity,
     spiciness: data.spiciness,
+    emoji: data.emoji,
     setCreatorPersonality: (v: string) => setData((prev) => ({ ...prev, creatorPersonality: v })),
     setFormality: (v: number) => setData((prev) => ({ ...prev, formality: v })),
     setHumor: (v: number) => setData((prev) => ({ ...prev, humor: v })),
     setEmpathy: (v: number) => setData((prev) => ({ ...prev, empathy: v })),
     setProfanity: (v: number) => setData((prev) => ({ ...prev, profanity: v })),
     setSpiciness: (v: number) => setData((prev) => ({ ...prev, spiciness: v })),
+    setEmoji: (v: number) => setData((prev) => ({ ...prev, emoji: v })),
     saveCreatorPersonality,
     saveSliders,
     loading,
@@ -84,6 +88,7 @@ export function useStudioSettingsForUser(uid: string | null) {
     empathy: 70,
     profanity: 50,
     spiciness: 100,
+    emoji: 60,
   });
   const [loading, setLoading] = useState(true);
 
@@ -96,6 +101,7 @@ export function useStudioSettingsForUser(uid: string | null) {
     setLoading(true);
     getStudioSettings(db, uid)
       .then(setData)
+      .catch(() => setData((prev) => prev))
       .finally(() => setLoading(false));
   }, [uid]);
 
@@ -112,7 +118,7 @@ export function useStudioSettingsForUser(uid: string | null) {
   }, [uid, data.creatorPersonality]);
 
   const saveSliders = useCallback(
-    (sliders: Partial<Pick<StudioSettingsData, "formality" | "humor" | "empathy" | "profanity" | "spiciness">>) => {
+    (sliders: Partial<Pick<StudioSettingsData, "formality" | "humor" | "empathy" | "profanity" | "spiciness" | "emoji">>) => {
       const db = getFirebaseDb();
       if (!db || !uid) return;
       setStudioSettings(db, uid, sliders).catch(() => {});
@@ -127,12 +133,14 @@ export function useStudioSettingsForUser(uid: string | null) {
     empathy: data.empathy,
     profanity: data.profanity,
     spiciness: data.spiciness,
+    emoji: data.emoji,
     setCreatorPersonality: (v: string) => setData((prev) => ({ ...prev, creatorPersonality: v })),
     setFormality: (v: number) => setData((prev) => ({ ...prev, formality: v })),
     setHumor: (v: number) => setData((prev) => ({ ...prev, humor: v })),
     setEmpathy: (v: number) => setData((prev) => ({ ...prev, empathy: v })),
     setProfanity: (v: number) => setData((prev) => ({ ...prev, profanity: v })),
     setSpiciness: (v: number) => setData((prev) => ({ ...prev, spiciness: v })),
+    setEmoji: (v: number) => setData((prev) => ({ ...prev, emoji: v })),
     saveCreatorPersonality,
     saveSliders,
     loading,

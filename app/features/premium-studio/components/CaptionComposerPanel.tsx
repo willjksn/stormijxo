@@ -50,11 +50,17 @@ export function CaptionComposerPanel({
     setLoading(true);
     try {
       const res = await generateCaptions(idToken, {
-        imageUrl: imageUrl || undefined,
-        bio: creatorBio,
+        mediaUrl: imageUrl?.trim() || undefined,
+        imageUrl: imageUrl?.trim() || undefined,
+        goal: "engagement",
         tone: tone || undefined,
+        promptText: starterText.trim() || undefined,
+        creatorPersonality: creatorBio?.trim() || undefined,
+        bio: creatorBio?.trim() || undefined,
         length: length || undefined,
         starterText: starterText.trim() || undefined,
+        emojiEnabled: true,
+        emojiIntensity: 5,
         count: 3,
       });
       if (res.error) {
@@ -67,7 +73,7 @@ export function CaptionComposerPanel({
     }
   }, [idToken, imageUrl, creatorBio, tone, length, starterText]);
 
-  const hasInput = !!(imageUrl || creatorBio || starterText.trim());
+  const hasInput = !!(imageUrl?.trim() || creatorBio?.trim() || starterText.trim());
 
   return (
     <div className="panel active panel-tools" style={{ background: stormijxoStudioTokens.surface, border: `1px solid ${stormijxoStudioTokens.border}`, borderRadius: 18, padding: "1.5rem", boxShadow: "0 14px 42px rgba(212, 85, 139, 0.11)" }}>

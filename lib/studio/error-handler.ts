@@ -11,6 +11,24 @@ export function handleApiError(err: unknown, fallbackMessage = "Something went w
   return NextResponse.json({ error: safe || fallbackMessage }, { status: 500 });
 }
 
+/** Structured error for 4xx/5xx with code, message, and optional details. */
+export function structuredError(params: {
+  code: string;
+  message: string;
+  details?: Record<string, unknown>;
+  status?: number;
+}): NextResponse {
+  const status = params.status ?? 400;
+  return NextResponse.json(
+    {
+      error: params.code,
+      message: params.message,
+      ...(params.details && Object.keys(params.details).length > 0 ? { details: params.details } : {}),
+    },
+    { status }
+  );
+}
+
 export function badRequest(message: string): NextResponse {
   return NextResponse.json({ error: message }, { status: 400 });
 }

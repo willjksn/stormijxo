@@ -6,6 +6,8 @@
     "build": "npm run generate-firebase-config && next build",
     "start": "next start",
     "verify:smoke": "npm run build",
+    "test:captions": "node scripts/test-caption-api.mjs",
+    "check:firebase-admin": "node scripts/check-firebase-admin-env.js",
     "logo-transparent": "node scripts/make-logo-transparent.js",
     "generate-firebase-config": "node scripts/generate-firebase-config.js"
   },
@@ -23,6 +25,7 @@
     "next": "^16.1.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "stripe": "^20.3.1"
+    "stripe": "^20.3.1",
+    "zod": "^4.3.6"
   }
 }

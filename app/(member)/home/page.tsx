@@ -1091,7 +1091,16 @@ export default function HomeFeedPage() {
   const showAdminEdit = !!user && isAdminEmail(user.email ?? null);
 
   useEffect(() => {
-    if (!db) {
+    if (!db || user === undefined) {
+      if (!db) setLoading(false);
+      if (user === null) {
+        setFirestorePosts([]);
+        setLoading(false);
+      }
+      return;
+    }
+    if (user === null) {
+      setFirestorePosts([]);
       setLoading(false);
       return;
     }
@@ -1126,7 +1135,7 @@ export default function HomeFeedPage() {
       })
       .catch(() => setFirestorePosts([]))
       .finally(() => setLoading(false));
-  }, [db]);
+  }, [db, user]);
 
   useEffect(() => {
     if (!db || !user?.uid) {

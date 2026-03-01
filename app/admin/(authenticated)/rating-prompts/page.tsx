@@ -40,8 +40,8 @@ function SparklesIcon() {
 
 export default function AdminRatingPromptsPage() {
   const { user } = useAuth();
-  const { creatorPersonality, profanity, spiciness, formality, humor, empathy } = useStudioSettings();
-  const [longPersonalityOpen, setLongPersonalityOpen] = useState(false);
+  const { creatorPersonality, profanity, spiciness, formality, humor, empathy, emoji } = useStudioSettings();
+  const [useCreatorPersonality, setUseCreatorPersonality] = useState(false);
   const [tone, setTone] = useState("Playful");
 
   // Short rating state
@@ -93,6 +93,7 @@ export default function AdminRatingPromptsPage() {
         formality: formality !== undefined ? formality : undefined,
         humor: humor !== undefined ? humor : undefined,
         empathy: empathy !== undefined ? empathy : undefined,
+        emoji: emoji !== undefined ? emoji : undefined,
       });
       if (res.error) {
         setShortError(res.error);
@@ -109,7 +110,7 @@ export default function AdminRatingPromptsPage() {
     } finally {
       setShortLoading(false);
     }
-  }, [user, getToken, tone, ratingSubject, profanity, spiciness, formality, humor, empathy]);
+  }, [user, getToken, tone, ratingSubject, profanity, spiciness, formality, humor, empathy, emoji]);
 
   const handleGenerateLong = useCallback(async () => {
     if (!user || !longRatingSubject.trim() || !fanDetails.trim()) return;
@@ -127,12 +128,13 @@ export default function AdminRatingPromptsPage() {
         long_rating_subject: longRatingSubject.trim(),
         fan_details: fanDetails.trim(),
         desired_length: desiredLength.trim() || "300-500 words",
-        creator_voice: creatorPersonality.trim() || undefined,
+        creator_voice: useCreatorPersonality ? (creatorPersonality.trim() || undefined) : undefined,
         profanity: profanity !== undefined ? profanity : undefined,
         spiciness: spiciness !== undefined ? spiciness : undefined,
         formality: formality !== undefined ? formality : undefined,
         humor: humor !== undefined ? humor : undefined,
         empathy: empathy !== undefined ? empathy : undefined,
+        emoji: emoji !== undefined ? emoji : undefined,
       });
       if (res.error) {
         setLongError(res.error);
@@ -150,7 +152,7 @@ export default function AdminRatingPromptsPage() {
     } finally {
       setLongLoading(false);
     }
-  }, [user, getToken, tone, longRatingSubject, fanDetails, desiredLength, creatorPersonality, profanity, spiciness, formality, humor, empathy]);
+  }, [user, getToken, tone, longRatingSubject, fanDetails, desiredLength, creatorPersonality, useCreatorPersonality, profanity, spiciness, formality, humor, empathy, emoji]);
 
   const handleAnalyzeMedia = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -361,18 +363,18 @@ export default function AdminRatingPromptsPage() {
               <div className="chat-session-personality-wrap" style={{ marginTop: "0.5rem" }}>
                 <button
                   type="button"
-                  className={`chat-session-personality-btn ${longPersonalityOpen ? "active" : ""}`}
-                  onClick={() => setLongPersonalityOpen((o) => !o)}
-                  aria-expanded={longPersonalityOpen}
+                  className={`chat-session-personality-btn ${useCreatorPersonality ? "active" : ""}`}
+                  onClick={() => setUseCreatorPersonality((on) => !on)}
+                  aria-pressed={useCreatorPersonality}
                   style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
                 >
                   <span className="chat-session-personality-icon"><SparklesIcon /></span>
-                  Creator Personality
+                  Creator Personality: {useCreatorPersonality ? "On" : "Off"}
                 </button>
-                {longPersonalityOpen && (
+                {useCreatorPersonality && (
                   <div className="chat-session-personality-content" style={{ marginTop: "0.5rem" }}>
                     <p className="admin-posts-hint" style={{ marginBottom: "0.5rem" }}>
-                      From <Link href="/admin/ai-training" style={{ color: "var(--accent)" }}>AI Training</Link>. Used for long-form rating voice.
+                      From <Link href="/admin/ai-training" style={{ color: "var(--accent)" }}>AI Training</Link>. Personality is currently enabled and used first.
                     </p>
                     <div
                       className="admin-posts-caption-input"

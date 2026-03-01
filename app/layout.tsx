@@ -6,6 +6,10 @@ import { ClientErrorBoundary } from "./components/ClientErrorBoundary";
 export const metadata: Metadata = {
   title: "Stormij XO",
   description: "Inner Circle member app",
+  icons: [
+    { url: "/icon.svg", type: "image/svg+xml" },
+    { url: "/favicon.ico", sizes: "any" },
+  ],
 };
 
 export default function RootLayout({

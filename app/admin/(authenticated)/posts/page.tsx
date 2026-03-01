@@ -75,11 +75,12 @@ export default function AdminPostsPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [publishLoading, setPublishLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const { creatorPersonality, profanity, spiciness, formality, humor, empathy } = useStudioSettings();
+  const { creatorPersonality, profanity, spiciness, formality, humor, empathy, emoji } = useStudioSettings();
   const [creatorBio, setCreatorBio] = useState("");
-  const [personalityOpen, setPersonalityOpen] = useState(false);
+  const [useCreatorPersonality, setUseCreatorPersonality] = useState(false);
   const [aiTone, setAiTone] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiLoadingAction, setAiLoadingAction] = useState<"generate" | "suggest" | null>(null);
   const [existingPosts, setExistingPosts] = useState<{ id: string; body: string; status?: PostStatus; createdAt: unknown }[]>([]);
   const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -526,93 +527,129 @@ export default function AdminPostsPage() {
   };
 
   const handleGenerateCaption = async () => {
+    if (aiLoading) return;
     if (!user) {
       setMessage({ type: "error", text: "Sign in to use AI captions." });
       return;
     }
-    const imageUrls = selectedMedia.filter((m) => !m.isVideo).map((m) => m.url);
-    const hasVideo = selectedMedia.some((m) => m.isVideo);
-    if (imageUrls.length === 0 && !hasVideo) {
+    const urls = selectedMedia.map((m) => m.url).filter((u) => u?.startsWith("http"));
+    if (urls.length === 0) {
       setMessage({ type: "error", text: "Add at least one image or video to the post to generate a caption from." });
       return;
     }
     setAiLoading(true);
+    setAiLoadingAction("generate");
     setMessage(null);
     try {
       const token = await user.getIdToken(true);
+      if (!token?.trim()) {
+        setMessage({ type: "error", text: "Could not get auth token. Please sign in again." });
+        setAiLoading(false);
+        setAiLoadingAction(null);
+        return;
+      }
       const res = await fetch("/api/studio/generate-captions", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          imageUrls: imageUrls.length ? imageUrls : undefined,
-          imageUrl: imageUrls[0] || undefined,
-          hasVideo: hasVideo || undefined,
-          bio: (creatorPersonality || creatorBio) || undefined,
+          mediaUrls: urls,
+          mediaUrl: urls[0],
+          goal: "engagement",
           tone: aiTone || undefined,
-          length: undefined,
+          promptText: undefined,
+          creatorPersonality: useCreatorPersonality ? ((creatorPersonality || creatorBio) || undefined) : undefined,
+          platforms: ["Instagram"],
+          emojiEnabled: (emoji ?? 60) > 5,
+          emojiIntensity: Math.max(0, Math.min(10, Math.round((emoji ?? 60) / 10))),
+          emoji: emoji !== undefined ? emoji : undefined,
           count: 1,
-          profanity: profanity !== undefined ? profanity : undefined,
-          spiciness: spiciness !== undefined ? spiciness : undefined,
-          formality: formality !== undefined ? formality : undefined,
-          humor: humor !== undefined ? humor : undefined,
-          empathy: empathy !== undefined ? empathy : undefined,
         }),
       });
       const data = await res.json();
-      if (data.captions?.length > 0) {
-        setCaption(data.captions[0]);
+      if (!res.ok) {
+        const msg =
+          res.status === 401
+            ? (data?.message ?? "Session expired or invalid. Please sign in again.")
+            : (data?.message ?? data?.error ?? "Caption generation failed.");
+        setMessage({ type: "error", text: msg });
+        return;
+      }
+      const list = Array.isArray(data) ? data : data?.captions ?? [];
+      const first = list[0];
+      const captionText = typeof first === "string" ? first : first?.caption;
+      if (captionText) {
+        setCaption(captionText);
         setMessage({ type: "success", text: "Caption generated from your media." });
-      } else if (data.error) {
-        setMessage({ type: "error", text: data.error });
       } else {
-        setMessage({ type: "error", text: "Caption generation failed. Try again." });
+        setMessage({ type: "error", text: "No captions returned. Try again." });
       }
     } catch (err) {
       setMessage({ type: "error", text: (err as Error).message || "Caption generation failed" });
     } finally {
       setAiLoading(false);
+      setAiLoadingAction(null);
     }
   };
 
   const handleAiSuggest = async () => {
+    if (aiLoading) return;
     if (!user) {
       setMessage({ type: "error", text: "Sign in to use AI suggest." });
       return;
     }
-    const imageUrls = selectedMedia.filter((m) => !m.isVideo).map((m) => m.url);
-    const hasVideo = selectedMedia.some((m) => m.isVideo);
+    const urls = selectedMedia.map((m) => m.url).filter((u) => u?.startsWith("http"));
     const starterText = caption.trim();
-    const hasMedia = imageUrls.length > 0 || hasVideo;
+    const hasMedia = urls.length > 0;
     if (!hasMedia && !starterText) {
       setMessage({ type: "error", text: "Type an idea in the caption or add media, then click AI suggest to help finish or expand it." });
       return;
     }
+    if (!hasMedia) {
+      setMessage({ type: "error", text: "Add at least one image or video to generate captions from media." });
+      return;
+    }
     setAiLoading(true);
+    setAiLoadingAction("suggest");
     setMessage(null);
     try {
       const token = await user.getIdToken(true);
+      if (!token?.trim()) {
+        setMessage({ type: "error", text: "Could not get auth token. Please sign in again." });
+        setAiLoading(false);
+        setAiLoadingAction(null);
+        return;
+      }
       const res = await fetch("/api/studio/generate-captions", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          imageUrls: imageUrls.length ? imageUrls : undefined,
-          imageUrl: imageUrls[0] || undefined,
-          hasVideo: hasVideo || undefined,
-          bio: (creatorPersonality || creatorBio) || undefined,
+          mediaUrls: urls.length ? urls : undefined,
+          mediaUrl: urls[0],
+          goal: "engagement",
+          promptText: starterText || undefined,
           tone: aiTone || undefined,
-          length: undefined,
-          starterText: starterText || undefined,
+          creatorPersonality: useCreatorPersonality ? ((creatorPersonality || creatorBio) || undefined) : undefined,
+          platforms: ["Instagram"],
+          emojiEnabled: (emoji ?? 60) > 5,
+          emojiIntensity: Math.max(0, Math.min(10, Math.round((emoji ?? 60) / 10))),
+          emoji: emoji !== undefined ? emoji : undefined,
           count: 1,
-          profanity: profanity !== undefined ? profanity : undefined,
-          spiciness: spiciness !== undefined ? spiciness : undefined,
-          formality: formality !== undefined ? formality : undefined,
-          humor: humor !== undefined ? humor : undefined,
-          empathy: empathy !== undefined ? empathy : undefined,
         }),
       });
       const data = await res.json();
-      if (data.captions?.length > 0) {
-        setCaption(data.captions[0]);
+      if (!res.ok) {
+        const msg =
+          res.status === 401
+            ? (data?.message ?? "Session expired or invalid. Please sign in again.")
+            : (data?.message ?? data?.error ?? "AI suggestion failed.");
+        setMessage({ type: "error", text: msg });
+        return;
+      }
+      const list = Array.isArray(data) ? data : data?.captions ?? [];
+      const first = list[0];
+      const captionText = typeof first === "string" ? first : first?.caption;
+      if (captionText) {
+        setCaption(captionText);
         setMessage({ type: "success", text: "Caption updated." });
       } else if (data.error) {
         setMessage({ type: "error", text: data.error });
@@ -623,6 +660,7 @@ export default function AdminPostsPage() {
       setMessage({ type: "error", text: (err as Error).message || "AI suggestion failed" });
     } finally {
       setAiLoading(false);
+      setAiLoadingAction(null);
     }
   };
 
@@ -1012,12 +1050,12 @@ export default function AdminPostsPage() {
               </select>
               <button
                 type="button"
-                className={`admin-posts-ai-btn ${personalityOpen ? "active" : ""}`}
-                onClick={() => setPersonalityOpen((o) => !o)}
-                aria-expanded={personalityOpen}
-                title="View Creator Personality from AI Training"
+                className={`admin-posts-ai-btn ${useCreatorPersonality ? "active" : ""}`}
+                onClick={() => setUseCreatorPersonality((on) => !on)}
+                aria-pressed={useCreatorPersonality}
+                title="Toggle Creator Personality for AI generation"
               >
-                ✨ Personality
+                ✨ Personality: {useCreatorPersonality ? "On" : "Off"}
               </button>
               <button
                 type="button"
@@ -1026,7 +1064,10 @@ export default function AdminPostsPage() {
                 disabled={aiLoading || selectedMedia.length === 0}
                 title="Generate a caption from what’s in your image(s) or video"
               >
-                {aiLoading ? "…" : "Generate caption"}
+                <span className="admin-posts-ai-btn-content">
+                  {aiLoadingAction === "generate" && <span className="admin-posts-ai-spinner" aria-hidden="true" />}
+                  {aiLoadingAction === "generate" ? "Generating..." : "Generate caption"}
+                </span>
               </button>
               <button
                 type="button"
@@ -1035,13 +1076,16 @@ export default function AdminPostsPage() {
                 disabled={aiLoading}
                 title="Help finish or expand what you’ve typed; use when you have an idea but need help saying it"
               >
-                {aiLoading ? "…" : "✨ AI suggest"}
+                <span className="admin-posts-ai-btn-content">
+                  {aiLoadingAction === "suggest" && <span className="admin-posts-ai-spinner" aria-hidden="true" />}
+                  {aiLoadingAction === "suggest" ? "Thinking..." : "✨ AI suggest"}
+                </span>
               </button>
             </div>
-            {personalityOpen && (
+            {useCreatorPersonality && (
               <div className="admin-posts-hint" style={{ marginTop: "0.5rem", padding: "0.75rem", background: "var(--surface, var(--bg-card))", border: "1px solid var(--border)", borderRadius: 8 }}>
                 <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem" }}>
-                  From <Link href="/admin/ai-training" style={{ color: "var(--accent)" }}>AI Training</Link>. Used for caption generation when set.
+                  From <Link href="/admin/ai-training" style={{ color: "var(--accent)" }}>AI Training</Link>. Personality is currently enabled and used first.
                 </p>
                 <div style={{ whiteSpace: "pre-wrap", fontSize: "0.9rem", color: "var(--text)" }}>
                   {creatorPersonality || "No personality set. Add one in AI Training for consistent voice."}

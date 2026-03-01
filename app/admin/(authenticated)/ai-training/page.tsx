@@ -21,7 +21,16 @@ const SLIDER_CONFIG = [
   { id: "empathy", label: "Empathy", description: "Low for direct, high for supportive & understanding.", default: 70, suffix: "" },
   { id: "profanity", label: "Profanity", description: "Control the level of strong or crude language in outputs.", default: 50, suffix: "" },
   { id: "spiciness", label: "Spiciness", description: "Control the level of bold/explicit language.", default: 100, suffix: " 🌶️" },
+  { id: "emoji", label: "Emoji Usage", description: "Low for minimal emoji, high for frequent emoji when appropriate.", default: 60, suffix: " 😘" },
 ] as const;
+
+function getEmojiUsagePreview(value: number): string {
+  if (value <= 15) return "Style: minimal emoji (almost none).";
+  if (value <= 40) return "Style: light emoji (occasional accents).";
+  if (value <= 70) return "Style: balanced emoji (natural in friendly/flirty tones).";
+  if (value <= 90) return "Style: emoji-forward (frequent, still natural).";
+  return "Style: high emoji energy (very frequent, but should avoid spam).";
+}
 
 export default function AdminAITrainingPage() {
   const { user } = useAuth();
@@ -32,26 +41,29 @@ export default function AdminAITrainingPage() {
     empathy,
     profanity,
     spiciness,
+    emoji,
     setCreatorPersonality,
     setFormality,
     setHumor,
     setEmpathy,
     setProfanity,
     setSpiciness,
+    setEmoji,
     saveCreatorPersonality,
     saveSliders,
     loading,
   } = useStudioSettings();
 
   const creatorPersonalityRef = useRef<HTMLTextAreaElement>(null);
-  const sliderValues = { formality, humor, empathy, profanity, spiciness };
+  const sliderValues = { formality, humor, empathy, profanity, spiciness, emoji };
   const setSlider = useCallback((id: string, value: number) => {
     if (id === "formality") setFormality(value);
     else if (id === "humor") setHumor(value);
     else if (id === "empathy") setEmpathy(value);
     else if (id === "profanity") setProfanity(value);
     else if (id === "spiciness") setSpiciness(value);
-  }, [setFormality, setHumor, setEmpathy, setProfanity, setSpiciness]);
+    else if (id === "emoji") setEmoji(value);
+  }, [setFormality, setHumor, setEmpathy, setProfanity, setSpiciness, setEmoji]);
 
   const handleSliderChange = useCallback((id: string, value: number) => {
     setSlider(id, value);
@@ -64,7 +76,9 @@ export default function AdminAITrainingPage() {
             ? { empathy: value }
             : id === "profanity"
               ? { profanity: value }
-              : { spiciness: value }
+              : id === "spiciness"
+                ? { spiciness: value }
+                : { emoji: value }
     );
   }, [setSlider, saveSliders]);
 
@@ -106,6 +120,11 @@ export default function AdminAITrainingPage() {
                   aria-label={label}
                 />
                 <p className="ai-training-slider-desc">{description}</p>
+                {id === "emoji" && (
+                  <p className="ai-training-slider-desc" style={{ marginTop: "0.35rem", color: "var(--text-muted)" }}>
+                    {getEmojiUsagePreview(sliderValues[id])}
+                  </p>
+                )}
               </div>
             ))
           )}

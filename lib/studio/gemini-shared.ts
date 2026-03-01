@@ -4,7 +4,7 @@
  * Uses GEMINI_API_KEY or GOOGLE_API_KEY.
  */
 
-const GEMINI_MODEL = "gemini-1.5-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-2.0-flash";
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
 function getApiKey(): string | null {
@@ -18,6 +18,7 @@ function buildSlidersPrompt(sliders: {
   empathy?: number;
   profanity?: number;
   spiciness?: number;
+  emoji?: number;
 }): string {
   const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(Number(n))));
   const lines: string[] = [];
@@ -55,6 +56,12 @@ function buildSlidersPrompt(sliders: {
     else if (n >= 40) lines.push(`spiciness_level: ${n} — some explicit language when natural; scale with level.`);
     else lines.push(`spiciness_level: ${n} — bold/suggestive allowed; explicit words only rarely and when they fit (0=none, 100=unfiltered and frequent).`);
   }
+  if (sliders.emoji !== undefined && sliders.emoji !== null) {
+    const n = clamp(sliders.emoji);
+    if (n <= 10) lines.push("emoji_level: 0 — avoid emoji unless absolutely necessary.");
+    else if (n >= 90) lines.push("emoji_level: 100 — emoji-friendly tone; use emojis often when natural, without spam.");
+    else lines.push(`emoji_level: ${n} — scale from minimal emoji (0) to frequent-but-natural emoji use (100).`);
+  }
 
   if (lines.length === 0) return "";
   return "\n" + lines.join("\n");
@@ -79,30 +86,83 @@ interface GenerateContentPart {
   inlineData?: { mimeType: string; data: string };
 }
 
-async function generateContent(payload: {
-  contents: { role: string; parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> }[];
-  generationConfig?: { maxOutputTokens?: number; temperature?: number };
-  systemInstruction?: string;
-}): Promise<string> {
-  const key = getApiKey();
-  if (!key) throw new Error("GEMINI_API_KEY or GOOGLE_API_KEY not set");
-  const url = `${GEMINI_API_BASE}/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(key)}`;
-  const body = {
-    contents: payload.contents,
-    generationConfig: {
-      maxOutputTokens: payload.generationConfig?.maxOutputTokens ?? 300,
-      temperature: payload.generationConfig?.temperature ?? 0.8,
-    },
-    systemInstruction: payload.systemInstruction ? { parts: [{ text: payload.systemInstruction }] } : undefined,
-  };
+function getModelCandidates(): string[] {
+  const models = [
+    process.env.GEMINI_MODEL?.trim(),
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-exp",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-latest",
+    "gemini-1.5-pro",
+    "gemini-pro",
+  ].filter((m): m is string => !!m && m.length > 0);
+  return Array.from(new Set(models));
+}
+
+function isModelNotFoundError(status: number, errText: string): boolean {
+  return status === 404 && /is not found|not supported for generateContent|models\//i.test(errText);
+}
+
+let cachedDiscoveredModels: string[] | null = null;
+let cachedDiscoveredModelsAt = 0;
+const DISCOVERED_MODELS_TTL_MS = 5 * 60 * 1000;
+
+async function discoverGenerateContentModels(key: string): Promise<string[]> {
+  const now = Date.now();
+  if (cachedDiscoveredModels && now - cachedDiscoveredModelsAt < DISCOVERED_MODELS_TTL_MS) {
+    return cachedDiscoveredModels;
+  }
+  try {
+    const url = `${GEMINI_API_BASE}/models?key=${encodeURIComponent(key)}`;
+    const res = await fetch(url, { method: "GET" });
+    if (!res.ok) {
+      cachedDiscoveredModels = [];
+      cachedDiscoveredModelsAt = now;
+      return [];
+    }
+    const data = (await res.json()) as {
+      models?: Array<{
+        name?: string;
+        supportedGenerationMethods?: string[];
+      }>;
+    };
+    const discovered = (data.models ?? [])
+      .filter((m) => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes("generateContent"))
+      .map((m) => (m.name ?? "").replace(/^models\//, "").trim())
+      .filter((m) => m.length > 0);
+    cachedDiscoveredModels = Array.from(new Set(discovered));
+    cachedDiscoveredModelsAt = now;
+    return cachedDiscoveredModels;
+  } catch {
+    cachedDiscoveredModels = [];
+    cachedDiscoveredModelsAt = now;
+    return [];
+  }
+}
+
+async function getResolvedModelCandidates(key: string): Promise<string[]> {
+  const preferred = getModelCandidates();
+  const discovered = await discoverGenerateContentModels(key);
+  return Array.from(new Set([...preferred, ...discovered]));
+}
+
+async function requestGenerateContent(
+  key: string,
+  model: string,
+  body: {
+    contents: { role: string; parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> }[];
+    generationConfig: { maxOutputTokens: number; temperature: number };
+    systemInstruction?: { parts: Array<{ text: string }> };
+  }
+): Promise<{ ok: true; text: string } | { ok: false; status: number; errText: string }> {
+  const url = `${GEMINI_API_BASE}/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Gemini API error: ${res.status} ${err}`);
+    return { ok: false, status: res.status, errText: await res.text() };
   }
   const data = (await res.json()) as {
     candidates?: Array<{
@@ -111,7 +171,83 @@ async function generateContent(payload: {
     }>;
   };
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
-  return text;
+  return { ok: true, text };
+}
+
+async function generateContent(payload: {
+  contents: { role: string; parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> }[];
+  generationConfig?: { maxOutputTokens?: number; temperature?: number };
+  systemInstruction?: string;
+}): Promise<string> {
+  const key = getApiKey();
+  if (!key) throw new Error("GEMINI_API_KEY or GOOGLE_API_KEY not set");
+  const body = {
+    contents: payload.contents,
+    generationConfig: {
+      maxOutputTokens: payload.generationConfig?.maxOutputTokens ?? 300,
+      temperature: payload.generationConfig?.temperature ?? 0.8,
+    },
+    systemInstruction: payload.systemInstruction ? { parts: [{ text: payload.systemInstruction }] } : undefined,
+  };
+  const models = await getResolvedModelCandidates(key);
+  let lastErr: Error | null = null;
+  for (const model of models) {
+    const res = await requestGenerateContent(key, model, body);
+    if (res.ok) return res.text;
+    if (isModelNotFoundError(res.status, res.errText)) {
+      lastErr = new Error(`Gemini API error: ${res.status} ${res.errText}`);
+      continue;
+    }
+    throw new Error(`Gemini API error: ${res.status} ${res.errText}`);
+  }
+  throw lastErr ?? new Error(`Gemini API error: model not found for candidates: ${models.join(", ")}`);
+}
+
+const GEMINI_RETRY_DELAYS = [500, 1500, 4000];
+const GEMINI_RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
+
+async function generateContentWithRetry(payload: {
+  contents: { role: string; parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> }[];
+  generationConfig?: { maxOutputTokens?: number; temperature?: number };
+  systemInstruction?: string;
+}): Promise<string> {
+  const key = getApiKey();
+  if (!key) throw new Error("GEMINI_API_KEY or GOOGLE_API_KEY not set");
+  const body = {
+    contents: payload.contents,
+    generationConfig: {
+      maxOutputTokens: payload.generationConfig?.maxOutputTokens ?? 300,
+      temperature: payload.generationConfig?.temperature ?? 0.8,
+    },
+    systemInstruction: payload.systemInstruction ? { parts: [{ text: payload.systemInstruction }] } : undefined,
+  };
+  let lastErr: Error | null = null;
+  const models = await getResolvedModelCandidates(key);
+  for (const model of models) {
+    for (let attempt = 0; attempt <= GEMINI_RETRY_DELAYS.length; attempt++) {
+      try {
+        const res = await requestGenerateContent(key, model, body);
+        if (res.ok) return res.text;
+        lastErr = new Error(`Gemini API error: ${res.status} ${res.errText}`);
+        if (isModelNotFoundError(res.status, res.errText)) {
+          break;
+        }
+        if (attempt < GEMINI_RETRY_DELAYS.length && GEMINI_RETRY_STATUSES.has(res.status)) {
+          await new Promise((r) => setTimeout(r, GEMINI_RETRY_DELAYS[attempt]));
+          continue;
+        }
+        throw lastErr;
+      } catch (e) {
+        lastErr = e instanceof Error ? e : new Error(String(e));
+        if (attempt < GEMINI_RETRY_DELAYS.length) {
+          await new Promise((r) => setTimeout(r, GEMINI_RETRY_DELAYS[attempt]));
+          continue;
+        }
+        throw lastErr;
+      }
+    }
+  }
+  throw lastErr ?? new Error("Gemini request failed");
 }
 
 // --- Chat Session Writer (Stormijxo) ---
@@ -170,6 +306,12 @@ interface ChatSessionJson {
   notes?: string[];
 }
 
+interface ChatSessionMultiJson {
+  tone_used?: string;
+  suggestions?: string[];
+  notes?: string[];
+}
+
 /** Generate one chat suggestion using Chat Session Writer prompt; returns primary_reply. */
 export async function generateSextingSuggestionWithGemini(params: {
   recentMessages: { role: "user" | "assistant"; content: string }[];
@@ -181,6 +323,7 @@ export async function generateSextingSuggestionWithGemini(params: {
   empathy?: number;
   profanity?: number;
   spiciness?: number;
+  emoji?: number;
   /** When true, gently wrap up the session and soft upsell (e.g. book another session), not pushy. */
   wrappingUp?: boolean;
   /** Optional context from previous sessions with this fan (e.g. what they like). */
@@ -200,6 +343,7 @@ export async function generateSextingSuggestionWithGemini(params: {
   const fanContextLine = params.fanSessionContext?.trim()
     ? `\nfan_session_context (from previous sessions): ${params.fanSessionContext}`
     : "";
+  const emojiGuidance = "Use emojis only when natural for the requested tone, creator_voice, and slider levels. If tone is playful/teasing/intimate or spiciness/humor is higher, emojis are welcome but not excessive. If formality is high, keep emojis minimal.";
 
   const userText = `tone_suggestion: ${toneSuggestion}
 creator_voice: ${creatorVoice}
@@ -207,7 +351,8 @@ chat_goal: ${chatGoal}
 fan_profile: ${fanProfile}${fanContextLine}
 conversation_context: ${conversationContext || "(none)"}
 latest_fan_message: ${latestFanMessage}
-constraints: (none)${buildSlidersPrompt({ formality: params.formality, humor: params.humor, empathy: params.empathy, profanity: params.profanity, spiciness: params.spiciness })}
+emoji_guidance: ${emojiGuidance}
+constraints: (none)${buildSlidersPrompt({ formality: params.formality, humor: params.humor, empathy: params.empathy, profanity: params.profanity, spiciness: params.spiciness, emoji: params.emoji })}
 
 Generate output in STRICT JSON format only.`;
 
@@ -235,6 +380,7 @@ export async function generateSextingSuggestionsWithGemini(params: {
   empathy?: number;
   profanity?: number;
   spiciness?: number;
+  emoji?: number;
   wrappingUp?: boolean;
   fanSessionContext?: string;
 }): Promise<string[]> {
@@ -252,6 +398,7 @@ export async function generateSextingSuggestionsWithGemini(params: {
   const fanContextLine = params.fanSessionContext?.trim()
     ? `\nfan_session_context (from previous sessions): ${params.fanSessionContext}`
     : "";
+  const emojiGuidance = "Use emojis only when natural for the requested tone, creator_voice, and slider levels. If tone is playful/teasing/intimate or spiciness/humor is higher, emojis are welcome but not excessive. If formality is high, keep emojis minimal.";
 
   const userText = `tone_suggestion: ${toneSuggestion}
 creator_voice: ${creatorVoice}
@@ -259,21 +406,62 @@ chat_goal: ${chatGoal}
 fan_profile: ${fanProfile}${fanContextLine}
 conversation_context: ${conversationContext || "(none)"}
 latest_fan_message: ${latestFanMessage}
-constraints: (none)${buildSlidersPrompt({ formality: params.formality, humor: params.humor, empathy: params.empathy, profanity: params.profanity, spiciness: params.spiciness })}
+required_suggestion_count: ${Math.max(1, Math.min(10, params.count))}
+emoji_guidance: ${emojiGuidance}
+constraints: (none)${buildSlidersPrompt({ formality: params.formality, humor: params.humor, empathy: params.empathy, profanity: params.profanity, spiciness: params.spiciness, emoji: params.emoji })}
 
-Generate output in STRICT JSON format only.`;
+Generate output in STRICT JSON format only.
+
+For this multi-suggestion request, return:
+{
+  "tone_used": "string",
+  "suggestions": ["reply 1", "reply 2", "..."]
+}
+
+Return exactly required_suggestion_count distinct, non-repetitive suggestions.`;
 
   const raw = await generateContent({
     contents: [{ role: "user", parts: [{ text: userText }] }],
-    generationConfig: { maxOutputTokens: 600, temperature: 0.85 },
+    generationConfig: { maxOutputTokens: 1200, temperature: 0.9 },
     systemInstruction: CHAT_SESSION_WRITER_SYSTEM,
   });
 
-  const parsed = parseJsonFromRaw<ChatSessionJson>(raw);
-  const primary = parsed?.primary_reply?.trim();
-  const alternates = Array.isArray(parsed?.alternates) ? parsed.alternates.map((s) => String(s).trim()).filter(Boolean) : [];
-  const combined = primary ? [primary, ...alternates] : [];
-  return combined.slice(0, params.count).length > 0 ? combined.slice(0, params.count) : [raw.trim() || "Hey 😊"];
+  const parsedMulti = parseJsonFromRaw<ChatSessionMultiJson>(raw);
+  const parsedSingle = parseJsonFromRaw<ChatSessionJson>(raw);
+  const fromMulti = Array.isArray(parsedMulti?.suggestions)
+    ? parsedMulti.suggestions.map((s) => String(s).trim()).filter(Boolean)
+    : [];
+  const fromSinglePrimary = parsedSingle?.primary_reply?.trim() ? [parsedSingle.primary_reply.trim()] : [];
+  const fromSingleAlternates = Array.isArray(parsedSingle?.alternates)
+    ? parsedSingle.alternates.map((s) => String(s).trim()).filter(Boolean)
+    : [];
+  const unique = Array.from(new Set([...fromMulti, ...fromSinglePrimary, ...fromSingleAlternates]));
+
+  // Top up to requested count with additional single generations if model under-returns.
+  const needed = Math.max(1, Math.min(10, params.count));
+  let guard = 0;
+  while (unique.length < needed && guard < needed * 2) {
+    guard += 1;
+    const extra = await generateSextingSuggestionWithGemini({
+      recentMessages: params.recentMessages,
+      fanName: params.fanName,
+      creatorPersona: params.creatorPersona,
+      tone: params.tone,
+      formality: params.formality,
+      humor: params.humor,
+      empathy: params.empathy,
+      profanity: params.profanity,
+      spiciness: params.spiciness,
+      emoji: params.emoji,
+      wrappingUp: params.wrappingUp,
+      fanSessionContext: params.fanSessionContext,
+    });
+    const t = String(extra || "").trim();
+    if (t && !unique.includes(t)) unique.push(t);
+  }
+
+  const finalList = unique.slice(0, needed);
+  return finalList.length > 0 ? finalList : ["Hey 😊"];
 }
 
 // --- Instagram Caption Optimizer (Stormijxo) ---
@@ -329,6 +517,142 @@ QUALITY BAR: No bland hooks. No hashtag dumping. No repeated sentence patterns. 
 
 Generate output in STRICT JSON format only.`;
 
+// --- Premium Studio: Analyze media + generate captions (EchoFlux-style) ---
+const STUDIO_CAPTION_FROM_MEDIA_SYSTEM = `You are Stormijxo's Premium Studio caption assistant.
+
+MISSION:
+1. Analyze the provided image(s) and/or video carefully (content, mood, setting, people, actions).
+2. Generate multiple ready-to-post caption options in the creator's voice. Write from the CREATOR'S POINT OF VIEW (first person, as if the creator is posting).
+3. NO HASHTAGS. Do not include any hashtags. Captions must be hashtag-free.
+
+VOICE & STYLE:
+- Punchy, native to social. Emojis allowed when they fit the tone — use naturally, not in every line.
+- Match the requested tone and creator personality when provided.
+
+INPUTS YOU WILL RECEIVE:
+- Media: image(s) and/or video (you must describe what you see first, then generate captions).
+- goal (optional): what the post is for (e.g. engagement, tease, announcement).
+- tone (optional): flirty, casual, motivational, premium, etc.
+- promptText (optional): creator's draft or extra direction.
+- creatorPersonality (optional): creator voice / bio.
+- platforms (optional): e.g. Instagram — adapt style accordingly.
+- emojiEnabled / emojiIntensity: use emojis when true; intensity 0–10 scales how much.
+
+OUTPUT FORMAT (STRICT JSON ONLY):
+Return a JSON object with a single key "captions" — an array of objects, each with "caption" (string) and "hashtags" (always empty array []).
+Example: { "captions": [ { "caption": "First option...", "hashtags": [] }, { "caption": "Second option...", "hashtags": [] } ] }
+
+Generate 3–5 distinct caption options. Each caption must be complete, ready to post, from creator POV, and NO HASHTAGS. Output STRICT JSON only.`;
+
+export type CaptionOption = { caption: string; hashtags: string[] };
+
+/** Fetch image/video from URL and return base64 + mime. Max 4MB image, 20MB video. */
+export async function fetchMediaAsBase64(
+  url: string,
+  maxBytesImage: number = 4 * 1024 * 1024,
+  maxBytesVideo: number = 20 * 1024 * 1024
+): Promise<{ data: string; mimeType: string }> {
+  const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+  if (!res.ok) throw new Error(`Failed to fetch media: ${res.status}`);
+  const buf = await res.arrayBuffer();
+  const bytes = buf.byteLength;
+  const contentType = res.headers.get("content-type")?.split(";")[0]?.trim() || "image/jpeg";
+  const isVideo = /video\//i.test(contentType) || /\.(mp4|webm|mov|ogg)(\?|$)/i.test(url);
+  const maxBytes = isVideo ? maxBytesVideo : maxBytesImage;
+  if (bytes > maxBytes) throw new Error(`Media too large: ${bytes} bytes (max ${maxBytes})`);
+  const base64 = Buffer.from(buf).toString("base64");
+  return { data: base64, mimeType: contentType };
+}
+
+/** Generate captions from media (EchoFlux-style): analyze media with Gemini, then return caption options. */
+export async function generateCaptionsFromMedia(params: {
+  mediaParts: Array<{ inlineData: { mimeType: string; data: string } }>;
+  goal?: string;
+  tone?: string;
+  promptText?: string;
+  creatorPersonality?: string;
+  platforms?: string[];
+  emojiEnabled?: boolean;
+  emojiIntensity?: number;
+  count?: number;
+}): Promise<CaptionOption[]> {
+  if (!params.mediaParts.length) throw new Error("At least one media part required");
+  const tone = (params.tone ?? "flirty").trim();
+  const goal = (params.promptText ?? params.goal ?? "engagement").trim();
+  const voice = (params.creatorPersonality ?? "").trim();
+  const emoji = params.emojiEnabled !== false;
+  const intensity = Math.max(0, Math.min(10, params.emojiIntensity ?? 5));
+  const platforms = Array.isArray(params.platforms) && params.platforms.length > 0
+    ? params.platforms.join(", ")
+    : "Instagram";
+  const userText = `Analyze the attached image(s)/video, then generate caption options. Write from the creator's point of view (first person). NO HASHTAGS.
+
+tone: ${tone}
+goal: ${goal ? `"${goal}"` : "engagement"}
+creator_voice: ${voice || "flirty, premium, engaging"}
+platforms: ${platforms}
+emoji_enabled: ${emoji}
+emoji_intensity: ${intensity} (0=none, 10=heavy)
+
+Return a JSON object with key "captions": array of { "caption": "string", "hashtags": [] }. Generate 3–5 options. Hashtags must always be empty array. STRICT JSON only.`;
+
+  const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = [
+    ...params.mediaParts.map((p) => ({ inlineData: p.inlineData })),
+    { text: userText },
+  ];
+  const raw = await generateContentWithRetry({
+    contents: [{ role: "user", parts }],
+    generationConfig: { maxOutputTokens: 1200, temperature: 0.85 },
+    systemInstruction: STUDIO_CAPTION_FROM_MEDIA_SYSTEM,
+  });
+
+  function parseCaptionList(rawText: string): { caption: string; hashtags: string[] }[] {
+    const trimmed = rawText.trim();
+    const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
+    const toParse = codeBlockMatch ? codeBlockMatch[1].trim() : trimmed;
+    const arrayMatch = toParse.match(/\[[\s\S]*\]/);
+    if (arrayMatch) {
+      try {
+        const arr = JSON.parse(arrayMatch[0]) as Array<{ caption?: string; hashtags?: string[] } | string>;
+        const list = arr
+          .map((c) => {
+            if (typeof c === "string") return { caption: c.trim(), hashtags: [] as string[] };
+            const cap = typeof c?.caption === "string" ? c.caption.trim() : "";
+            return { caption: cap, hashtags: [] as string[] };
+          })
+          .filter((c) => c.caption.length > 0);
+        if (list.length > 0) return list;
+      } catch {
+        // fall through
+      }
+    }
+    const parsed = parseJsonFromRaw<{ captions?: Array<{ caption?: string; hashtags?: string[] }> }>(rawText);
+    if (Array.isArray(parsed?.captions)) {
+      return parsed.captions
+        .map((c) => ({
+          caption: typeof c.caption === "string" ? c.caption.trim() : "",
+          hashtags: [] as string[],
+        }))
+        .filter((c) => c.caption.length > 0);
+    }
+    return [];
+  }
+
+  const list = parseCaptionList(raw);
+  if (list.length > 0) {
+    if (process.env.NODE_ENV !== "test") {
+      console.info("[generate-captions] Gemini parse_path: captions_array");
+    }
+    const count = Math.min(params.count ?? 5, list.length);
+    return list.slice(0, count).map((c) => ({ ...c, hashtags: [] }));
+  }
+  if (process.env.NODE_ENV !== "test") {
+    console.info("[generate-captions] Gemini parse_path: fallback_plain_text");
+  }
+  const fallback = raw.trim() || "Share your moment ✨";
+  return [{ caption: fallback, hashtags: [] }];
+}
+
 interface CaptionAlternateJson {
   rank?: number;
   caption?: string;
@@ -365,6 +689,7 @@ export async function generateCaptionsWithGemini(params: {
   empathy?: number;
   profanity?: number;
   spiciness?: number;
+  emoji?: number;
 }): Promise<string[]> {
   const imageUrls = params.imageUrls?.filter((u) => u?.startsWith("http")) ?? [];
   const postType = imageUrls.length > 1 ? "carousel" : params.hasVideo ? "reel" : imageUrls.length === 1 ? "photo" : "photo";
@@ -383,7 +708,7 @@ objective: comments
 creator_voice: ${params.bio?.trim() || "flirty, premium, engaging"}
 keywords: (none)
 banned_words_or_topics: (none)
-caption_length_pref: ${captionLengthPref}${buildSlidersPrompt({ formality: params.formality, humor: params.humor, empathy: params.empathy, profanity: params.profanity, spiciness: params.spiciness })}
+caption_length_pref: ${captionLengthPref}${buildSlidersPrompt({ formality: params.formality, humor: params.humor, empathy: params.empathy, profanity: params.profanity, spiciness: params.spiciness, emoji: params.emoji })}
 
 Generate output in STRICT JSON format only.`;
 
@@ -512,6 +837,7 @@ export async function generateInteractiveIdeasWithGemini(params: {
   empathy?: number;
   profanity?: number;
   spiciness?: number;
+  emoji?: number;
 }): Promise<InteractiveIdeasJson> {
   const userText = `tone_suggestion: ${params.tone_suggestion}
 interactive_focus: ${params.interactive_focus ?? ""}
@@ -520,7 +846,7 @@ fan_profile: ${params.fan_profile ?? ""}
 creator_gender: ${params.creator_gender ?? ""}
 target_audience_gender: ${params.target_audience_gender ?? ""}
 objective: ${params.objective ?? "comments"}
-constraints: ${params.constraints ?? ""}${buildSlidersPrompt({ formality: params.formality, humor: params.humor, empathy: params.empathy, profanity: params.profanity, spiciness: params.spiciness })}
+constraints: ${params.constraints ?? ""}${buildSlidersPrompt({ formality: params.formality, humor: params.humor, empathy: params.empathy, profanity: params.profanity, spiciness: params.spiciness, emoji: params.emoji })}
 
 Generate output in STRICT JSON format only.`;
 
@@ -622,6 +948,7 @@ export async function generateRatingShortWithGemini(params: {
   empathy?: number;
   profanity?: number;
   spiciness?: number;
+  emoji?: number;
 }): Promise<RatingShortJson> {
   const userText = `tone_suggestion: ${params.tone_suggestion}
 rating_subject: ${params.rating_subject}
@@ -629,7 +956,7 @@ creator_voice: ${params.creator_voice ?? ""}
 fan_profile: ${params.fan_profile ?? ""}
 creator_gender: ${params.creator_gender ?? ""}
 target_audience_gender: ${params.target_audience_gender ?? ""}
-constraints: ${params.constraints ?? ""}${buildSlidersPrompt({ formality: params.formality, humor: params.humor, empathy: params.empathy, profanity: params.profanity, spiciness: params.spiciness })}
+constraints: ${params.constraints ?? ""}${buildSlidersPrompt({ formality: params.formality, humor: params.humor, empathy: params.empathy, profanity: params.profanity, spiciness: params.spiciness, emoji: params.emoji })}
 
 Generate output in STRICT JSON format only.`;
 
@@ -733,6 +1060,7 @@ export async function generateRatingLongWithGemini(params: {
   empathy?: number;
   profanity?: number;
   spiciness?: number;
+  emoji?: number;
 }): Promise<RatingLongJson> {
   const userText = `tone_suggestion: ${params.tone_suggestion}
 long_rating_subject: ${params.long_rating_subject}
@@ -742,7 +1070,7 @@ fan_profile: ${params.fan_profile ?? ""}
 creator_gender: ${params.creator_gender ?? ""}
 target_audience_gender: ${params.target_audience_gender ?? ""}
 constraints: ${params.constraints ?? ""}
-desired_length: ${params.desired_length ?? "300-500 words"}${buildSlidersPrompt({ formality: params.formality, humor: params.humor, empathy: params.empathy, profanity: params.profanity, spiciness: params.spiciness })}
+desired_length: ${params.desired_length ?? "300-500 words"}${buildSlidersPrompt({ formality: params.formality, humor: params.humor, empathy: params.empathy, profanity: params.profanity, spiciness: params.spiciness, emoji: params.emoji })}
 
 Generate output in STRICT JSON format only.`;
 

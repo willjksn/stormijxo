@@ -30,6 +30,7 @@ export function sanitizeCaptionInput(input: {
   empathy?: number;
   profanity?: number;
   spiciness?: number;
+  emoji?: number;
 }): {
   imageUrls: string[];
   bio: string;
@@ -42,6 +43,7 @@ export function sanitizeCaptionInput(input: {
   empathy?: number;
   profanity?: number;
   spiciness?: number;
+  emoji?: number;
 } {
   const single = typeof input.imageUrl === "string" ? input.imageUrl.trim().slice(0, MAX_IMAGE_URL_LENGTH) : "";
   const fromArray = Array.isArray(input.imageUrls)
@@ -61,7 +63,8 @@ export function sanitizeCaptionInput(input: {
   const formality = clampSlider(input.formality);
   const humor = clampSlider(input.humor);
   const empathy = clampSlider(input.empathy);
-  return { imageUrls, bio, tone, length, starterText, count, formality, humor, empathy, profanity, spiciness };
+  const emoji = clampSlider(input.emoji);
+  return { imageUrls, bio, tone, length, starterText, count, formality, humor, empathy, profanity, spiciness, emoji };
 }
 
 export interface SextingMessage {
@@ -80,6 +83,7 @@ export function sanitizeSextingInput(input: {
   empathy?: number;
   profanity?: number;
   spiciness?: number;
+  emoji?: number;
   wrappingUp?: boolean;
   fanSessionContext?: string;
 }): {
@@ -93,6 +97,7 @@ export function sanitizeSextingInput(input: {
   empathy?: number;
   profanity?: number;
   spiciness?: number;
+  emoji?: number;
   wrappingUp: boolean;
   fanSessionContext: string;
 } {
@@ -113,7 +118,8 @@ export function sanitizeSextingInput(input: {
   const formality = clampSlider(input.formality);
   const humor = clampSlider(input.humor);
   const empathy = clampSlider(input.empathy);
+  const emoji = clampSlider(input.emoji);
   const wrappingUp = input.wrappingUp === true;
   const fanSessionContext = typeof input.fanSessionContext === "string" ? input.fanSessionContext.trim().slice(0, 2000) : "";
-  return { recentMessages, fanName, creatorPersona, tone, numSuggestions, formality, humor, empathy, profanity, spiciness, wrappingUp, fanSessionContext };
+  return { recentMessages, fanName, creatorPersona, tone, numSuggestions, formality, humor, empathy, profanity, spiciness, emoji, wrappingUp, fanSessionContext };
 }

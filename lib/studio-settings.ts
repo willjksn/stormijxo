@@ -15,6 +15,7 @@ export interface StudioSettingsData {
   empathy: number;
   profanity: number;
   spiciness: number;
+  emoji: number;
   updatedAt?: unknown;
 }
 
@@ -25,6 +26,7 @@ const DEFAULTS: StudioSettingsData = {
   empathy: 70,
   profanity: 50,
   spiciness: 100,
+  emoji: 60,
 };
 
 function clamp(num: number, min: number, max: number): number {
@@ -46,6 +48,7 @@ export function parseStudioSettings(data: Record<string, unknown> | null): Studi
     empathy: parseNumber(data.empathy, DEFAULTS.empathy, 0, 100),
     profanity: parseNumber(data.profanity, DEFAULTS.profanity, 0, 100),
     spiciness: parseNumber(data.spiciness, DEFAULTS.spiciness, 0, 100),
+    emoji: parseNumber(data.emoji, DEFAULTS.emoji, 0, 100),
   };
 }
 
@@ -76,7 +79,15 @@ export function subscribeStudioSettings(
   onData: (data: StudioSettingsData) => void
 ): () => void {
   const ref = doc(db, STUDIO_SETTINGS_COLLECTION, uid);
-  return onSnapshot(ref, (snap) => {
-    onData(parseStudioSettings(snap.exists() ? (snap.data() as Record<string, unknown>) : null));
-  });
+  return onSnapshot(
+    ref,
+    (snap) => {
+      onData(parseStudioSettings(snap.exists() ? (snap.data() as Record<string, unknown>) : null));
+    },
+    (err) => {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[Studio] Firestore listener error path:", ref.path, err?.message ?? err);
+      }
+    }
+  );
 }
