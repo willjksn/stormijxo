@@ -415,7 +415,7 @@ Generate output in STRICT JSON format only.`;
   const bestCaption = parsed?.best_caption?.caption?.trim();
   const alternates = (parsed?.alternates_ranked ?? [])
     .map((a) => a.caption?.trim())
-    .filter(Boolean);
+    .filter((s): s is string => typeof s === "string" && s.length > 0);
   const combined = bestCaption ? [bestCaption, ...alternates] : alternates;
   const result = combined.slice(0, params.count);
   return result.length > 0 ? result : [raw.trim() || "Share your moment ✨"];
