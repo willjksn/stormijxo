@@ -16,11 +16,11 @@ function InfoIcon() {
 }
 
 const SLIDER_CONFIG = [
-  { id: "formality", label: "Formality", description: "Low for casual & slang, high for formal & professional.", default: 30 },
-  { id: "humor", label: "Humor", description: "Low for serious, high for witty & funny replies.", default: 50 },
-  { id: "empathy", label: "Empathy", description: "Low for direct, high for supportive & understanding.", default: 70 },
-  { id: "profanity", label: "Profanity", description: "Control the level of strong or crude language in outputs.", default: 50 },
-  { id: "spiciness", label: "Spiciness", description: "Control the level of bold/explicit language.", default: 100, suffix: " 🌶️" as const },
+  { id: "formality", label: "Formality", description: "Low for casual & slang, high for formal & professional.", default: 30, suffix: "" },
+  { id: "humor", label: "Humor", description: "Low for serious, high for witty & funny replies.", default: 50, suffix: "" },
+  { id: "empathy", label: "Empathy", description: "Low for direct, high for supportive & understanding.", default: 70, suffix: "" },
+  { id: "profanity", label: "Profanity", description: "Control the level of strong or crude language in outputs.", default: 50, suffix: "" },
+  { id: "spiciness", label: "Spiciness", description: "Control the level of bold/explicit language.", default: 100, suffix: " 🌶️" },
 ] as const;
 
 export default function AdminAITrainingPage() {
@@ -90,7 +90,7 @@ export default function AdminAITrainingPage() {
           {loading ? (
             <p className="admin-posts-message" style={{ color: "var(--text-muted)" }}>Loading…</p>
           ) : (
-            SLIDER_CONFIG.map(({ id, label, description, suffix = "" }) => (
+            SLIDER_CONFIG.map(({ id, label, description, suffix }) => (
               <div key={id} className="ai-training-slider-block">
                 <div className="ai-training-slider-header">
                   <span className="ai-training-slider-label">{label}{suffix}</span>
