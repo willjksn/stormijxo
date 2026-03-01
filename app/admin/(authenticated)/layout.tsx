@@ -23,7 +23,7 @@ function AdminAuthenticatedLayoutInner({ children }: { children: React.ReactNode
     pathname === "/admin/rating-prompts" ||
     pathname === "/admin/ai-training";
   const isDashboardToolsPanel = pathname === "/admin/dashboard" && panel === "tools";
-  const showToolsNav = (isToolsPage || isDashboardToolsPanel) && pathname !== "/admin/users";
+  const showToolsNav = isToolsPage || isDashboardToolsPanel;
 
   return (
     <div className="admin-page">
