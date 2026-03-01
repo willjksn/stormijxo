@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
       body = await req.json();
     } catch {
       return NextResponse.json(
-        { error: "Invalid request", details: [{ message: "Request body must be valid JSON.", path: ["body"] }] },
+        { error: "Invalid request", message: "Request body must be valid JSON." },
         { status: 400 }
       );
     }
@@ -155,8 +155,9 @@ export async function POST(req: NextRequest) {
     const parsed = requestSchema.safeParse(body);
     if (!parsed.success) {
       const issues = parsed.error.issues;
+      const firstMsg = issues[0]?.message ?? "Invalid request body.";
       return NextResponse.json(
-        { error: "Invalid request", details: issues },
+        { error: "Invalid request", message: firstMsg, details: issues },
         { status: 400 }
       );
     }
@@ -173,7 +174,10 @@ export async function POST(req: NextRequest) {
 
     if (!hasUrls && !hasInline) {
       return NextResponse.json(
-        { error: "Invalid request", details: [{ message: "Provide at least one of: mediaUrl, mediaUrls, or mediaData.", path: ["mediaUrl", "mediaUrls", "mediaData"] }] },
+        {
+          error: "Invalid request",
+          message: "Add at least one image or video to the post, or send mediaUrl/mediaUrls/mediaData.",
+        },
         { status: 400 }
       );
     }
@@ -188,7 +192,7 @@ export async function POST(req: NextRequest) {
           console.info("[generate-captions] media type (inline):", mediaData!.mimeType, "size_check:", sizeCheck.ok ? "ok" : sizeCheck.message);
         }
         return NextResponse.json(
-          { error: "Invalid request", details: [{ message: sizeCheck.message, path: ["mediaData"] }] },
+          { error: "Invalid request", message: sizeCheck.message },
           { status: isTooLarge ? 413 : 400 }
         );
       }
@@ -216,7 +220,10 @@ export async function POST(req: NextRequest) {
           console.warn("[generate-captions] fetch media failed:", url, e);
           const isTooLarge = e instanceof Error && e.message.includes("too large");
           return NextResponse.json(
-            { error: "Invalid request", details: [{ message: e instanceof Error ? e.message : "Failed to fetch media from URL.", path: ["mediaUrl", "mediaUrls"] }] },
+            {
+              error: "Invalid request",
+              message: e instanceof Error ? e.message : "Could not load image or video from URL. Use a public URL or upload media first.",
+            },
             { status: isTooLarge ? 413 : 400 }
           );
         }
@@ -225,7 +232,10 @@ export async function POST(req: NextRequest) {
 
     if (mediaParts.length === 0) {
       return NextResponse.json(
-        { error: "Invalid request", details: [{ message: "No valid media could be loaded.", path: [] }] },
+        {
+          error: "Invalid request",
+          message: "No image or video could be loaded from the URLs. Check that links are public and accessible.",
+        },
         { status: 400 }
       );
     }
