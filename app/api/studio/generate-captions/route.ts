@@ -49,13 +49,74 @@ const requestSchema = z.object({
     const n = Number(v);
     return Number.isFinite(n) ? Math.max(1, Math.min(5, n)) : 1;
   }),
+  postId: z.string().optional(),
+  postID: z.string().optional(),
+  post_id: z.string().optional(),
+  id: z.string().optional(),
+  urls: z.array(z.string()).optional(),
+  media: z
+    .array(
+      z.union([
+        z.string(),
+        z.object({
+          url: z.string().optional(),
+          src: z.string().optional(),
+        }),
+      ])
+    )
+    .optional(),
+  post: z
+    .object({
+      id: z.string().optional(),
+      postId: z.string().optional(),
+      post_id: z.string().optional(),
+    })
+    .optional(),
 });
 
 function getMediaUrlsFromBody(body: z.infer<typeof requestSchema>): string[] {
   const single = body.mediaUrl ?? body.imageUrl;
-  const list = body.mediaUrls ?? body.imageUrls ?? [];
-  const combined = single && typeof single === "string" && single.startsWith("http") ? [single, ...(Array.isArray(list) ? list : [])] : Array.isArray(list) ? list : [];
+  const list = body.mediaUrls ?? body.imageUrls ?? body.urls ?? [];
+  const fromMediaArray = Array.isArray(body.media)
+    ? body.media
+        .map((m) =>
+          typeof m === "string"
+            ? m
+            : typeof m?.url === "string"
+              ? m.url
+              : typeof m?.src === "string"
+                ? m.src
+                : ""
+        )
+        .filter(Boolean)
+    : [];
+  const combined = [
+    ...(single && typeof single === "string" ? [single] : []),
+    ...(Array.isArray(list) ? list : []),
+    ...fromMediaArray,
+  ];
   return combined.filter((u) => typeof u === "string" && u.trim().startsWith("http"));
+}
+
+function getPostIdFromBody(body: z.infer<typeof requestSchema>, req: NextRequest): string {
+  const queryPostId = req.nextUrl.searchParams.get("postId") ?? "";
+  const postIdCandidates = [
+    body.postId,
+    body.postID,
+    body.post_id,
+    body.id,
+    body.post?.postId,
+    body.post?.post_id,
+    body.post?.id,
+    queryPostId,
+  ];
+  return (postIdCandidates.find((v) => typeof v === "string" && v.trim().length > 0) ?? "").trim();
+}
+
+function getFirebaseAdmin(): ReturnType<typeof import("firebase-admin").initializeApp> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getFirebaseAdmin: getAdmin } = require("../../../../api/_lib/firebase-admin");
+  return getAdmin();
 }
 
 function validateInlineMediaSize(
@@ -182,12 +243,55 @@ export async function POST(req: NextRequest) {
       console.info("[generate-captions] request keys:", Object.keys(data).join(", "));
     }
 
-    const mediaUrls = getMediaUrlsFromBody(data);
+    let mediaUrls = getMediaUrlsFromBody(data);
     const mediaData = data.mediaData;
-    const hasUrls = mediaUrls.length > 0;
+    let hasUrls = mediaUrls.length > 0;
     const hasInline = !!mediaData?.data && !!mediaData?.mimeType;
-    const textPrompt = (data.promptText ?? data.starterText ?? data.goal ?? "").trim();
-    const hasTextPrompt = textPrompt.length > 0;
+    let textPrompt = (data.promptText ?? data.starterText ?? data.goal ?? "").trim();
+    let hasTextPrompt = textPrompt.length > 0;
+    const postId = getPostIdFromBody(data, req);
+
+    // Production compatibility: if legacy clients pass only postId, derive media from Firestore post doc.
+    if (!hasUrls && !hasInline && !hasTextPrompt && postId) {
+      try {
+        const admin = getFirebaseAdmin();
+        const postSnap = await admin.firestore().collection("posts").doc(postId).get();
+        if (postSnap.exists) {
+          const postData = postSnap.data() as
+            | {
+                mediaUrl?: string;
+                mediaUrls?: string[];
+                imageUrl?: string;
+                imageUrls?: string[];
+                body?: string;
+                caption?: string;
+              }
+            | undefined;
+
+          const postUrls = [
+            postData?.mediaUrl,
+            ...(Array.isArray(postData?.mediaUrls) ? postData.mediaUrls : []),
+            postData?.imageUrl,
+            ...(Array.isArray(postData?.imageUrls) ? postData.imageUrls : []),
+          ].filter((u): u is string => typeof u === "string" && u.trim().startsWith("http"));
+
+          if (postUrls.length > 0) {
+            mediaUrls = postUrls;
+            hasUrls = true;
+          }
+
+          if (!hasTextPrompt) {
+            const postPrompt = (postData?.body ?? postData?.caption ?? "").trim();
+            if (postPrompt) {
+              textPrompt = postPrompt;
+              hasTextPrompt = true;
+            }
+          }
+        }
+      } catch (postLookupErr) {
+        console.warn("[generate-captions] post lookup failed for fallback", { postId, postLookupErr });
+      }
+    }
 
     if (!hasUrls && !hasInline && !hasTextPrompt) {
       console.error("[generate-captions] 400: No media or text prompt provided", { mediaUrls, hasInline });
