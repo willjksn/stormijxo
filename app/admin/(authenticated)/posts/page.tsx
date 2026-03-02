@@ -526,6 +526,31 @@ export default function AdminPostsPage() {
     setSelectedMedia((prev) => [...prev, { url: item.url, isVideo: item.isVideo, alt: "" }]);
   };
 
+  /** Fetch first media URL in the browser and return base64 + mimeType so the server doesn't have to fetch (avoids prod 403/CORS). */
+  const fetchFirstMediaAsBase64 = async (url: string): Promise<{ data: string; mimeType: string } | null> => {
+    try {
+      const res = await fetch(url, { mode: "cors" });
+      if (!res.ok) return null;
+      const buf = await res.arrayBuffer();
+      const bytes = buf.byteLength;
+      const maxImage = 4 * 1024 * 1024;
+      const maxVideo = 20 * 1024 * 1024;
+      const contentType = res.headers.get("content-type")?.split(";")[0]?.trim() || "image/jpeg";
+      const isVideo = /video\//i.test(contentType);
+      if (bytes > (isVideo ? maxVideo : maxImage)) return null;
+      const u8 = new Uint8Array(buf);
+      let binary = "";
+      const chunk = 8192;
+      for (let i = 0; i < u8.length; i += chunk) {
+        binary += String.fromCharCode(...u8.subarray(i, i + chunk));
+      }
+      const base64 = btoa(binary);
+      return { data: base64, mimeType: contentType };
+    } catch {
+      return null;
+    }
+  };
+
   const handleGenerateCaption = async () => {
     if (aiLoading) return;
     if (!user) {
@@ -548,29 +573,34 @@ export default function AdminPostsPage() {
         setAiLoadingAction(null);
         return;
       }
+      const firstInline = await fetchFirstMediaAsBase64(urls[0]);
+      const body: Record<string, unknown> = {
+        mediaUrls: firstInline ? urls.slice(1) : urls,
+        mediaUrl: firstInline ? undefined : urls[0],
+        goal: "engagement",
+        tone: aiTone || undefined,
+        promptText: undefined,
+        creatorPersonality: useCreatorPersonality ? ((creatorPersonality || creatorBio) || undefined) : undefined,
+        platforms: ["Instagram"],
+        emojiEnabled: (emoji ?? 60) > 5,
+        emojiIntensity: Math.max(0, Math.min(10, Math.round((emoji ?? 60) / 10))),
+        emoji: emoji !== undefined ? emoji : undefined,
+        count: 1,
+      };
+      if (firstInline) body.mediaData = firstInline;
       const res = await fetch("/api/studio/generate-captions", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          mediaUrls: urls,
-          mediaUrl: urls[0],
-          goal: "engagement",
-          tone: aiTone || undefined,
-          promptText: undefined,
-          creatorPersonality: useCreatorPersonality ? ((creatorPersonality || creatorBio) || undefined) : undefined,
-          platforms: ["Instagram"],
-          emojiEnabled: (emoji ?? 60) > 5,
-          emojiIntensity: Math.max(0, Math.min(10, Math.round((emoji ?? 60) / 10))),
-          emoji: emoji !== undefined ? emoji : undefined,
-          count: 1,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) {
         const msg =
           res.status === 401
             ? (data?.message ?? "Session expired or invalid. Please sign in again.")
-            : (data?.message ?? data?.error ?? "Caption generation failed.");
+            : data?.code === "media_fetch_failed"
+              ? "Could not load your media from the server. Try saving the post first, then generate captions again."
+              : (data?.message ?? data?.error ?? "Caption generation failed.");
         setMessage({ type: "error", text: msg });
         return;
       }
@@ -604,10 +634,6 @@ export default function AdminPostsPage() {
       setMessage({ type: "error", text: "Type an idea in the caption or add media, then click AI suggest to help finish or expand it." });
       return;
     }
-    if (!hasMedia) {
-      setMessage({ type: "error", text: "Add at least one image or video to generate captions from media." });
-      return;
-    }
     setAiLoading(true);
     setAiLoadingAction("suggest");
     setMessage(null);
@@ -619,29 +645,34 @@ export default function AdminPostsPage() {
         setAiLoadingAction(null);
         return;
       }
+      const firstInline = await fetchFirstMediaAsBase64(urls[0]);
+      const body: Record<string, unknown> = {
+        mediaUrls: urls.length ? (firstInline ? urls.slice(1) : urls) : undefined,
+        mediaUrl: urls.length && !firstInline ? urls[0] : undefined,
+        goal: "engagement",
+        promptText: starterText || undefined,
+        tone: aiTone || undefined,
+        creatorPersonality: useCreatorPersonality ? ((creatorPersonality || creatorBio) || undefined) : undefined,
+        platforms: ["Instagram"],
+        emojiEnabled: (emoji ?? 60) > 5,
+        emojiIntensity: Math.max(0, Math.min(10, Math.round((emoji ?? 60) / 10))),
+        emoji: emoji !== undefined ? emoji : undefined,
+        count: 1,
+      };
+      if (firstInline) body.mediaData = firstInline;
       const res = await fetch("/api/studio/generate-captions", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          mediaUrls: urls.length ? urls : undefined,
-          mediaUrl: urls[0],
-          goal: "engagement",
-          promptText: starterText || undefined,
-          tone: aiTone || undefined,
-          creatorPersonality: useCreatorPersonality ? ((creatorPersonality || creatorBio) || undefined) : undefined,
-          platforms: ["Instagram"],
-          emojiEnabled: (emoji ?? 60) > 5,
-          emojiIntensity: Math.max(0, Math.min(10, Math.round((emoji ?? 60) / 10))),
-          emoji: emoji !== undefined ? emoji : undefined,
-          count: 1,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) {
         const msg =
           res.status === 401
             ? (data?.message ?? "Session expired or invalid. Please sign in again.")
-            : (data?.message ?? data?.error ?? "AI suggestion failed.");
+            : data?.code === "media_fetch_failed"
+              ? "Could not load your media from the server. Try saving the post first, then try AI suggest again."
+              : (data?.message ?? data?.error ?? "AI suggestion failed.");
         setMessage({ type: "error", text: msg });
         return;
       }
@@ -1074,7 +1105,7 @@ export default function AdminPostsPage() {
                 className="admin-posts-ai-btn"
                 onClick={handleAiSuggest}
                 disabled={aiLoading}
-                title="Help finish or expand what you’ve typed; use when you have an idea but need help saying it"
+                title="Use your typed topic for text-only captions, or combine with media for smarter suggestions"
               >
                 <span className="admin-posts-ai-btn-content">
                   {aiLoadingAction === "suggest" && <span className="admin-posts-ai-spinner" aria-hidden="true" />}

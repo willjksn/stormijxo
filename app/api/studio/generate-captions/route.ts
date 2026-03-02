@@ -5,6 +5,7 @@ import { rateLimit } from "../../../../lib/studio/rate-limit";
 import { getCaptionUsageRemaining, incrementCaptionUsage } from "../../../../lib/studio/caption-usage";
 import {
   generateCaptionsFromMedia,
+  generateCaptionsWithGemini,
   fetchMediaAsBase64,
   type CaptionOption,
 } from "../../../../lib/studio/gemini-shared";
@@ -185,13 +186,17 @@ export async function POST(req: NextRequest) {
     const mediaData = data.mediaData;
     const hasUrls = mediaUrls.length > 0;
     const hasInline = !!mediaData?.data && !!mediaData?.mimeType;
+    const textPrompt = (data.promptText ?? data.starterText ?? data.goal ?? "").trim();
+    const hasTextPrompt = textPrompt.length > 0;
 
-    if (!hasUrls && !hasInline) {
-      console.error("[generate-captions] 400: No media provided", { mediaUrls, hasInline });
+    if (!hasUrls && !hasInline && !hasTextPrompt) {
+      console.error("[generate-captions] 400: No media or text prompt provided", { mediaUrls, hasInline });
       return NextResponse.json(
         {
           error: "Invalid request",
-          message: "Add at least one image or video to the post, or send mediaUrl/mediaUrls/mediaData.",
+          code: "no_media",
+          message:
+            "Add at least one image or video to the post, or type a topic in the caption box for text-only AI suggest.",
         },
         { status: 400 }
       );
@@ -236,6 +241,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json(
             {
               error: "Invalid request",
+              code: "media_fetch_failed",
               message: e instanceof Error ? e.message : "Could not load image or video from URL. Use a public URL or upload media first.",
             },
             { status: isTooLarge ? 413 : 400 }
@@ -244,11 +250,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (mediaParts.length === 0) {
+    if (mediaParts.length === 0 && !hasTextPrompt) {
       console.error("[generate-captions] 400: No media loaded from URLs", { mediaUrls });
       return NextResponse.json(
         {
           error: "Invalid request",
+          code: "media_fetch_failed",
           message: "No image or video could be loaded from the URLs. Check that links are public and accessible.",
         },
         { status: 400 }
@@ -257,17 +264,36 @@ export async function POST(req: NextRequest) {
 
     let options: CaptionOption[];
     try {
-      options = await generateCaptionsFromMedia({
-        mediaParts,
-        goal: data.goal ?? data.starterText ?? data.promptText,
-        tone: data.tone,
-        promptText: data.promptText ?? data.starterText,
-        creatorPersonality: data.creatorPersonality ?? data.bio,
-        platforms: data.platforms,
-        emojiEnabled: data.emojiEnabled,
-        emojiIntensity: data.emojiIntensity ?? (typeof data.emoji === "number" ? Math.round(data.emoji / 10) : undefined),
-        count: data.count ?? 5,
-      });
+      if (mediaParts.length > 0) {
+        options = await generateCaptionsFromMedia({
+          mediaParts,
+          goal: data.goal ?? data.starterText ?? data.promptText,
+          tone: data.tone,
+          promptText: data.promptText ?? data.starterText,
+          creatorPersonality: data.creatorPersonality ?? data.bio,
+          platforms: data.platforms,
+          emojiEnabled: data.emojiEnabled,
+          emojiIntensity:
+            data.emojiIntensity ?? (typeof data.emoji === "number" ? Math.round(data.emoji / 10) : undefined),
+          count: data.count ?? 5,
+        });
+      } else {
+        const textCaptions = await generateCaptionsWithGemini({
+          imageUrls: [],
+          hasVideo: data.hasVideo ?? false,
+          bio: data.creatorPersonality ?? data.bio ?? "",
+          tone: data.tone ?? "flirty",
+          length: "medium",
+          starterText: textPrompt,
+          count: data.count ?? 5,
+          emoji: typeof data.emoji === "number"
+            ? data.emoji
+            : typeof data.emojiIntensity === "number"
+              ? Math.round(data.emojiIntensity * 10)
+              : undefined,
+        });
+        options = textCaptions.map((caption) => ({ caption, hashtags: [] as string[] }));
+      }
     } catch (geminiErr) {
       console.error("[generate-captions] Gemini error:", geminiErr);
       const mapped = mapGeminiErrorToResponse(geminiErr);
