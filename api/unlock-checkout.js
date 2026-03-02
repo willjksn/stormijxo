@@ -71,15 +71,33 @@ module.exports = async (req, res) => {
     return;
   }
 
+  const queryPostId =
+    req && typeof req.query === "object" && req.query
+      ? (typeof req.query.postId === "string"
+          ? req.query.postId
+          : Array.isArray(req.query.postId)
+            ? req.query.postId[0]
+            : "")
+      : "";
+
   const postId = (
     typeof body.postId === "string"
       ? body.postId
+      : typeof body.postID === "string"
+        ? body.postID
       : typeof body.post_id === "string"
         ? body.post_id
         : typeof body.id === "string"
           ? body.id
           : typeof body.unlock_post_id === "string"
             ? body.unlock_post_id
+            : body.post && typeof body.post === "object" && typeof body.post.postId === "string"
+              ? body.post.postId
+              : body.post && typeof body.post === "object" && typeof body.post.post_id === "string"
+                ? body.post.post_id
+                : body.post && typeof body.post === "object" && typeof body.post.id === "string"
+                  ? body.post.id
+                  : queryPostId
             : ""
   ).trim();
   const uid = typeof body.uid === "string" ? body.uid.trim() : "";

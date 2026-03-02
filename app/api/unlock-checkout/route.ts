@@ -29,9 +29,15 @@ export async function POST(req: NextRequest) {
     amountCents?: number | string;
     amount?: number | string;
     postId?: string;
+    postID?: string;
     post_id?: string;
     id?: string;
     unlock_post_id?: string;
+    post?: {
+      id?: string;
+      postId?: string;
+      post_id?: string;
+    };
     uid?: string;
     customer_email?: string;
     base_url?: string;
@@ -63,12 +69,22 @@ export async function POST(req: NextRequest) {
   const postId = (
     typeof body.postId === "string"
       ? body.postId
+      : typeof body.postID === "string"
+        ? body.postID
       : typeof body.post_id === "string"
         ? body.post_id
         : typeof body.id === "string"
           ? body.id
           : typeof body.unlock_post_id === "string"
             ? body.unlock_post_id
+            : typeof body.post?.postId === "string"
+              ? body.post.postId
+              : typeof body.post?.post_id === "string"
+                ? body.post.post_id
+                : typeof body.post?.id === "string"
+                  ? body.post.id
+                  : typeof req.nextUrl.searchParams.get("postId") === "string"
+                    ? req.nextUrl.searchParams.get("postId")
             : ""
   ).trim();
   const uid = typeof body.uid === "string" ? body.uid.trim() : "";
