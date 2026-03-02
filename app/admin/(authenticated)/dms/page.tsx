@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
-import { collection, getDocsFromServer, addDoc, doc, getDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, orderBy, limit } from "firebase/firestore";
+import { collection, getDocsFromServer, addDoc, doc, getDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseStorage } from "../../../../lib/firebase";
 import {
   ensureConversation,
@@ -13,6 +13,7 @@ import {
   type ConversationDoc,
   type MessageDoc,
 } from "../../../../lib/dms";
+import { CHAT_SESSIONS_COLLECTION } from "../../../../lib/chat-sessions";
 import { NOTIFICATIONS_COLLECTION } from "../../../../lib/notifications";
 import { useAuth } from "../../../contexts/AuthContext";
 import { MemberProfileCard } from "../../components/MemberProfileCard";
@@ -118,6 +119,7 @@ export default function AdminDmsPage() {
   const db = getFirebaseDb();
   const storage = getFirebaseStorage();
   const [conversations, setConversations] = useState<ConversationDoc[]>([]);
+  const [chatSessionConversationIds, setChatSessionConversationIds] = useState<Set<string>>(new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showNewConversation, setShowNewConversation] = useState(false);
   const [userList, setUserList] = useState<UserOption[]>([]);
@@ -148,7 +150,7 @@ export default function AdminDmsPage() {
 
   const selected = conversations.find((c) => c.id === selectedId);
   const filteredConversations = useMemo(() => {
-    let list = conversations;
+    let list = conversations.filter((c) => !chatSessionConversationIds.has(c.id));
     if (!filterAll) {
       list = list.filter((c) => c.firstMessageFromMember === true);
     }
@@ -162,7 +164,7 @@ export default function AdminDmsPage() {
       );
     }
     return list;
-  }, [conversations, searchQuery, filterAll]);
+  }, [conversations, searchQuery, filterAll, chatSessionConversationIds]);
 
   const messagesWithDates = useMemo(() => {
     type Item = { type: "date"; date: Date } | { type: "message"; message: MessageDoc };
@@ -189,6 +191,34 @@ export default function AdminDmsPage() {
     const unsub = subscribeConversations(db, setConversations);
     return () => unsub();
   }, [db]);
+
+  useEffect(() => {
+    if (!db) return;
+    const q = query(collection(db, CHAT_SESSIONS_COLLECTION));
+    return onSnapshot(
+      q,
+      (snap) => {
+        const ids = new Set<string>();
+        snap.forEach((d) => {
+          const cid = (d.data() as { conversationId?: string }).conversationId;
+          if (typeof cid === "string" && cid.trim()) ids.add(cid.trim());
+        });
+        setChatSessionConversationIds(ids);
+      },
+      () => setChatSessionConversationIds(new Set())
+    );
+  }, [db]);
+
+  const isChatSessionConversation = useCallback(
+    (conversationId: string) => chatSessionConversationIds.has(conversationId),
+    [chatSessionConversationIds]
+  );
+
+  useEffect(() => {
+    if (selectedId && isChatSessionConversation(selectedId)) {
+      setSelectedId(null);
+    }
+  }, [selectedId, isChatSessionConversation]);
 
   useEffect(() => {
     if (!db || conversations.length === 0) return;
@@ -646,7 +676,11 @@ export default function AdminDmsPage() {
           <div style={{ overflow: "auto", flex: 1 }} className="chat-conversation-list">
             {filteredConversations.length === 0 && (
               <p className="chat-empty-state" style={{ margin: "1rem" }}>
-                {conversations.length === 0 ? "No conversations yet. Click the envelope to start one." : "No matches for your search."}
+                {conversations.length === 0
+                  ? "No conversations yet. Click the envelope to start one."
+                  : chatSessionConversationIds.size > 0 && conversations.some((c) => chatSessionConversationIds.has(c.id))
+                    ? "No message conversations to show. Scheduled chat session conversations appear in Chat session."
+                    : "No matches for your search."}
               </p>
             )}
             {filteredConversations.map((c) => (

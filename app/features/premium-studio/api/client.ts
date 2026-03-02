@@ -162,10 +162,17 @@ export async function generateRatingPrompts(
   if (!res.ok) {
     return { prompts: [], best_3_for_conversion: [], error: data.error || "Rating prompts generation failed" };
   }
+  const rawPrompts = Array.isArray(data.prompts) ? data.prompts : [];
+  const prompts = rawPrompts.map((p: Record<string, unknown>) => ({
+    prompt_text: typeof p.prompt_text === "string" ? p.prompt_text : typeof p.prompt === "string" ? p.prompt : typeof p.text === "string" ? p.text : "",
+    angle: typeof p.angle === "string" ? p.angle : undefined,
+    cta: typeof p.cta === "string" ? p.cta : undefined,
+    upsell_path: typeof p.upsell_path === "string" ? p.upsell_path : undefined,
+  })).filter((p) => (p.prompt_text ?? "").trim().length > 0);
   return {
     tone_used: data.tone_used,
     rating_subject: data.rating_subject,
-    prompts: Array.isArray(data.prompts) ? data.prompts : [],
+    prompts,
     best_3_for_conversion: Array.isArray(data.best_3_for_conversion) ? data.best_3_for_conversion : [],
     error: data.error,
   };

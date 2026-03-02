@@ -962,7 +962,7 @@ Generate output in STRICT JSON format only.`;
 
   const raw = await generateContent({
     contents: [{ role: "user", parts: [{ text: userText }] }],
-    generationConfig: { maxOutputTokens: 2500, temperature: 0.85 },
+    generationConfig: { maxOutputTokens: 4096, temperature: 0.85 },
     systemInstruction: RATING_SHORT_SYSTEM,
   });
 
@@ -1005,31 +1005,29 @@ CORE RULES:
 6) Include light monetization CTA aligned with context.
 7) Respect constraints and boundaries.
 
-OUTPUT FORMAT (STRICT JSON ONLY):
-{
-  "tone_used": "string",
-  "overall_score": "e.g. 8.7/10",
-  "rating_response": "full long-form response",
-  "section_summary": {
-    "opening": "1 line",
-    "assessment": "1 line",
-    "details": "1 line",
-    "personalization": "1 line",
-    "closing_cta": "1 line"
-  },
-  "follow_up_options": [
-    "short follow-up message 1",
-    "short follow-up message 2",
-    "short follow-up message 3"
-  ]
-}
+OUTPUT FORMAT — PLAIN TEXT ONLY (no JSON):
+For long-form ratings (e.g. 300+ words), output regular paragraphs of text, not JSON. Use this exact structure:
+
+Tone: <tone_used>
+Score: <overall_score e.g. 9.2/10>
+
+<blank line>
+
+<full rating in paragraphs — opening, assessment, detail breakdown, personalization, closing CTA. Write in flowing paragraphs. Do not use JSON or bullet points for the main content.>
+
+<blank line>
+
+Follow-up options:
+- <short follow-up message 1>
+- <short follow-up message 2>
+- <short follow-up message 3>
+
+Do not wrap the response in \`\`\` or JSON. Output the above as plain text only so the full response is never cut off.
 
 QUALITY BAR:
 - Must read like premium custom writing.
 - Must be specific, not generic.
-- Must include a clear next action.
-
-Generate output in STRICT JSON format only.`;
+- Must include a clear next action.`;
 
 interface RatingLongJson {
   tone_used?: string;
@@ -1043,6 +1041,39 @@ interface RatingLongJson {
     closing_cta?: string;
   };
   follow_up_options?: string[];
+}
+
+function parseLongFormRatingPlainText(raw: string): RatingLongJson | null {
+  const text = raw.trim();
+  if (!text) return null;
+  let tone_used = "";
+  let overall_score = "";
+  const toneMatch = text.match(/^Tone:\s*(.+?)(?=\n|Score:)/ims);
+  if (toneMatch) tone_used = toneMatch[1].trim();
+  const scoreMatch = text.match(/Score:\s*(.+?)(?=\n|$)/im);
+  if (scoreMatch) overall_score = scoreMatch[1].trim();
+  const followUpSection = text.match(/Follow-up options:\s*([\s\S]*?)$/im);
+  const follow_up_options: string[] = [];
+  if (followUpSection) {
+    const block = followUpSection[1].trim();
+    block.split(/\n/).forEach((line) => {
+      const m = line.replace(/^[\s\-*•]+\s*/, "").trim();
+      if (m) follow_up_options.push(m);
+    });
+  }
+  let rating_response: string;
+  const afterScore = text.replace(/^[\s\S]*?Score:\s*[^\n]+/i, "").trim();
+  const followUpIdx = afterScore.toLowerCase().indexOf("follow-up options:");
+  const beforeFollowUp = followUpIdx >= 0 ? afterScore.slice(0, followUpIdx).trim() : afterScore;
+  if (beforeFollowUp.length > 20) rating_response = beforeFollowUp;
+  else rating_response = text;
+  return {
+    tone_used: tone_used || undefined,
+    overall_score: overall_score || undefined,
+    rating_response,
+    section_summary: {},
+    follow_up_options: follow_up_options.length > 0 ? follow_up_options : undefined,
+  };
 }
 
 export async function generateRatingLongWithGemini(params: {
@@ -1072,16 +1103,20 @@ target_audience_gender: ${params.target_audience_gender ?? ""}
 constraints: ${params.constraints ?? ""}
 desired_length: ${params.desired_length ?? "300-500 words"}${buildSlidersPrompt({ formality: params.formality, humor: params.humor, empathy: params.empathy, profanity: params.profanity, spiciness: params.spiciness, emoji: params.emoji })}
 
-Generate output in STRICT JSON format only.`;
+Output as plain text using the format above (Tone:, Score:, paragraphs, then Follow-up options:). Do not use JSON.`;
 
   const raw = await generateContent({
     contents: [{ role: "user", parts: [{ text: userText }] }],
-    generationConfig: { maxOutputTokens: 2500, temperature: 0.85 },
+    generationConfig: { maxOutputTokens: 8192, temperature: 0.85 },
     systemInstruction: RATING_LONG_SYSTEM,
   });
 
   const parsed = parseJsonFromRaw<RatingLongJson>(raw);
   if (parsed?.rating_response) return parsed;
+
+  const plain = parseLongFormRatingPlainText(raw);
+  if (plain) return plain;
+
   return {
     tone_used: params.tone_suggestion,
     overall_score: "",
