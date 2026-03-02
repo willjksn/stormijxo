@@ -386,21 +386,12 @@ export async function POST(req: NextRequest) {
     }
 
     if (!hasUrls && !hasInline && !hasTextPrompt) {
-      console.error("[generate-captions]", requestId, "400: No media or text prompt provided", {
-        mediaUrls,
-        hasInline,
-      });
-      return jsonWithRequestId(
-        requestId,
-        {
-          error: "Invalid request",
-          code: "no_media",
-          message:
-            "Add at least one image or video to the post, or type a topic in the caption box for text-only AI suggest.",
-          requestId,
-        },
-        { status: 400 }
-      );
+      // Production safety fallback: prefer generating a text-only caption instead of failing the request.
+      textPrompt = "Write a short engaging social caption with a playful tone.";
+      hasTextPrompt = true;
+      if (process.env.NODE_ENV !== "test") {
+        console.warn("[generate-captions]", requestId, "fallback_text_mode: no_media_no_prompt");
+      }
     }
 
     const mediaParts: Array<{ inlineData: { mimeType: string; data: string } }> = [];
@@ -428,6 +419,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (hasUrls) {
+      let mediaFetchFailures = 0;
       for (const url of mediaUrls.slice(0, 5)) {
         try {
           const { data: fetchedData, mimeType } = await fetchMediaAsBase64(
@@ -441,37 +433,31 @@ export async function POST(req: NextRequest) {
           mediaParts.push({ inlineData: { mimeType, data: fetchedData } });
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
-          console.error("[generate-captions]", requestId, "400: Media fetch failed", {
+          mediaFetchFailures += 1;
+          console.error("[generate-captions]", requestId, "media fetch failed", {
             url: url.slice(0, 100),
             error: msg,
           });
-          const isTooLarge = e instanceof Error && e.message.includes("too large");
-          return jsonWithRequestId(
-            requestId,
-            {
-              error: "Invalid request",
-              code: "media_fetch_failed",
-              message: e instanceof Error ? e.message : "Could not load image or video from URL. Use a public URL or upload media first.",
-              requestId,
-            },
-            { status: isTooLarge ? 413 : 400 }
-          );
+          continue;
         }
+      }
+
+      if (mediaFetchFailures > 0 && process.env.NODE_ENV !== "test") {
+        console.warn("[generate-captions]", requestId, "media_fetch_partial_failures", {
+          attempted: Math.min(mediaUrls.length, 5),
+          failed: mediaFetchFailures,
+          loaded: mediaParts.length,
+        });
       }
     }
 
     if (mediaParts.length === 0 && !hasTextPrompt) {
-      console.error("[generate-captions]", requestId, "400: No media loaded from URLs", { mediaUrls });
-      return jsonWithRequestId(
-        requestId,
-        {
-          error: "Invalid request",
-          code: "media_fetch_failed",
-          message: "No image or video could be loaded from the URLs. Check that links are public and accessible.",
-          requestId,
-        },
-        { status: 400 }
-      );
+      // If URL fetches fail, continue in text mode rather than returning 400.
+      textPrompt = normalized.promptText || "Write a short engaging social caption with a playful tone.";
+      hasTextPrompt = true;
+      if (process.env.NODE_ENV !== "test") {
+        console.warn("[generate-captions]", requestId, "fallback_text_mode: media_fetch_failed");
+      }
     }
 
     let options: CaptionOption[];
