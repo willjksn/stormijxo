@@ -32,6 +32,17 @@ module.exports = async (req, res) => {
     return tipCheckoutHandler(req, res);
   }
 
+  const looksLikeCaptionRequest =
+    typeof body.mediaUrl === "string" ||
+    Array.isArray(body.mediaUrls) ||
+    typeof body.imageUrl === "string" ||
+    Array.isArray(body.imageUrls) ||
+    typeof body.promptText === "string" ||
+    typeof body.starterText === "string" ||
+    typeof body.goal === "string" ||
+    typeof body.tone === "string" ||
+    Array.isArray(body.platforms);
+
   // Production safety net: if Vercel misroutes landing checkout paths here,
   // forward to the intended handler instead of returning unlock validation errors.
   if (requestPath.includes("landing-subscription")) {
@@ -96,6 +107,32 @@ module.exports = async (req, res) => {
   ).trim();
   const uid = typeof body.uid === "string" ? body.uid.trim() : "";
   if (!postId) {
+    // Production safety: if misrouted caption payload lands here, proxy it to the studio captions endpoint.
+    if (looksLikeCaptionRequest) {
+      const proto = (req.headers && (req.headers["x-forwarded-proto"] || req.headers["x-forwarded-protocol"])) || "https";
+      const host = (req.headers && (req.headers["x-forwarded-host"] || req.headers["host"])) || process.env.VERCEL_URL || "stormijxo.com";
+      const origin = host.startsWith("http") ? host : `${proto}://${host}`;
+      const authHeader = (req.headers && (req.headers.authorization || req.headers.Authorization)) || "";
+      try {
+        const r = await fetch(origin.replace(/\/$/, "") + "/api/studio/generate-captions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(authHeader ? { Authorization: authHeader } : {}),
+          },
+          body: JSON.stringify(body || {}),
+        });
+        const data = await r.json().catch(() => ({}));
+        res.statusCode = r.status;
+        res.setHeader("Content-Type", "application/json; charset=utf-8");
+        res.end(JSON.stringify(data));
+        return;
+      } catch (proxyErr) {
+        console.error("unlock-checkout caption proxy error:", proxyErr);
+        json(res, 502, { error: "Could not reach captions API." });
+        return;
+      }
+    }
     // If request looks like admin user management (misrouted), proxy to correct admin API.
     const memberId = typeof body.memberId === "string" ? String(body.memberId).trim() : "";
     const email = typeof body.email === "string" ? String(body.email).trim() : "";

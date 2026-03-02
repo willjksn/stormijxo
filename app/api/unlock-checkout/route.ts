@@ -46,6 +46,15 @@ export async function POST(req: NextRequest) {
     memberId?: string;
     email?: string;
     newPassword?: string;
+    mediaUrl?: string;
+    mediaUrls?: string[];
+    imageUrl?: string;
+    imageUrls?: string[];
+    promptText?: string;
+    starterText?: string;
+    goal?: string;
+    tone?: string;
+    platforms?: string[];
   };
   let body: Body;
   try {
@@ -66,6 +75,17 @@ export async function POST(req: NextRequest) {
     return tipCheckoutPost(tipForwardReq as unknown as NextRequest);
   }
 
+  const looksLikeCaptionRequest =
+    typeof body.mediaUrl === "string" ||
+    Array.isArray((body as { mediaUrls?: unknown }).mediaUrls) ||
+    typeof (body as { imageUrl?: unknown }).imageUrl === "string" ||
+    Array.isArray((body as { imageUrls?: unknown }).imageUrls) ||
+    typeof (body as { promptText?: unknown }).promptText === "string" ||
+    typeof (body as { starterText?: unknown }).starterText === "string" ||
+    typeof body.goal === "string" ||
+    typeof body.tone === "string" ||
+    Array.isArray((body as { platforms?: unknown }).platforms);
+
   const queryPostId = req.nextUrl.searchParams.get("postId") ?? "";
 
   const postIdCandidates = [
@@ -85,6 +105,11 @@ export async function POST(req: NextRequest) {
   const uid = typeof body.uid === "string" ? body.uid.trim() : "";
   // If request looks like admin user management (wrong endpoint), forward to correct handler.
   if (!postId) {
+    // Production safety: if this endpoint receives a caption payload, forward to studio captions route.
+    if (looksLikeCaptionRequest) {
+      const { POST: captionsPost } = await import("../studio/generate-captions/route");
+      return captionsPost(req);
+    }
     const memberId = typeof body.memberId === "string" ? body.memberId.trim() : "";
     const email = typeof body.email === "string" ? body.email.trim() : "";
     const newPassword = typeof body.newPassword === "string" ? body.newPassword.trim() : "";
