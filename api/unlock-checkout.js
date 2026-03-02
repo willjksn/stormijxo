@@ -80,25 +80,19 @@ module.exports = async (req, res) => {
             : "")
       : "";
 
+  const postIdCandidates = [
+    body.postId,
+    body.postID,
+    body.post_id,
+    body.id,
+    body.unlock_post_id,
+    body.post && typeof body.post === "object" ? body.post.postId : undefined,
+    body.post && typeof body.post === "object" ? body.post.post_id : undefined,
+    body.post && typeof body.post === "object" ? body.post.id : undefined,
+    queryPostId,
+  ];
   const postId = (
-    typeof body.postId === "string"
-      ? body.postId
-      : typeof body.postID === "string"
-        ? body.postID
-      : typeof body.post_id === "string"
-        ? body.post_id
-        : typeof body.id === "string"
-          ? body.id
-          : typeof body.unlock_post_id === "string"
-            ? body.unlock_post_id
-            : body.post && typeof body.post === "object" && typeof body.post.postId === "string"
-              ? body.post.postId
-              : body.post && typeof body.post === "object" && typeof body.post.post_id === "string"
-                ? body.post.post_id
-                : body.post && typeof body.post === "object" && typeof body.post.id === "string"
-                  ? body.post.id
-                  : queryPostId
-            : ""
+    postIdCandidates.find((v) => typeof v === "string" && v.trim().length > 0) || ""
   ).trim();
   const uid = typeof body.uid === "string" ? body.uid.trim() : "";
   if (!postId) {
