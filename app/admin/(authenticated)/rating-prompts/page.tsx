@@ -246,9 +246,11 @@ export default function AdminRatingPromptsPage() {
               <button
                 type="button"
                 className="chat-session-start-btn"
+                style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}
                 onClick={handleGenerateShort}
                 disabled={shortLoading || !ratingSubject.trim()}
               >
+                {shortLoading && <span className="admin-posts-ai-spinner" aria-hidden="true" />}
                 {shortLoading ? "Generating…" : "Generate 10 rating prompts"}
               </button>
             </div>
@@ -258,38 +260,54 @@ export default function AdminRatingPromptsPage() {
               {shortError}
             </p>
           )}
-          {shortResult && shortResult.prompts && shortResult.prompts.length > 0 && (
+          {(shortLoading || shortResult) && (
             <div className="prompts-results" style={{ marginTop: "1rem" }}>
-              {shortResult.tone_used && (
-                <p className="prompts-results-tone" style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginBottom: "0.5rem" }}>
-                  Tone: {shortResult.tone_used} · Subject: {shortResult.rating_subject}
-                </p>
-              )}
-              <div className="prompts-rating-list">
-                {shortResult.prompts.map((p, i) => (
-                  <div key={i} className="prompts-rating-card">
-                    <p className="prompts-rating-text">{p.prompt_text}</p>
-                    {p.angle && <span className="prompts-rating-angle">{p.angle}</span>}
-                    {p.cta && <p className="prompts-rating-cta">CTA: {p.cta}</p>}
-                    <button
-                      type="button"
-                      className="prompts-copy-btn"
-                      onClick={() => copyToClipboard(p.prompt_text ?? "")}
-                    >
-                      Copy
-                    </button>
-                  </div>
-                ))}
-              </div>
-              {shortResult.best_3_for_conversion && shortResult.best_3_for_conversion.length > 0 && (
-                <div className="prompts-best3" style={{ marginTop: "1rem" }}>
-                  <h4 style={{ color: "var(--accent)", fontSize: "0.95rem", marginBottom: "0.5rem" }}>Best 3 for conversion</h4>
-                  <ul style={{ margin: 0, paddingLeft: "1.25rem", color: "var(--text)" }}>
-                    {shortResult.best_3_for_conversion.map((s, i) => (
-                      <li key={i}>{s}</li>
-                    ))}
-                  </ul>
+              {shortLoading && (
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "1rem", color: "var(--text-muted)" }}>
+                  <span className="admin-posts-ai-spinner" aria-hidden="true" />
+                  <span>Generating 10 prompts…</span>
                 </div>
+              )}
+              {!shortLoading && shortResult && (
+                <>
+                  {(shortResult.tone_used || shortResult.rating_subject) && (
+                    <p className="prompts-results-tone" style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginBottom: "0.5rem" }}>
+                      Tone: {shortResult.tone_used ?? "—"} · Subject: {shortResult.rating_subject ?? "—"}
+                    </p>
+                  )}
+                  {shortResult.prompts && shortResult.prompts.length > 0 ? (
+                    <div className="prompts-rating-list">
+                      {shortResult.prompts.map((p, i) => (
+                        <div key={i} className="prompts-rating-card">
+                          <p className="prompts-rating-text">{p.prompt_text}</p>
+                          {p.angle && <span className="prompts-rating-angle">{p.angle}</span>}
+                          {p.cta && <p className="prompts-rating-cta">CTA: {p.cta}</p>}
+                          <button
+                            type="button"
+                            className="prompts-copy-btn"
+                            onClick={() => copyToClipboard(p.prompt_text ?? "")}
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="admin-posts-message" style={{ color: "var(--text-muted)", marginTop: "0.5rem" }}>
+                      No prompts were generated. Try again or adjust your subject.
+                    </p>
+                  )}
+                  {shortResult.best_3_for_conversion && shortResult.best_3_for_conversion.length > 0 && (
+                    <div className="prompts-best3" style={{ marginTop: "1rem" }}>
+                      <h4 style={{ color: "var(--accent)", fontSize: "0.95rem", marginBottom: "0.5rem" }}>Best 3 for conversion</h4>
+                      <ul style={{ margin: 0, paddingLeft: "1.25rem", color: "var(--text)" }}>
+                        {shortResult.best_3_for_conversion.map((s, i) => (
+                          <li key={i}>{s}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -340,9 +358,11 @@ export default function AdminRatingPromptsPage() {
                 <button
                   type="button"
                   className="chat-session-duration-btn"
+                  style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}
                   onClick={() => longFormMediaInputRef.current?.click()}
                   disabled={mediaAnalyzeLoading}
                 >
+                  {mediaAnalyzeLoading && <span className="admin-posts-ai-spinner" aria-hidden="true" />}
                   {mediaAnalyzeLoading ? "Analyzing…" : "Upload image/video to analyze"}
                 </button>
                 <span className="prompts-media-hint" style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
@@ -390,9 +410,11 @@ export default function AdminRatingPromptsPage() {
               <button
                 type="button"
                 className="chat-session-start-btn"
+                style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}
                 onClick={handleGenerateLong}
                 disabled={longLoading || !longRatingSubject.trim() || !fanDetails.trim()}
               >
+                {longLoading && <span className="admin-posts-ai-spinner" aria-hidden="true" />}
                 {longLoading ? "Generating…" : "Generate long-form rating"}
               </button>
             </div>
@@ -402,8 +424,16 @@ export default function AdminRatingPromptsPage() {
               {longError}
             </p>
           )}
-          {longResult && longResult.rating_response && (
+          {(longLoading || longResult) && (
             <div className="prompts-results prompts-long-result" style={{ marginTop: "1rem" }}>
+              {longLoading && (
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "1rem", color: "var(--text-muted)" }}>
+                  <span className="admin-posts-ai-spinner" aria-hidden="true" />
+                  <span>Generating long-form rating…</span>
+                </div>
+              )}
+              {!longLoading && longResult && longResult.rating_response && (
+              <>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.5rem" }}>
                 {longResult.overall_score && (
                   <p style={{ fontWeight: 600, color: "var(--accent)", margin: 0 }}>
@@ -454,6 +484,8 @@ export default function AdminRatingPromptsPage() {
                     ))}
                   </ul>
                 </div>
+              )}
+            </>
               )}
             </div>
           )}
