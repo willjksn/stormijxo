@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAuth } from "../../../../lib/studio/verify-auth";
+import { verifyAuthForStudio } from "../../../../lib/studio/verify-auth";
 import { rateLimit } from "../../../../lib/studio/rate-limit";
 import { analyzeMediaWithGemini } from "../../../../lib/studio/gemini-shared";
 import { handleApiError, badRequest, rateLimitResponse } from "../../../../lib/studio/error-handler";
@@ -11,7 +11,7 @@ const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm"];
 
 export async function POST(req: NextRequest) {
   try {
-    const authResult = await verifyAuth(req.headers.get("authorization"));
+    const authResult = await verifyAuthForStudio(req.headers.get("authorization"));
     if (!authResult.ok) return authResult.response;
     const { uid } = authResult;
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAuth } from "../../../../lib/studio/verify-auth";
+import { verifyAuthForStudio } from "../../../../lib/studio/verify-auth";
 import { rateLimit } from "../../../../lib/studio/rate-limit";
 import { getAiUsageRemaining, incrementAiUsage } from "../../../../lib/studio/ai-usage";
 import { sanitizeSextingInput } from "../../../../lib/studio/input-sanitizer";
@@ -59,7 +59,7 @@ function normalizeSuggestionText(input: unknown): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const authResult = await verifyAuth(req.headers.get("authorization"));
+    const authResult = await verifyAuthForStudio(req.headers.get("authorization"));
     if (!authResult.ok) return authResult.response;
     const { uid } = authResult;
 
