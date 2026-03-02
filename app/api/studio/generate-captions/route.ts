@@ -27,15 +27,27 @@ const requestSchema = z.object({
   promptText: z.string().optional(),
   platforms: z.array(z.string()).optional(),
   emojiEnabled: z.boolean().optional(),
-  emojiIntensity: z.number().min(0).max(10).optional(),
-  emoji: z.number().min(0).max(100).optional(),
+  emojiIntensity: z.union([z.number().min(0).max(10), z.string()]).optional().transform((v) => {
+    if (v === undefined || v === "") return undefined;
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.max(0, Math.min(10, n)) : undefined;
+  }),
+  emoji: z.union([z.number().min(0).max(100), z.string()]).optional().transform((v) => {
+    if (v === undefined || v === "") return undefined;
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : undefined;
+  }),
   creatorPersonality: z.string().optional(),
   imageUrl: z.string().optional(),
   imageUrls: z.array(z.string()).optional(),
   bio: z.string().optional(),
   starterText: z.string().optional(),
   hasVideo: z.boolean().optional(),
-  count: z.number().min(1).max(5).optional(),
+  count: z.union([z.number().min(1).max(5), z.string()]).optional().transform((v) => {
+    if (v === undefined || v === "") return undefined;
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.max(1, Math.min(5, n)) : 1;
+  }),
 });
 
 function getMediaUrlsFromBody(body: z.infer<typeof requestSchema>): string[] {

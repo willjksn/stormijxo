@@ -74,6 +74,8 @@ export function CaptionComposerPanel({
   }, [idToken, imageUrl, creatorBio, tone, length, starterText]);
 
   const hasInput = !!(imageUrl?.trim() || creatorBio?.trim() || starterText.trim());
+  const hasMedia = !!(imageUrl?.trim());
+  const canGenerate = hasInput && hasMedia && usageRemaining > 0;
 
   return (
     <div className="panel active panel-tools" style={{ background: stormijxoStudioTokens.surface, border: `1px solid ${stormijxoStudioTokens.border}`, borderRadius: 18, padding: "1.5rem", boxShadow: "0 14px 42px rgba(212, 85, 139, 0.11)" }}>
@@ -131,10 +133,15 @@ export function CaptionComposerPanel({
         type="button"
         className="btn btn-primary"
         onClick={handleGenerate}
-        disabled={loading || !hasInput || usageRemaining <= 0}
+        disabled={loading || !canGenerate}
       >
         {loading ? "Generating…" : "✨ Generate captions"}
       </button>
+      {hasInput && !hasMedia && (
+        <p className="admin-posts-hint" style={{ marginTop: "0.75rem", color: "var(--text-muted)" }}>
+          Add an image or video to the post to generate captions from it.
+        </p>
+      )}
 
       {error && (
         <p className="admin-posts-message admin-posts-message-error" style={{ marginTop: "1rem" }}>{error}</p>
