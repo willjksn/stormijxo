@@ -66,6 +66,8 @@ export async function POST(req: NextRequest) {
     return tipCheckoutPost(tipForwardReq as unknown as NextRequest);
   }
 
+  const queryPostId = req.nextUrl.searchParams.get("postId") ?? "";
+
   const postId = (
     typeof body.postId === "string"
       ? body.postId
@@ -83,8 +85,7 @@ export async function POST(req: NextRequest) {
                 ? body.post.post_id
                 : typeof body.post?.id === "string"
                   ? body.post.id
-                  : typeof req.nextUrl.searchParams.get("postId") === "string"
-                    ? req.nextUrl.searchParams.get("postId")
+                  : queryPostId
             : ""
   ).trim();
   const uid = typeof body.uid === "string" ? body.uid.trim() : "";
