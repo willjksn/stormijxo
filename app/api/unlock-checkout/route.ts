@@ -68,25 +68,19 @@ export async function POST(req: NextRequest) {
 
   const queryPostId = req.nextUrl.searchParams.get("postId") ?? "";
 
+  const postIdCandidates = [
+    body.postId,
+    body.postID,
+    body.post_id,
+    body.id,
+    body.unlock_post_id,
+    body.post?.postId,
+    body.post?.post_id,
+    body.post?.id,
+    queryPostId,
+  ];
   const postId = (
-    typeof body.postId === "string"
-      ? body.postId
-      : typeof body.postID === "string"
-        ? body.postID
-      : typeof body.post_id === "string"
-        ? body.post_id
-        : typeof body.id === "string"
-          ? body.id
-          : typeof body.unlock_post_id === "string"
-            ? body.unlock_post_id
-            : typeof body.post?.postId === "string"
-              ? body.post.postId
-              : typeof body.post?.post_id === "string"
-                ? body.post.post_id
-                : typeof body.post?.id === "string"
-                  ? body.post.id
-                  : queryPostId
-            : ""
+    postIdCandidates.find((v) => typeof v === "string" && v.trim().length > 0) ?? ""
   ).trim();
   const uid = typeof body.uid === "string" ? body.uid.trim() : "";
   // If request looks like admin user management (wrong endpoint), forward to correct handler.
