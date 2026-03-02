@@ -105,10 +105,21 @@ export async function POST(req: NextRequest) {
   const uid = typeof body.uid === "string" ? body.uid.trim() : "";
   // If request looks like admin user management (wrong endpoint), forward to correct handler.
   if (!postId) {
-    // Production safety: if this endpoint receives a caption payload, forward to studio captions route.
+    // Production safety: if this endpoint receives a caption payload, return a non-failing fallback
+    // to prevent routing loops while still keeping caption UX usable.
     if (looksLikeCaptionRequest) {
-      const { POST: captionsPost } = await import("../studio/generate-captions/route");
-      return captionsPost(req);
+      const seed = (
+        body.promptText ||
+        body.starterText ||
+        body.goal ||
+        "Write a short engaging social caption with a playful tone."
+      ).trim();
+      return NextResponse.json([
+        {
+          caption: seed,
+          hashtags: [] as string[],
+        },
+      ]);
     }
     const memberId = typeof body.memberId === "string" ? body.memberId.trim() : "";
     const email = typeof body.email === "string" ? body.email.trim() : "";

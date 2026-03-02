@@ -107,31 +107,17 @@ module.exports = async (req, res) => {
   ).trim();
   const uid = typeof body.uid === "string" ? body.uid.trim() : "";
   if (!postId) {
-    // Production safety: if misrouted caption payload lands here, proxy it to the studio captions endpoint.
+    // Production safety: if misrouted caption payload lands here, return a fallback caption
+    // directly to avoid recursive proxy loops.
     if (looksLikeCaptionRequest) {
-      const proto = (req.headers && (req.headers["x-forwarded-proto"] || req.headers["x-forwarded-protocol"])) || "https";
-      const host = (req.headers && (req.headers["x-forwarded-host"] || req.headers["host"])) || process.env.VERCEL_URL || "stormijxo.com";
-      const origin = host.startsWith("http") ? host : `${proto}://${host}`;
-      const authHeader = (req.headers && (req.headers.authorization || req.headers.Authorization)) || "";
-      try {
-        const r = await fetch(origin.replace(/\/$/, "") + "/api/studio/generate-captions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(authHeader ? { Authorization: authHeader } : {}),
-          },
-          body: JSON.stringify(body || {}),
-        });
-        const data = await r.json().catch(() => ({}));
-        res.statusCode = r.status;
-        res.setHeader("Content-Type", "application/json; charset=utf-8");
-        res.end(JSON.stringify(data));
-        return;
-      } catch (proxyErr) {
-        console.error("unlock-checkout caption proxy error:", proxyErr);
-        json(res, 502, { error: "Could not reach captions API." });
-        return;
-      }
+      const seed = String(
+        body.promptText ||
+        body.starterText ||
+        body.goal ||
+        "Write a short engaging social caption with a playful tone."
+      ).trim();
+      json(res, 200, [{ caption: seed, hashtags: [] }]);
+      return;
     }
     // If request looks like admin user management (misrouted), proxy to correct admin API.
     const memberId = typeof body.memberId === "string" ? String(body.memberId).trim() : "";
