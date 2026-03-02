@@ -509,7 +509,7 @@ function FeedCard({
             {postMenuOpen && (
               <div className="feed-card-header-menu">
                 <Link
-                  href={`/admin/posts?edit=${post.id}`}
+                  href={post.id ? `/admin/posts?edit=${post.id}` : "/admin/posts"}
                   className="feed-card-header-menu-item"
                   onClick={() => setPostMenuOpen(false)}
                 >

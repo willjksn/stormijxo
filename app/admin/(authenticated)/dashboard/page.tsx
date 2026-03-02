@@ -484,7 +484,12 @@ export default function AdminDashboardPage() {
                             <div className="best-post-card-meta">
                               <p className="best-post-card-caption">{topPostLikes.body || "No caption"}</p>
                               <div className="best-post-card-stats"><span>{topPostLikes.value} likes</span></div>
-                              <Link href={`/admin/posts?edit=${topPostLikes.id}`} className="best-post-card-link">Edit post</Link>
+                              <Link
+                                href={topPostLikes.id ? `/admin/posts?edit=${topPostLikes.id}` : "/admin/posts"}
+                                className="best-post-card-link"
+                              >
+                                Edit post
+                              </Link>
                             </div>
                           </div>
                         </div>
@@ -517,7 +522,12 @@ export default function AdminDashboardPage() {
                             <div className="best-post-card-meta">
                               <p className="best-post-card-caption">{topPostComments.body || "No caption"}</p>
                               <div className="best-post-card-stats"><span>{topPostComments.value} comments</span></div>
-                              <Link href={`/admin/posts?edit=${topPostComments.id}`} className="best-post-card-link">Edit post</Link>
+                              <Link
+                                href={topPostComments.id ? `/admin/posts?edit=${topPostComments.id}` : "/admin/posts"}
+                                className="best-post-card-link"
+                              >
+                                Edit post
+                              </Link>
                             </div>
                           </div>
                         </div>
@@ -550,7 +560,12 @@ export default function AdminDashboardPage() {
                             <div className="best-post-card-meta">
                               <p className="best-post-card-caption">{topPostTips.body || "No caption"}</p>
                               <div className="best-post-card-stats"><span>${(topPostTips.value / 100).toFixed(2)} tips</span></div>
-                              <Link href={`/admin/posts?edit=${topPostTips.id}`} className="best-post-card-link">Edit post</Link>
+                              <Link
+                                href={topPostTips.id ? `/admin/posts?edit=${topPostTips.id}` : "/admin/posts"}
+                                className="best-post-card-link"
+                              >
+                                Edit post
+                              </Link>
                             </div>
                           </div>
                         </div>

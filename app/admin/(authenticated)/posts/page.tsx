@@ -1614,7 +1614,7 @@ export default function AdminPostsPage() {
           <ul className="admin-posts-list">
             {existingPosts.map((p) => (
               <li key={p.id} className="admin-posts-list-item">
-                <Link href={`/admin/posts?edit=${p.id}`} className="admin-posts-list-link">{p.body || "Untitled"}…</Link>
+                <Link href={p.id ? `/admin/posts?edit=${p.id}` : "/admin/posts"} className="admin-posts-list-link">{p.body || "Untitled"}…</Link>
                 <button
                   type="button"
                   className="admin-posts-list-delete"
