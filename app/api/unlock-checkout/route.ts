@@ -111,7 +111,6 @@ export async function POST(req: NextRequest) {
       const seed = (
         body.promptText ||
         body.starterText ||
-        body.goal ||
         "Write a short engaging social caption with a playful tone."
       ).trim();
       return NextResponse.json([

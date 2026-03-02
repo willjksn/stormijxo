@@ -158,7 +158,9 @@ type NormalizedCaptionRequest = {
 };
 
 function normalizeCaptionRequest(body: ParsedCaptionRequest, req: NextRequest): NormalizedCaptionRequest {
-  const promptText = (body.promptText ?? body.starterText ?? body.goal ?? "").trim();
+  // Keep "goal" separate from prompt text so fallback text mode doesn't collapse to one-word captions
+  // like "engagement" when media analysis is unavailable.
+  const promptText = (body.promptText ?? body.starterText ?? "").trim();
   const goal = typeof body.goal === "string" && body.goal.trim() ? body.goal.trim() : undefined;
   const tone = typeof body.tone === "string" && body.tone.trim() ? body.tone.trim() : undefined;
   const platforms = Array.isArray(body.platforms)

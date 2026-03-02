@@ -113,7 +113,6 @@ module.exports = async (req, res) => {
       const seed = String(
         body.promptText ||
         body.starterText ||
-        body.goal ||
         "Write a short engaging social caption with a playful tone."
       ).trim();
       json(res, 200, [{ caption: seed, hashtags: [] }]);
