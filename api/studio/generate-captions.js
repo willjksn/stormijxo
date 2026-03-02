@@ -11,7 +11,6 @@ const MODELS = [
   "gemini-2.0-flash-exp",
   "gemini-1.5-flash",
   "gemini-1.5-flash-latest",
-  "gemini-1.5-pro",
 ];
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 20 * 1024 * 1024;
