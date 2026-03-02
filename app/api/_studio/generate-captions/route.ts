@@ -158,8 +158,6 @@ type NormalizedCaptionRequest = {
 };
 
 function normalizeCaptionRequest(body: ParsedCaptionRequest, req: NextRequest): NormalizedCaptionRequest {
-  // Keep "goal" separate from prompt text so fallback text mode doesn't collapse to one-word captions
-  // like "engagement" when media analysis is unavailable.
   const promptText = (body.promptText ?? body.starterText ?? "").trim();
   const goal = typeof body.goal === "string" && body.goal.trim() ? body.goal.trim() : undefined;
   const tone = typeof body.tone === "string" && body.tone.trim() ? body.tone.trim() : undefined;
@@ -342,7 +340,6 @@ export async function POST(req: NextRequest) {
     let hasTextPrompt = textPrompt.length > 0;
     const postId = normalized.postId;
 
-    // If caller only provides postId, derive media and prompt from post document.
     if (!hasUrls && !hasInline && !hasTextPrompt && postId) {
       try {
         const { db } = getFirebaseAdmin();
@@ -388,7 +385,6 @@ export async function POST(req: NextRequest) {
     }
 
     if (!hasUrls && !hasInline && !hasTextPrompt) {
-      // Production safety fallback: prefer generating a text-only caption instead of failing the request.
       textPrompt = "Write a short engaging social caption with a playful tone.";
       hasTextPrompt = true;
       if (process.env.NODE_ENV !== "test") {
@@ -454,7 +450,6 @@ export async function POST(req: NextRequest) {
     }
 
     if (mediaParts.length === 0 && !hasTextPrompt) {
-      // If URL fetches fail, continue in text mode rather than returning 400.
       textPrompt = normalized.promptText || "Write a short engaging social caption with a playful tone.";
       hasTextPrompt = true;
       if (process.env.NODE_ENV !== "test") {
