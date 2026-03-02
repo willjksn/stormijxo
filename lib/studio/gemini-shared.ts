@@ -1048,7 +1048,7 @@ function parseLongFormRatingPlainText(raw: string): RatingLongJson | null {
   if (!text) return null;
   let tone_used = "";
   let overall_score = "";
-  const toneMatch = text.match(/^Tone:\s*(.+?)(?=\n|Score:)/ims);
+  const toneMatch = text.match(/^Tone:\s*([\s\S]+?)(?=\n|Score:)/im);
   if (toneMatch) tone_used = toneMatch[1].trim();
   const scoreMatch = text.match(/Score:\s*(.+?)(?=\n|$)/im);
   if (scoreMatch) overall_score = scoreMatch[1].trim();
