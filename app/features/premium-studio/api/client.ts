@@ -88,15 +88,38 @@ export async function generateCaptions(
     const captions = data.map((c: { caption?: string } | string) =>
       typeof c === "string" ? c : (c?.caption ?? "")
     ).filter(Boolean);
+    if (captions.length === 0) {
+      return {
+        captions: [],
+        error: data.length > 0
+          ? "Caption format was invalid. Try again."
+          : "No captions returned. Ensure GEMINI_API_KEY (or GOOGLE_API_KEY) is set in Vercel and try again.",
+      };
+    }
     return { captions, error: undefined };
   }
   if (Array.isArray(data.captions)) {
     const captions = data.captions.map((c: { caption?: string } | string) =>
       typeof c === "string" ? c : (c?.caption ?? "")
     ).filter(Boolean);
+    if (captions.length === 0) {
+      return {
+        captions: [],
+        error: data.captions.length > 0
+          ? "Caption format was invalid. Try again."
+          : "No captions returned. Ensure GEMINI_API_KEY (or GOOGLE_API_KEY) is set in Vercel and try again.",
+      };
+    }
     return { captions, error: data.error };
   }
-  return { captions: [data.caption || ""].filter(Boolean), error: data.error };
+  const single = [data.caption || ""].filter(Boolean);
+  if (single.length === 0) {
+    return {
+      captions: [],
+      error: data.error ?? "No caption in response. Check server env (GEMINI_API_KEY) and try again.",
+    };
+  }
+  return { captions: single, error: data.error };
 }
 
 export async function generateSextingSuggestion(

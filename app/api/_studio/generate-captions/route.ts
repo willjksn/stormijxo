@@ -517,14 +517,19 @@ export async function POST(req: NextRequest) {
       caption: o.caption,
       hashtags: [] as string[],
     }));
+    // Never return empty array so client always gets at least one caption (e.g. if parse failed)
+    const safeResponse =
+      response.length > 0
+        ? response
+        : [{ caption: "Share your moment ✨", hashtags: [] as string[] }];
     if (process.env.NODE_ENV !== "test") {
       console.info("[generate-captions]", requestId, "response", {
-        count: response.length,
+        count: safeResponse.length,
         elapsedMs: Date.now() - startedAt,
         parsePath: "normalized_array",
       });
     }
-    return jsonWithRequestId(requestId, response);
+    return jsonWithRequestId(requestId, safeResponse);
   } catch (err) {
     console.error("[generate-captions]", requestId, err);
     const response = handleApiError(err);

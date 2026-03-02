@@ -612,8 +612,13 @@ export default function AdminPostsPage() {
       if (captionText) {
         setCaption(captionText);
         setMessage({ type: "success", text: "Caption generated from your media." });
+      } else if (list.length > 0) {
+        setMessage({ type: "error", text: "Caption format was invalid. Try again." });
       } else {
-        setMessage({ type: "error", text: "No captions returned. Try again." });
+        setMessage({
+          type: "error",
+          text: "No captions returned. Ensure GEMINI_API_KEY (or GOOGLE_API_KEY) is set in Vercel and try again.",
+        });
       }
     } catch (err) {
       setMessage({ type: "error", text: (err as Error).message || "Caption generation failed" });
@@ -688,8 +693,13 @@ export default function AdminPostsPage() {
         setMessage({ type: "success", text: "Caption updated." });
       } else if (data.error) {
         setMessage({ type: "error", text: data.error });
+      } else if (list.length > 0) {
+        setMessage({ type: "error", text: "Caption format was invalid. Try again." });
       } else {
-        setMessage({ type: "error", text: "AI suggestion failed. Try again." });
+        setMessage({
+          type: "error",
+          text: "No captions returned. Ensure GEMINI_API_KEY (or GOOGLE_API_KEY) is set in Vercel and try again.",
+        });
       }
     } catch (err) {
       setMessage({ type: "error", text: (err as Error).message || "AI suggestion failed" });
