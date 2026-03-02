@@ -829,7 +829,7 @@ export default function AdminPostsPage() {
       } else {
         await setDoc(doc(db, "posts", postId), { ...payload, createdAt: serverTimestamp() });
         await loadRecentPosts();
-        router.push(`/admin/posts?edit=${postId}`);
+        router.push(postId ? `/admin/posts?edit=${postId}` : "/admin/posts");
       }
       setMessage({
         type: "success",
@@ -1618,7 +1618,7 @@ export default function AdminPostsPage() {
           <ul className="admin-posts-list">
             {existingPosts.map((p) => (
               <li key={p.id} className="admin-posts-list-item">
-                <Link href={p.id ? `/admin/posts?edit=${p.id}` : "/admin/posts"} className="admin-posts-list-link">{p.body || "Untitled"}…</Link>
+                <Link href={p.id && String(p.id) !== "undefined" ? `/admin/posts?edit=${p.id}` : "/admin/posts"} className="admin-posts-list-link">{p.body || "Untitled"}…</Link>
                 <button
                   type="button"
                   className="admin-posts-list-delete"

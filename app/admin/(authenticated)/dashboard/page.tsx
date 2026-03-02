@@ -485,7 +485,7 @@ export default function AdminDashboardPage() {
                               <p className="best-post-card-caption">{topPostLikes.body || "No caption"}</p>
                               <div className="best-post-card-stats"><span>{topPostLikes.value} likes</span></div>
                               <Link
-                                href={topPostLikes.id ? `/admin/posts?edit=${topPostLikes.id}` : "/admin/posts"}
+                                href={topPostLikes.id && String(topPostLikes.id) !== "undefined" ? `/admin/posts?edit=${topPostLikes.id}` : "/admin/posts"}
                                 className="best-post-card-link"
                               >
                                 Edit post
@@ -523,7 +523,7 @@ export default function AdminDashboardPage() {
                               <p className="best-post-card-caption">{topPostComments.body || "No caption"}</p>
                               <div className="best-post-card-stats"><span>{topPostComments.value} comments</span></div>
                               <Link
-                                href={topPostComments.id ? `/admin/posts?edit=${topPostComments.id}` : "/admin/posts"}
+                                href={topPostComments.id && String(topPostComments.id) !== "undefined" ? `/admin/posts?edit=${topPostComments.id}` : "/admin/posts"}
                                 className="best-post-card-link"
                               >
                                 Edit post
@@ -561,7 +561,7 @@ export default function AdminDashboardPage() {
                               <p className="best-post-card-caption">{topPostTips.body || "No caption"}</p>
                               <div className="best-post-card-stats"><span>${(topPostTips.value / 100).toFixed(2)} tips</span></div>
                               <Link
-                                href={topPostTips.id ? `/admin/posts?edit=${topPostTips.id}` : "/admin/posts"}
+                                href={topPostTips.id && String(topPostTips.id) !== "undefined" ? `/admin/posts?edit=${topPostTips.id}` : "/admin/posts"}
                                 className="best-post-card-link"
                               >
                                 Edit post

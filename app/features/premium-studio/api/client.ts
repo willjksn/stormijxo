@@ -60,6 +60,20 @@ export async function generateCaptions(
   idToken: string,
   body: GenerateCaptionRequest
 ): Promise<GenerateCaptionResponse> {
+  const mediaUrl = body.mediaUrl ?? body.imageUrl;
+  const mediaUrls = body.mediaUrls ?? body.imageUrls ?? [];
+  const hasUrl = typeof mediaUrl === "string" && mediaUrl.trim().startsWith("http");
+  const hasUrls = Array.isArray(mediaUrls) && mediaUrls.some((u) => typeof u === "string" && u.trim().startsWith("http"));
+  const hasInline = !!(body.mediaData?.data && body.mediaData?.mimeType);
+  const textPrompt = (body.promptText ?? body.starterText ?? body.goal ?? "").trim();
+  const hasInput = hasUrl || hasUrls || hasInline || textPrompt.length > 0;
+  if (!hasInput) {
+    return {
+      captions: [],
+      error: "Add at least one image or video, or type a topic in the caption box for text-only AI suggest.",
+    };
+  }
+
   const res = await fetch("/api/studio/generate-captions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
