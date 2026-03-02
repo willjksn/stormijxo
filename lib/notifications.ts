@@ -26,7 +26,11 @@ export function notificationFromDoc(id: string, data: Record<string, unknown>): 
     type: (data.type as string) ?? "",
     title: (data.title as string) ?? "",
     body: (data.body as string) ?? "",
-    link: data.link != null ? String(data.link) : null,
+    link: (() => {
+      const raw = data.link != null ? String(data.link).trim() : null;
+      if (!raw || raw === "undefined" || raw === "null" || !raw.startsWith("/")) return null;
+      return raw;
+    })(),
     read: data.read === true,
     createdAt,
   };

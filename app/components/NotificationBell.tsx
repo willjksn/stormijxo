@@ -239,7 +239,7 @@ export function NotificationBell({ variant, userEmail }: NotificationBellProps) 
               )}
               {list.filter((n) => n.type !== "dm").map((n) => (
                 <li key={n.id}>
-                  {n.link ? (
+                  {n.link && n.link.startsWith("/") && !n.link.includes("undefined") ? (
                     <Link
                       href={n.link}
                       className={`notification-bell-item ${n.read ? "" : "unread"}`}

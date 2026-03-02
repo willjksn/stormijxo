@@ -600,7 +600,9 @@ export default function AdminPostsPage() {
             ? (data?.message ?? "Session expired or invalid. Please sign in again.")
             : data?.code === "media_fetch_failed"
               ? "Could not load your media from the server. Try saving the post first, then generate captions again."
-              : (data?.message ?? data?.error ?? "Caption generation failed.");
+              : data?.code === "no_media"
+                ? "Add at least one image or video, or type a topic in the caption box for AI suggest."
+                : (data?.message ?? data?.error ?? "Caption generation failed.");
         setMessage({ type: "error", text: msg });
         return;
       }
@@ -672,7 +674,9 @@ export default function AdminPostsPage() {
             ? (data?.message ?? "Session expired or invalid. Please sign in again.")
             : data?.code === "media_fetch_failed"
               ? "Could not load your media from the server. Try saving the post first, then try AI suggest again."
-              : (data?.message ?? data?.error ?? "AI suggestion failed.");
+              : data?.code === "no_media"
+                ? "Type a topic in the caption box or add media, then click AI suggest."
+                : (data?.message ?? data?.error ?? "AI suggestion failed.");
         setMessage({ type: "error", text: msg });
         return;
       }
