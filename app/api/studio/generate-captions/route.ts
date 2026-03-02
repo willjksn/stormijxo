@@ -3,6 +3,7 @@ import { z } from "zod";
 import { verifyAuthForStudio } from "../../../../lib/studio/verify-auth";
 import { rateLimit } from "../../../../lib/studio/rate-limit";
 import { getCaptionUsageRemaining, incrementCaptionUsage } from "../../../../lib/studio/caption-usage";
+import { getFirebaseAdmin } from "../../../../lib/studio/firebase-admin";
 import {
   generateCaptionsFromMedia,
   generateCaptionsWithGemini,
@@ -13,6 +14,7 @@ import { handleApiError, structuredError, rateLimitResponse } from "../../../../
 
 const MAX_INLINE_IMAGE_BYTES = 4 * 1024 * 1024;
 const MAX_INLINE_VIDEO_BYTES = 20 * 1024 * 1024;
+type ParsedCaptionRequest = z.infer<typeof requestSchema>;
 
 const requestSchema = z.object({
   mediaUrl: z.string().optional(),
@@ -74,7 +76,7 @@ const requestSchema = z.object({
     .optional(),
 });
 
-function getMediaUrlsFromBody(body: z.infer<typeof requestSchema>): string[] {
+function getMediaUrlsFromBody(body: ParsedCaptionRequest): string[] {
   const single = body.mediaUrl ?? body.imageUrl;
   const list = body.mediaUrls ?? body.imageUrls ?? body.urls ?? [];
   const fromMediaArray = Array.isArray(body.media)
@@ -95,10 +97,18 @@ function getMediaUrlsFromBody(body: z.infer<typeof requestSchema>): string[] {
     ...(Array.isArray(list) ? list : []),
     ...fromMediaArray,
   ];
-  return combined.filter((u) => typeof u === "string" && u.trim().startsWith("http"));
+  const seen = new Set<string>();
+  return combined
+    .filter((u) => typeof u === "string" && u.trim().startsWith("http"))
+    .map((u) => u.trim())
+    .filter((u) => {
+      if (seen.has(u)) return false;
+      seen.add(u);
+      return true;
+    });
 }
 
-function getPostIdFromBody(body: z.infer<typeof requestSchema>, req: NextRequest): string {
+function getPostIdFromBody(body: ParsedCaptionRequest, req: NextRequest): string {
   const queryPostId = req.nextUrl.searchParams.get("postId") ?? "";
   const postIdCandidates = [
     body.postId,
@@ -113,10 +123,67 @@ function getPostIdFromBody(body: z.infer<typeof requestSchema>, req: NextRequest
   return (postIdCandidates.find((v) => typeof v === "string" && v.trim().length > 0) ?? "").trim();
 }
 
-function getFirebaseAdmin(): ReturnType<typeof import("firebase-admin").initializeApp> {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { getFirebaseAdmin: getAdmin } = require("../../../../api/_lib/firebase-admin");
-  return getAdmin();
+function getRequestId(req: NextRequest): string {
+  const fromHeader = req.headers.get("x-request-id");
+  if (fromHeader && fromHeader.trim()) return fromHeader.trim();
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function jsonWithRequestId(
+  requestId: string,
+  body: unknown,
+  init?: ResponseInit
+): NextResponse {
+  const response = NextResponse.json(body, init);
+  response.headers.set("x-request-id", requestId);
+  return response;
+}
+
+type NormalizedCaptionRequest = {
+  postId: string;
+  mediaUrls: string[];
+  mediaData?: { data: string; mimeType: string };
+  goal?: string;
+  tone?: string;
+  promptText: string;
+  platforms?: string[];
+  emojiEnabled?: boolean;
+  emojiIntensity?: number;
+  creatorPersonality?: string;
+  hasVideo: boolean;
+  count: number;
+};
+
+function normalizeCaptionRequest(body: ParsedCaptionRequest, req: NextRequest): NormalizedCaptionRequest {
+  const promptText = (body.promptText ?? body.starterText ?? body.goal ?? "").trim();
+  const goal = typeof body.goal === "string" && body.goal.trim() ? body.goal.trim() : undefined;
+  const tone = typeof body.tone === "string" && body.tone.trim() ? body.tone.trim() : undefined;
+  const platforms = Array.isArray(body.platforms)
+    ? body.platforms.map((p) => String(p).trim()).filter(Boolean)
+    : undefined;
+
+  return {
+    postId: getPostIdFromBody(body, req),
+    mediaUrls: getMediaUrlsFromBody(body),
+    mediaData: body.mediaData,
+    goal,
+    tone,
+    promptText,
+    platforms,
+    emojiEnabled: body.emojiEnabled,
+    emojiIntensity:
+      typeof body.emojiIntensity === "number"
+        ? body.emojiIntensity
+        : typeof body.emoji === "number"
+          ? Math.round(body.emoji / 10)
+          : undefined,
+    creatorPersonality: body.creatorPersonality ?? body.bio,
+    hasVideo: body.hasVideo ?? false,
+    count: body.count ?? 5,
+  };
 }
 
 function validateInlineMediaSize(
@@ -199,30 +266,42 @@ function mapGeminiErrorToResponse(err: unknown): NextResponse | null {
 }
 
 export async function POST(req: NextRequest) {
+  const requestId = getRequestId(req);
+  const startedAt = Date.now();
   try {
     const authResult = await verifyAuthForStudio(req.headers.get("authorization"));
-    if (!authResult.ok) return authResult.response;
+    if (!authResult.ok) {
+      authResult.response.headers.set("x-request-id", requestId);
+      return authResult.response;
+    }
     const { uid } = authResult;
 
     const rl = await rateLimit(uid, "captions", 30, 60_000);
-    if (!rl.allowed) return rateLimitResponse(rl.resetAt - Date.now());
+    if (!rl.allowed) {
+      const response = rateLimitResponse(rl.resetAt - Date.now());
+      response.headers.set("x-request-id", requestId);
+      return response;
+    }
 
     const remaining = await getCaptionUsageRemaining(uid);
     if (remaining <= 0) {
-      return structuredError({
+      const response = structuredError({
         code: "rate_limit",
         message: "Daily caption limit reached. Try again tomorrow.",
         status: 429,
       });
+      response.headers.set("x-request-id", requestId);
+      return response;
     }
 
     let body: unknown;
     try {
       body = await req.json();
     } catch (parseErr) {
-      console.error("[generate-captions] 400: Invalid JSON body", parseErr);
-      return NextResponse.json(
-        { error: "Invalid request", message: "Request body must be valid JSON." },
+      console.error("[generate-captions]", requestId, "400: Invalid JSON body", parseErr);
+      return jsonWithRequestId(
+        requestId,
+        { error: "Invalid request", message: "Request body must be valid JSON.", requestId },
         { status: 400 }
       );
     }
@@ -231,31 +310,41 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       const issues = parsed.error.issues;
       const firstMsg = issues[0]?.message ?? "Invalid request body.";
-      console.error("[generate-captions] 400: Schema validation failed", { message: firstMsg, issues });
-      return NextResponse.json(
-        { error: "Invalid request", message: firstMsg, details: issues },
+      console.error("[generate-captions]", requestId, "400: Schema validation failed", {
+        message: firstMsg,
+        issues,
+      });
+      return jsonWithRequestId(
+        requestId,
+        { error: "Invalid request", message: firstMsg, details: issues, requestId },
         { status: 400 }
       );
     }
 
-    const data = parsed.data;
+    const normalized = normalizeCaptionRequest(parsed.data, req);
     if (process.env.NODE_ENV !== "test") {
-      console.info("[generate-captions] request keys:", Object.keys(data).join(", "));
+      console.info("[generate-captions]", requestId, "start", {
+        uid,
+        hasMediaUrls: normalized.mediaUrls.length > 0,
+        hasInlineMedia: Boolean(normalized.mediaData?.data && normalized.mediaData?.mimeType),
+        hasPrompt: normalized.promptText.length > 0,
+        hasPostId: Boolean(normalized.postId),
+      });
     }
 
-    let mediaUrls = getMediaUrlsFromBody(data);
-    const mediaData = data.mediaData;
+    let mediaUrls = normalized.mediaUrls;
+    const mediaData = normalized.mediaData;
     let hasUrls = mediaUrls.length > 0;
     const hasInline = !!mediaData?.data && !!mediaData?.mimeType;
-    let textPrompt = (data.promptText ?? data.starterText ?? data.goal ?? "").trim();
+    let textPrompt = normalized.promptText;
     let hasTextPrompt = textPrompt.length > 0;
-    const postId = getPostIdFromBody(data, req);
+    const postId = normalized.postId;
 
-    // Production compatibility: if legacy clients pass only postId, derive media from Firestore post doc.
+    // If caller only provides postId, derive media and prompt from post document.
     if (!hasUrls && !hasInline && !hasTextPrompt && postId) {
       try {
-        const admin = getFirebaseAdmin();
-        const postSnap = await admin.firestore().collection("posts").doc(postId).get();
+        const { db } = getFirebaseAdmin();
+        const postSnap = await db.collection("posts").doc(postId).get();
         if (postSnap.exists) {
           const postData = postSnap.data() as
             | {
@@ -289,18 +378,26 @@ export async function POST(req: NextRequest) {
           }
         }
       } catch (postLookupErr) {
-        console.warn("[generate-captions] post lookup failed for fallback", { postId, postLookupErr });
+        console.warn("[generate-captions]", requestId, "post lookup failed for fallback", {
+          postId,
+          postLookupErr,
+        });
       }
     }
 
     if (!hasUrls && !hasInline && !hasTextPrompt) {
-      console.error("[generate-captions] 400: No media or text prompt provided", { mediaUrls, hasInline });
-      return NextResponse.json(
+      console.error("[generate-captions]", requestId, "400: No media or text prompt provided", {
+        mediaUrls,
+        hasInline,
+      });
+      return jsonWithRequestId(
+        requestId,
         {
           error: "Invalid request",
           code: "no_media",
           message:
             "Add at least one image or video to the post, or type a topic in the caption box for text-only AI suggest.",
+          requestId,
         },
         { status: 400 }
       );
@@ -312,9 +409,13 @@ export async function POST(req: NextRequest) {
       const sizeCheck = validateInlineMediaSize(mediaData!.data, mediaData!.mimeType);
       if (!sizeCheck.ok) {
         const isTooLarge = sizeCheck.message.includes("too large");
-        console.error("[generate-captions] 400: Inline media size check failed", { mimeType: mediaData!.mimeType, message: sizeCheck.message });
-        return NextResponse.json(
-          { error: "Invalid request", message: sizeCheck.message },
+        console.error("[generate-captions]", requestId, "400: Inline media size check failed", {
+          mimeType: mediaData!.mimeType,
+          message: sizeCheck.message,
+        });
+        return jsonWithRequestId(
+          requestId,
+          { error: "Invalid request", message: sizeCheck.message, requestId },
           { status: isTooLarge ? 413 : 400 }
         );
       }
@@ -340,13 +441,18 @@ export async function POST(req: NextRequest) {
           mediaParts.push({ inlineData: { mimeType, data: fetchedData } });
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
-          console.error("[generate-captions] 400: Media fetch failed", { url: url.slice(0, 100), error: msg });
+          console.error("[generate-captions]", requestId, "400: Media fetch failed", {
+            url: url.slice(0, 100),
+            error: msg,
+          });
           const isTooLarge = e instanceof Error && e.message.includes("too large");
-          return NextResponse.json(
+          return jsonWithRequestId(
+            requestId,
             {
               error: "Invalid request",
               code: "media_fetch_failed",
               message: e instanceof Error ? e.message : "Could not load image or video from URL. Use a public URL or upload media first.",
+              requestId,
             },
             { status: isTooLarge ? 413 : 400 }
           );
@@ -355,12 +461,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (mediaParts.length === 0 && !hasTextPrompt) {
-      console.error("[generate-captions] 400: No media loaded from URLs", { mediaUrls });
-      return NextResponse.json(
+      console.error("[generate-captions]", requestId, "400: No media loaded from URLs", { mediaUrls });
+      return jsonWithRequestId(
+        requestId,
         {
           error: "Invalid request",
           code: "media_fetch_failed",
           message: "No image or video could be loaded from the URLs. Check that links are public and accessible.",
+          requestId,
         },
         { status: 400 }
       );
@@ -371,38 +479,41 @@ export async function POST(req: NextRequest) {
       if (mediaParts.length > 0) {
         options = await generateCaptionsFromMedia({
           mediaParts,
-          goal: data.goal ?? data.starterText ?? data.promptText,
-          tone: data.tone,
-          promptText: data.promptText ?? data.starterText,
-          creatorPersonality: data.creatorPersonality ?? data.bio,
-          platforms: data.platforms,
-          emojiEnabled: data.emojiEnabled,
-          emojiIntensity:
-            data.emojiIntensity ?? (typeof data.emoji === "number" ? Math.round(data.emoji / 10) : undefined),
-          count: data.count ?? 5,
+          goal: normalized.goal ?? textPrompt,
+          tone: normalized.tone,
+          promptText: textPrompt || undefined,
+          creatorPersonality: normalized.creatorPersonality,
+          platforms: normalized.platforms,
+          emojiEnabled: normalized.emojiEnabled,
+          emojiIntensity: normalized.emojiIntensity,
+          count: normalized.count,
         });
       } else {
         const textCaptions = await generateCaptionsWithGemini({
           imageUrls: [],
-          hasVideo: data.hasVideo ?? false,
-          bio: data.creatorPersonality ?? data.bio ?? "",
-          tone: data.tone ?? "flirty",
+          hasVideo: normalized.hasVideo,
+          bio: normalized.creatorPersonality ?? "",
+          tone: normalized.tone ?? "flirty",
           length: "medium",
           starterText: textPrompt,
-          count: data.count ?? 5,
-          emoji: typeof data.emoji === "number"
-            ? data.emoji
-            : typeof data.emojiIntensity === "number"
-              ? Math.round(data.emojiIntensity * 10)
+          count: normalized.count,
+          emoji:
+            typeof normalized.emojiIntensity === "number"
+              ? Math.round(normalized.emojiIntensity * 10)
               : undefined,
         });
         options = textCaptions.map((caption) => ({ caption, hashtags: [] as string[] }));
       }
     } catch (geminiErr) {
-      console.error("[generate-captions] Gemini error:", geminiErr);
+      console.error("[generate-captions]", requestId, "Gemini error:", geminiErr);
       const mapped = mapGeminiErrorToResponse(geminiErr);
-      if (mapped) return mapped;
-      return handleApiError(geminiErr, "Caption generation failed.");
+      if (mapped) {
+        mapped.headers.set("x-request-id", requestId);
+        return mapped;
+      }
+      const response = handleApiError(geminiErr, "Caption generation failed.");
+      response.headers.set("x-request-id", requestId);
+      return response;
     }
 
     await incrementCaptionUsage(uid);
@@ -412,11 +523,17 @@ export async function POST(req: NextRequest) {
       hashtags: [] as string[],
     }));
     if (process.env.NODE_ENV !== "test") {
-      console.info("[generate-captions] response count:", response.length, "parse_path: normalized_array");
+      console.info("[generate-captions]", requestId, "response", {
+        count: response.length,
+        elapsedMs: Date.now() - startedAt,
+        parsePath: "normalized_array",
+      });
     }
-    return NextResponse.json(response);
+    return jsonWithRequestId(requestId, response);
   } catch (err) {
-    console.error("[generate-captions]", err);
-    return handleApiError(err);
+    console.error("[generate-captions]", requestId, err);
+    const response = handleApiError(err);
+    response.headers.set("x-request-id", requestId);
+    return response;
   }
 }
