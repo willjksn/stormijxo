@@ -145,7 +145,8 @@ export async function POST(req: NextRequest) {
     let body: unknown;
     try {
       body = await req.json();
-    } catch {
+    } catch (parseErr) {
+      console.error("[generate-captions] 400: Invalid JSON body", parseErr);
       return NextResponse.json(
         { error: "Invalid request", message: "Request body must be valid JSON." },
         { status: 400 }
@@ -156,6 +157,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       const issues = parsed.error.issues;
       const firstMsg = issues[0]?.message ?? "Invalid request body.";
+      console.error("[generate-captions] 400: Schema validation failed", { message: firstMsg, issues });
       return NextResponse.json(
         { error: "Invalid request", message: firstMsg, details: issues },
         { status: 400 }
@@ -173,6 +175,7 @@ export async function POST(req: NextRequest) {
     const hasInline = !!mediaData?.data && !!mediaData?.mimeType;
 
     if (!hasUrls && !hasInline) {
+      console.error("[generate-captions] 400: No media provided", { mediaUrls, hasInline });
       return NextResponse.json(
         {
           error: "Invalid request",
@@ -188,9 +191,7 @@ export async function POST(req: NextRequest) {
       const sizeCheck = validateInlineMediaSize(mediaData!.data, mediaData!.mimeType);
       if (!sizeCheck.ok) {
         const isTooLarge = sizeCheck.message.includes("too large");
-        if (process.env.NODE_ENV !== "test") {
-          console.info("[generate-captions] media type (inline):", mediaData!.mimeType, "size_check:", sizeCheck.ok ? "ok" : sizeCheck.message);
-        }
+        console.error("[generate-captions] 400: Inline media size check failed", { mimeType: mediaData!.mimeType, message: sizeCheck.message });
         return NextResponse.json(
           { error: "Invalid request", message: sizeCheck.message },
           { status: isTooLarge ? 413 : 400 }
@@ -217,7 +218,8 @@ export async function POST(req: NextRequest) {
           }
           mediaParts.push({ inlineData: { mimeType, data: fetchedData } });
         } catch (e) {
-          console.warn("[generate-captions] fetch media failed:", url, e);
+          const msg = e instanceof Error ? e.message : String(e);
+          console.error("[generate-captions] 400: Media fetch failed", { url: url.slice(0, 100), error: msg });
           const isTooLarge = e instanceof Error && e.message.includes("too large");
           return NextResponse.json(
             {
@@ -231,6 +233,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (mediaParts.length === 0) {
+      console.error("[generate-captions] 400: No media loaded from URLs", { mediaUrls });
       return NextResponse.json(
         {
           error: "Invalid request",
