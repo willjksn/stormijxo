@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyAuthForStudio } from "../../../../lib/studio/verify-auth";
+import { verifyAuth } from "../../../../lib/studio/verify-auth";
 import { generateChatSessionSummaryWithGemini } from "../../../../lib/studio/gemini-shared";
 import { handleApiError } from "../../../../lib/studio/error-handler";
 
@@ -28,7 +28,7 @@ function sanitize(body: unknown): {
 
 export async function POST(req: NextRequest) {
   try {
-    const authResult = await verifyAuthForStudio(req.headers.get("authorization"));
+    const authResult = await verifyAuth(req.headers.get("authorization"));
     if (!authResult.ok) return authResult.response;
 
     const body = await req.json().catch(() => ({}));
