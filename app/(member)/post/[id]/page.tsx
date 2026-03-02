@@ -341,7 +341,8 @@ export default function PostByIdPage() {
     !unlockedPostIds.includes(id);
 
   const startUnlockCheckout = async () => {
-    if (!user || !id || unlockLoading) return;
+    const pid = (typeof id === "string" ? id : "").trim();
+    if (!user || !pid || unlockLoading) return;
     setUnlockLoading(true);
     try {
       const base = typeof window !== "undefined" ? window.location.origin : "";
@@ -349,12 +350,12 @@ export default function PostByIdPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          postId: id,
+          postId: pid,
           uid: user.uid,
           customer_email: user.email || "",
           base_url: base,
-          success_url: `${base}/post/${encodeURIComponent(id)}?unlocked=1`,
-          cancel_url: `${base}/post/${encodeURIComponent(id)}`,
+          success_url: `${base}/post/${encodeURIComponent(pid)}?unlocked=1`,
+          cancel_url: `${base}/post/${encodeURIComponent(pid)}`,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };

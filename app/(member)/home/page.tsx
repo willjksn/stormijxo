@@ -1164,19 +1164,20 @@ export default function HomeFeedPage() {
   }, [db, user?.uid]);
 
   const startUnlockCheckout = async (postId: string): Promise<boolean> => {
-    if (!user) return false;
+    const pid = typeof postId === "string" ? postId.trim() : "";
+    if (!user || !pid) return false;
     const base = typeof window !== "undefined" ? window.location.origin : "";
     try {
       const res = await fetch("/api/unlock-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          postId,
+          postId: pid,
           uid: user.uid,
           customer_email: user.email || "",
           base_url: base,
-          success_url: `${base}/post/${encodeURIComponent(postId)}?unlocked=1`,
-          cancel_url: `${base}/post/${encodeURIComponent(postId)}`,
+          success_url: `${base}/post/${encodeURIComponent(pid)}?unlocked=1`,
+          cancel_url: `${base}/post/${encodeURIComponent(pid)}`,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
