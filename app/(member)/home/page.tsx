@@ -96,6 +96,22 @@ const PlayIcon = () => (
   </svg>
 );
 
+const VolumeOnIcon = () => (
+  <svg className="feed-card-sound-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+  </svg>
+);
+
+const VolumeOffIcon = () => (
+  <svg className="feed-card-sound-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+    <line x1="23" y1="9" x2="17" y2="15" />
+    <line x1="17" y1="9" x2="23" y2="15" />
+  </svg>
+);
+
 const TipIcon = () => (
   <span className="feed-card-tip-icon feed-card-tip-dollar" aria-hidden>$</span>
 );
@@ -266,6 +282,7 @@ function FeedCard({
   const postMenuRef = useRef<HTMLDivElement | null>(null);
   const feedVideoRef = useRef<HTMLVideoElement | null>(null);
   const [feedVideoPlaying, setFeedVideoPlaying] = useState(false);
+  const [feedVideoMuted, setFeedVideoMuted] = useState(false);
 
   useEffect(() => {
     if (!postMenuOpen) return;
@@ -307,6 +324,12 @@ function FeedCard({
       document.removeEventListener("touchstart", onPointerDown);
     };
   }, [commentEmojiOpen]);
+
+  useEffect(() => {
+    const v = feedVideoRef.current;
+    if (!v) return;
+    v.muted = feedVideoMuted;
+  }, [feedVideoMuted]);
 
   const toggleHideComment = async (index: number) => {
     if (!showAdminEdit || !db || !post.id) return;
@@ -557,7 +580,7 @@ function FeedCard({
             <video
               ref={feedVideoRef}
               src={firstUrl.includes("#t=") ? firstUrl : `${firstUrl}#t=0.1`}
-              muted
+              muted={feedVideoMuted}
               playsInline
               className={`feed-card-media feed-card-media-video${isLockedForViewer ? " feed-card-media-locked" : ""}`}
               preload="auto"
@@ -580,11 +603,27 @@ function FeedCard({
               }}
               onPlay={() => setFeedVideoPlaying(true)}
               onPause={() => setFeedVideoPlaying(false)}
+              onVolumeChange={(e) => setFeedVideoMuted(e.currentTarget.muted)}
             />
             {!isLockedForViewer && !feedVideoPlaying && (
               <span className="feed-card-play-overlay" aria-hidden>
                 <PlayIcon />
               </span>
+            )}
+            {!isLockedForViewer && (
+              <button
+                type="button"
+                className={`feed-card-sound-toggle${feedVideoMuted ? " muted" : ""}`}
+                aria-label={feedVideoMuted ? "Unmute video" : "Mute video"}
+                title={feedVideoMuted ? "Unmute" : "Mute"}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setFeedVideoMuted((prev) => !prev);
+                }}
+              >
+                {feedVideoMuted ? <VolumeOffIcon /> : <VolumeOnIcon />}
+              </button>
             )}
             {showCaptionOnMedia && (
               <FeedCardCaptionOverlay caption={post.body} style={captionStyle} size={post.overlayTextSize} />

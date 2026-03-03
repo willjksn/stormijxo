@@ -150,6 +150,34 @@
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
   transition: transform 0.2s ease;
 }
+.feed-card-sound-toggle {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 2;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 999px;
+  background: rgba(20, 20, 20, 0.55);
+  color: rgba(255, 255, 255, 0.95);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+}
+.feed-card-sound-toggle:hover {
+  background: rgba(20, 20, 20, 0.68);
+}
+.feed-card-sound-toggle:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.95);
+  outline-offset: 2px;
+}
+.feed-card-sound-icon {
+  width: 1rem;
+  height: 1rem;
+}
 .feed-card-media-wrap:hover .feed-card-play-overlay { background: rgba(0, 0, 0, 0.15); }
 .feed-card-media-wrap:hover .feed-card-play-icon { transform: scale(1.05); }
 .feed-card:hover .feed-card-media { transform: none; }
