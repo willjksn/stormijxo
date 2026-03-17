@@ -56,6 +56,8 @@ export type SiteConfigContent = {
   aboutStormiJTextFontSize?: number;
   /** About Stormi J profile card: bio text font family */
   aboutStormiJTextFontFamily?: string;
+  /** Creator-pinned post IDs (shown first on home and grid for everyone) */
+  pinnedPostIds?: string[];
 };
 
 export const SITE_CONFIG_CONTENT_ID = "content";

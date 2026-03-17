@@ -2,14 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
-import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, limit, doc, getDoc } from "firebase/firestore";
 import { getFirebaseDb } from "../../../lib/firebase";
+import { SITE_CONFIG_CONTENT_ID, type SiteConfigContent } from "../../../lib/site-config";
 
 type GridPost = { id: string; mediaUrls: string[]; mediaTypes?: ("image" | "video")[] };
 
 export default function GridPage() {
   const [loading, setLoading] = useState(true);
   const [firestorePosts, setFirestorePosts] = useState<GridPost[]>([]);
+  const [creatorPinnedPostIds, setCreatorPinnedPostIds] = useState<string[]>([]);
   const db = getFirebaseDb();
 
   useEffect(() => {
@@ -43,7 +45,29 @@ export default function GridPage() {
       .finally(() => setLoading(false));
   }, [db]);
 
-  const posts: GridPost[] = useMemo(() => firestorePosts, [firestorePosts]);
+  useEffect(() => {
+    if (!db) return;
+    getDoc(doc(db, "site_config", SITE_CONFIG_CONTENT_ID))
+      .then((snap) => {
+        const d = snap.exists() ? (snap.data() as SiteConfigContent) : {};
+        const pinned = Array.isArray(d.pinnedPostIds) ? d.pinnedPostIds.map((v) => String(v)) : [];
+        setCreatorPinnedPostIds(pinned);
+      })
+      .catch(() => setCreatorPinnedPostIds([]));
+  }, [db]);
+
+  const posts: GridPost[] = useMemo(() => {
+    if (creatorPinnedPostIds.length === 0) return firestorePosts;
+    const pinnedSet = new Set(creatorPinnedPostIds);
+    const pinned: GridPost[] = [];
+    const rest: GridPost[] = [];
+    for (const p of firestorePosts) {
+      if (pinnedSet.has(p.id)) pinned.push(p);
+      else rest.push(p);
+    }
+    pinned.sort((a, b) => creatorPinnedPostIds.indexOf(a.id) - creatorPinnedPostIds.indexOf(b.id));
+    return [...pinned, ...rest];
+  }, [firestorePosts, creatorPinnedPostIds]);
 
   return (
     <main className="member-main member-feed-main">
