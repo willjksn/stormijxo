@@ -11,8 +11,5 @@
     { "source": "/member/profile", "destination": "/profile", "permanent": true },
     { "source": "/member/treats", "destination": "/treats", "permanent": true },
     { "source": "/member/calendar", "destination": "/calendar", "permanent": true }
-  ],
-  "rewrites": [
-    { "source": "/api/studio/:path*", "destination": "/api/_studio/:path*" }
   ]
 }

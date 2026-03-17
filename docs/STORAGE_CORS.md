@@ -1,58 +1,69 @@
 # Fix CORS for Firebase Storage (Move media / load videos)
 
-If you see **"blocked by CORS policy"** when moving media or loading videos from Firebase Storage, your bucket needs a CORS configuration.
+If you see **"blocked by CORS policy"** when loading images/videos from Firebase Storage, the bucket needs a CORS configuration. The project’s `storage-cors.json` uses **`"origin": ["*"]`** so any origin (including every Vercel preview URL) is allowed.
 
-## Option A: Use Google Cloud Shell (no install)
+**You must apply the config to the bucket.** After changing the file, re-apply (see below). Then do a **hard refresh** (Ctrl+Shift+R) or test in an **incognito window** — a 304 cached response from before CORS was set won’t have CORS headers.
 
-You can set CORS from your browser without installing anything.
+---
 
-1. **Open Cloud Shell**
-   - Go to [Google Cloud Console](https://console.cloud.google.com/) and make sure the project **stormij** is selected (top bar).
-   - Click the **Activate Cloud Shell** icon (terminal icon `>_`) in the top-right. A terminal opens at the bottom.
+## 1. Apply CORS (Cloud Shell or your PC)
 
-2. **Create the CORS file in Cloud Shell**
-   - In the Cloud Shell terminal, run:
+**Bucket name:** `stormij.firebasestorage.app`  
+If you get “bucket not found”, try `stormij.appspot.com` (Firebase project ID).
+
+### Option A: Google Cloud Shell
+
+1. Open [Google Cloud Console](https://console.cloud.google.com/), select project **stormij**, open **Cloud Shell** (`>_`).
+2. Create `cors.json`: copy the contents of this repo’s `storage-cors.json` and run:
    ```bash
-   cat > cors.json << 'EOF'
-   [{"origin":["http://localhost:3000","http://localhost:3001","http://127.0.0.1:3000","http://127.0.0.1:3001","https://stormijxo.com","https://www.stormijxo.com"],"method":["GET","HEAD","PUT","POST","OPTIONS"],"responseHeader":["Content-Type","Content-Length","Content-Range","Accept-Ranges"],"maxAgeSeconds":3600}]
-   EOF
+   nano cors.json
    ```
-
-3. **Apply CORS to your Storage bucket**
+   Paste, save (Ctrl+O, Enter, Ctrl+X).
+3. Apply and verify:
    ```bash
    gsutil cors set cors.json gs://stormij.firebasestorage.app
-   ```
-   If that bucket name fails, check **Firebase Console → Storage** and use the bucket from the URL (e.g. `gs://stormij.appspot.com`).
-
-4. **Confirm**
-   ```bash
    gsutil cors get gs://stormij.firebasestorage.app
    ```
-   You should see the same JSON. After this, your app at `https://stormijxo.com` and localhost should be able to load storage files without CORS errors.
+   If `gsutil` isn’t available, use:
+   ```bash
+   gcloud storage buckets update gs://stormij.firebasestorage.app --cors-file=cors.json
+   ```
+
+### Option B: Your PC (gsutil or gcloud)
+
+From the repo root (e.g. `C:\Projects\Stormij_xo`):
+
+```bash
+# If you have gsutil (Google Cloud SDK):
+gsutil cors set storage-cors.json gs://stormij.firebasestorage.app
+
+# Or with gcloud:
+gcloud storage buckets update gs://stormij.firebasestorage.app --cors-file=storage-cors.json
+```
+
+Verify:
+
+```bash
+gsutil cors get gs://stormij.firebasestorage.app
+```
+
+You should see the same JSON (one rule with `"origin": ["*"]`).
 
 ---
 
-## Option B: Use gcloud / gsutil on your PC
+## 2. Clear cache / hard refresh
 
-1. **Install Google Cloud SDK** (includes `gsutil`):  
-   https://cloud.google.com/sdk/docs/install  
-   On Windows, run the installer and ensure **"Add to PATH"** is checked.
+After applying CORS:
 
-2. **Open a new PowerShell or Command Prompt** (so PATH is updated), then:
-   ```bash
-   gcloud auth login
-   gcloud config set project stormij
-   cd C:\Projects\Stormij_xo
-   gsutil cors set storage-cors.json gs://stormij.firebasestorage.app
-   ```
+- **Hard refresh:** Ctrl+Shift+R (Windows/Linux) or Cmd+Shift+R (Mac), or  
+- Open the app in an **incognito/private window**.
 
-3. **Confirm**
-   ```bash
-   gsutil cors get gs://stormij.firebasestorage.app
-   ```
+Otherwise the browser may use a cached 304 response that was stored before CORS was set, and that response won’t include CORS headers.
 
 ---
 
-## Add more origins later
+## 3. If it still fails
 
-Edit `storage-cors.json` in the project: add origins to the `"origin"` array (e.g. `"https://another-domain.com"`). Then run the `gsutil cors set` command again (from Cloud Shell or from your PC with the path to the updated file).
+- Confirm the bucket name in Firebase Console → Storage (bucket in the URL).
+- Re-run the apply command; wait a minute and try again.
+- Try the other bucket name: `gs://stormij.appspot.com` instead of `gs://stormij.firebasestorage.app`.

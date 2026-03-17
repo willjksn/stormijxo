@@ -90,11 +90,7 @@ function getModelCandidates(): string[] {
   const models = [
     process.env.GEMINI_MODEL?.trim(),
     "gemini-2.0-flash",
-    "gemini-2.0-flash-exp",
     "gemini-1.5-flash",
-    "gemini-1.5-flash-latest",
-    "gemini-1.5-pro",
-    "gemini-pro",
   ].filter((m): m is string => !!m && m.length > 0);
   return Array.from(new Set(models));
 }

@@ -20,6 +20,19 @@ function parseBody(req) {
 
 module.exports = async (req, res) => {
   const requestPath = ((req && req.url) || "").toString().toLowerCase();
+
+  // Production: when Vercel routes /api/studio/* here, forward to the real studio handlers.
+  if (requestPath.includes("/api/studio/")) {
+    if (requestPath.includes("generate-captions")) {
+      const studioHandler = require("./studio/generate-captions");
+      return studioHandler(req, res);
+    }
+    if (requestPath.includes("usage")) {
+      const studioHandler = require("./studio/usage");
+      return studioHandler(req, res);
+    }
+  }
+
   const body = parseBody(req);
   const checkoutHeader = String(
     (req && req.headers && (req.headers["x-checkout-type"] || req.headers["X-Checkout-Type"])) || ""

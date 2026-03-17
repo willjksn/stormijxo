@@ -28,6 +28,11 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if false;
     }
+    // subscriptionPayments: subscription checkouts and invoice.paid from Stripe webhook; admin dashboard reads for revenue
+    match /subscriptionPayments/{docId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
     // purchases: treat/store purchases from Stripe webhook; admin can update (schedule); members read own by email
     match /purchases/{purchaseId} {
       allow read: if request.auth != null && (
