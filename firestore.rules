@@ -18,10 +18,10 @@ service cloud.firestore {
       allow read, update, delete: if request.auth != null;
       allow create: if true;
     }
-    // site_config: landing content (public read for landing page; only admin write)
+    // site_config: landing content + creator pinned posts (public read; only admin write)
     match /site_config/{docId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
     // tips: logged from Stripe webhook; readable in admin dashboard
     match /tips/{tipId} {

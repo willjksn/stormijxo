@@ -7,6 +7,7 @@ import { collection, getDocs, query, orderBy, limit, doc, runTransaction, getDoc
 import { getFirebaseDb } from "../../../lib/firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { isAdminEmail } from "../../../lib/auth-redirect";
+import { SITE_CONFIG_CONTENT_ID, type SiteConfigContent } from "../../../lib/site-config";
 
 const GridIcon = () => (
   <svg className="icon-grid" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -232,6 +233,8 @@ function FeedCard({
   unlockedPostIds: string[];
   onSavedUpdated?: (savedIds: string[]) => void;
   onPinUpdated?: (pinnedIds: string[]) => void;
+  /** Creator-level pin (site_config); when set, pin button updates this for everyone */
+  onCreatorPinUpdated?: (pinnedIds: string[]) => void;
   onUnlockRequest?: (postId: string) => Promise<boolean>;
 }) {
   const firstUrl = post.mediaUrls?.[0];
@@ -470,23 +473,29 @@ function FeedCard({
   };
 
   const togglePin = async () => {
-    if (!db || !currentUser?.uid || !post.id || !onPinUpdated) return;
-    const userRef = doc(db, "users", currentUser.uid);
     const has = pinnedPostIds.includes(post.id);
     const nextPinned = has
       ? pinnedPostIds.filter((id) => id !== post.id)
       : [post.id, ...pinnedPostIds.filter((id) => id !== post.id)];
-    await runTransaction(db, async (tx) => {
-      tx.set(
-        userRef,
-        {
-          pinnedPostIds: nextPinned,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
-    });
-    onPinUpdated(nextPinned);
+
+    if (onCreatorPinUpdated) {
+      if (!db || !post.id) return;
+      const siteConfigRef = doc(db, "site_config", SITE_CONFIG_CONTENT_ID);
+      await runTransaction(db, async (tx) => {
+        tx.set(siteConfigRef, { pinnedPostIds: nextPinned }, { merge: true });
+      });
+      onCreatorPinUpdated(nextPinned);
+    } else if (db && currentUser?.uid && onPinUpdated) {
+      const userRef = doc(db, "users", currentUser.uid);
+      await runTransaction(db, async (tx) => {
+        tx.set(
+          userRef,
+          { pinnedPostIds: nextPinned, updatedAt: serverTimestamp() },
+          { merge: true }
+        );
+      });
+      onPinUpdated(nextPinned);
+    }
     setPostMenuOpen(false);
   };
 
@@ -1123,7 +1132,7 @@ export default function HomeFeedPage() {
   const [firestorePosts, setFirestorePosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [savedPostIds, setSavedPostIds] = useState<string[]>([]);
-  const [pinnedPostIds, setPinnedPostIds] = useState<string[]>([]);
+  const [creatorPinnedPostIds, setCreatorPinnedPostIds] = useState<string[]>([]);
   const [unlockedPostIds, setUnlockedPostIds] = useState<string[]>([]);
   const db = getFirebaseDb();
   const { user } = useAuth();
@@ -1177,9 +1186,19 @@ export default function HomeFeedPage() {
   }, [db, user]);
 
   useEffect(() => {
+    if (!db) return;
+    getDoc(doc(db, "site_config", SITE_CONFIG_CONTENT_ID))
+      .then((snap) => {
+        const d = snap.exists() ? (snap.data() as SiteConfigContent) : {};
+        const pinned = Array.isArray(d.pinnedPostIds) ? d.pinnedPostIds.map((v) => String(v)) : [];
+        setCreatorPinnedPostIds(pinned);
+      })
+      .catch(() => setCreatorPinnedPostIds([]));
+  }, [db]);
+
+  useEffect(() => {
     if (!db || !user?.uid) {
       setSavedPostIds([]);
-      setPinnedPostIds([]);
       setUnlockedPostIds([]);
       return;
     }
@@ -1187,17 +1206,14 @@ export default function HomeFeedPage() {
       .then((snap) => {
         const d = snap.exists() ? snap.data() : {};
         const ids = Array.isArray(d.savedPostIds) ? (d.savedPostIds as unknown[]).map((v) => String(v)) : [];
-        const pinned = Array.isArray(d.pinnedPostIds) ? (d.pinnedPostIds as unknown[]).map((v) => String(v)) : [];
         const unlocked = Array.isArray(d.unlockedPostIds)
           ? (d.unlockedPostIds as unknown[]).map((v) => String(v))
           : [];
         setSavedPostIds(ids);
-        setPinnedPostIds(pinned);
         setUnlockedPostIds(unlocked);
       })
       .catch(() => {
         setSavedPostIds([]);
-        setPinnedPostIds([]);
         setUnlockedPostIds([]);
       });
   }, [db, user?.uid]);
@@ -1233,17 +1249,17 @@ export default function HomeFeedPage() {
   };
 
   const posts: FeedPost[] = useMemo(() => {
-    if (pinnedPostIds.length === 0) return firestorePosts;
-    const pinnedSet = new Set(pinnedPostIds);
+    if (creatorPinnedPostIds.length === 0) return firestorePosts;
+    const pinnedSet = new Set(creatorPinnedPostIds);
     const pinned: FeedPost[] = [];
     const rest: FeedPost[] = [];
     for (const p of firestorePosts) {
       if (pinnedSet.has(p.id)) pinned.push(p);
       else rest.push(p);
     }
-    pinned.sort((a, b) => pinnedPostIds.indexOf(a.id) - pinnedPostIds.indexOf(b.id));
+    pinned.sort((a, b) => creatorPinnedPostIds.indexOf(a.id) - creatorPinnedPostIds.indexOf(b.id));
     return [...pinned, ...rest];
-  }, [firestorePosts, pinnedPostIds]);
+  }, [firestorePosts, creatorPinnedPostIds]);
 
   return (
     <main className="member-main member-feed-main">
@@ -1276,10 +1292,10 @@ export default function HomeFeedPage() {
             }}
             currentUser={user ? { uid: user.uid, email: user.email, displayName: user.displayName } : null}
             savedPostIds={savedPostIds}
-            pinnedPostIds={pinnedPostIds}
+            pinnedPostIds={creatorPinnedPostIds}
             unlockedPostIds={unlockedPostIds}
             onSavedUpdated={(savedIds) => setSavedPostIds(savedIds)}
-            onPinUpdated={(pinnedIds) => setPinnedPostIds(pinnedIds)}
+            onCreatorPinUpdated={showAdminEdit ? (pinnedIds) => setCreatorPinnedPostIds(pinnedIds) : undefined}
             onUnlockRequest={startUnlockCheckout}
           />
         ))}
