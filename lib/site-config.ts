@@ -58,6 +58,12 @@ export type SiteConfigContent = {
   aboutStormiJTextFontFamily?: string;
   /** Creator-pinned post IDs (shown first on home and grid for everyone) */
   pinnedPostIds?: string[];
+  /** Global feed: hide like counts (fans can like but don't see the number) */
+  hideLikeCountsGlobally?: boolean;
+  /** Global feed: hide comments on all posts */
+  hideCommentsGlobally?: boolean;
+  /** Global feed: hide like button on all posts */
+  hideLikesGlobally?: boolean;
 };
 
 export const SITE_CONFIG_CONTENT_ID = "content";

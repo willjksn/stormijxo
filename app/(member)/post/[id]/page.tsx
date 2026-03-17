@@ -8,6 +8,7 @@ import { TipModal } from "../../../components/TipModal";
 import { getFirebaseDb } from "../../../../lib/firebase";
 import { useAuth } from "../../../contexts/AuthContext";
 import { isAdminEmail } from "../../../../lib/auth-redirect";
+import { SITE_CONFIG_CONTENT_ID, type SiteConfigContent } from "../../../../lib/site-config";
 
 type PostCommentReply = {
   author?: string;
@@ -101,8 +102,19 @@ export default function PostByIdPage() {
   const [unlockedPostIds, setUnlockedPostIds] = useState<string[]>([]);
   const [unlockLoading, setUnlockLoading] = useState(false);
   const [tipModalOpen, setTipModalOpen] = useState(false);
+  const [hideCommentsGlobally, setHideCommentsGlobally] = useState(false);
   const db = getFirebaseDb();
   const { user } = useAuth();
+
+  useEffect(() => {
+    if (!db) return;
+    getDoc(doc(db, "site_config", SITE_CONFIG_CONTENT_ID))
+      .then((snap) => {
+        const d = snap.exists() ? (snap.data() as SiteConfigContent) : {};
+        setHideCommentsGlobally(!!d.hideCommentsGlobally);
+      })
+      .catch(() => setHideCommentsGlobally(false));
+  }, [db]);
   const commentInputRef = useRef<HTMLInputElement | null>(null);
   const replyInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const commentEmojiWrapRef = useRef<HTMLDivElement | null>(null);
@@ -529,7 +541,7 @@ export default function PostByIdPage() {
           customerEmail={user?.email ?? null}
           uid={user?.uid ?? null}
         />
-        {!post.hideComments && (
+        {!post.hideComments && !hideCommentsGlobally && (
           <div className="post-comments" id="comments">
             <h3>Comments</h3>
             {user ? (

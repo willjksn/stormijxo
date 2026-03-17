@@ -31,6 +31,11 @@
 .feed-view-toggle svg { width: 18px; height: 18px; stroke: var(--text-muted); }
 .feed-view-toggle:hover svg { stroke: var(--accent); }
 
+.feed-header-visibility { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.feed-header-visibility-label { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
+.feed-header-visibility-label input { accent-color: var(--accent); }
+.feed-header-visibility-label span { user-select: none; }
+
 .feed-loading { color: var(--text-muted); padding: 2rem 1rem; }
 .feed-empty { color: var(--text-muted); padding: 3rem 1rem; text-align: center; }
 .feed-list { display: flex; flex-direction: column; gap: 1.5rem; }

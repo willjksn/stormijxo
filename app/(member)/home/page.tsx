@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { TipModal } from "../../components/TipModal";
-import { collection, getDocs, query, orderBy, limit, doc, runTransaction, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, limit, doc, runTransaction, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { getFirebaseDb } from "../../../lib/firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { isAdminEmail } from "../../../lib/auth-redirect";
@@ -222,6 +222,9 @@ function FeedCard({
   onSavedUpdated,
   onPinUpdated,
   onCreatorPinUpdated,
+  hideLikesGlobally,
+  hideCommentsGlobally,
+  hideLikeCountsGlobally,
   onUnlockRequest,
 }: {
   post: FeedPost;
@@ -236,6 +239,10 @@ function FeedCard({
   onPinUpdated?: (pinnedIds: string[]) => void;
   /** Creator-level pin (site_config); when set, pin button updates this for everyone */
   onCreatorPinUpdated?: (pinnedIds: string[]) => void;
+  /** Global feed visibility (from site_config) */
+  hideLikesGlobally?: boolean;
+  hideCommentsGlobally?: boolean;
+  hideLikeCountsGlobally?: boolean;
   onUnlockRequest?: (postId: string) => Promise<boolean>;
 }) {
   const firstUrl = post.mediaUrls?.[0];
@@ -276,6 +283,9 @@ function FeedCard({
   const isLiked = !!currentUser?.uid && (post.likedBy ?? []).includes(currentUser.uid);
   const isSaved = savedPostIds.includes(post.id);
   const isPinned = pinnedPostIds.includes(post.id);
+  const effectiveHideLikes = post.hideLikes || !!hideLikesGlobally;
+  const effectiveHideComments = post.hideComments || !!hideCommentsGlobally;
+  const showLikeCount = !effectiveHideLikes && !hideLikeCountsGlobally;
   const isLockedForViewer =
     !!post.lockedContent?.enabled &&
     (post.lockedContent?.priceCents ?? 0) >= 100 &&
@@ -713,7 +723,7 @@ function FeedCard({
         </div>
       )}
 
-      {firstUrl && !post.hideLikes && (
+      {firstUrl && !effectiveHideLikes && (
         <div className="feed-card-actions">
           <span className="feed-card-action-group">
             <button
@@ -726,9 +736,9 @@ function FeedCard({
               <HeartOutline />
               <HeartFilled />
             </button>
-            <span className="feed-card-action-count">{post.likeCount ?? 0}</span>
+            {showLikeCount && <span className="feed-card-action-count">{post.likeCount ?? 0}</span>}
           </span>
-          {!post.hideComments && (
+          {!effectiveHideComments && (
             <button type="button" className="feed-card-action-group feed-card-action-link" aria-label="Comments" onClick={() => setCommentsOpen(true)}>
               <CommentIcon />
               <span className="feed-card-action-count">{commentsForViewer.length}</span>
@@ -845,7 +855,7 @@ function FeedCard({
             </div>
           </div>
         )}
-        {!post.hideComments && (
+        {!effectiveHideComments && (
           <>
             {commentsForViewer.length > 0 && (
               <button type="button" className="feed-card-view-comments" onClick={() => setCommentsOpen(true)}>
@@ -868,13 +878,13 @@ function FeedCard({
             )}
           </>
         )}
-        {(firstUrl || (!firstUrl && post.hideLikes)) && (
+        {(firstUrl || (!firstUrl && effectiveHideLikes)) && (
           <Link href={`/post/${post.id}`} className="feed-card-link">
             View post
           </Link>
         )}
       </div>
-      {!firstUrl && !post.hideLikes && (
+      {!firstUrl && !effectiveHideLikes && (
         <div className="feed-card-text-only-footer">
           <div className="feed-card-actions">
             <span className="feed-card-action-group">
@@ -888,9 +898,9 @@ function FeedCard({
                 <HeartOutline />
                 <HeartFilled />
               </button>
-              <span className="feed-card-action-count">{post.likeCount ?? 0}</span>
+              {showLikeCount && <span className="feed-card-action-count">{post.likeCount ?? 0}</span>}
             </span>
-            {!post.hideComments && (
+            {!effectiveHideComments && (
               <button type="button" className="feed-card-action-group feed-card-action-link" aria-label="Comments" onClick={() => setCommentsOpen(true)}>
                 <CommentIcon />
                 <span className="feed-card-action-count">{commentsForViewer.length}</span>
@@ -1134,6 +1144,9 @@ export default function HomeFeedPage() {
   const [loading, setLoading] = useState(true);
   const [savedPostIds, setSavedPostIds] = useState<string[]>([]);
   const [creatorPinnedPostIds, setCreatorPinnedPostIds] = useState<string[]>([]);
+  const [hideLikeCountsGlobally, setHideLikeCountsGlobally] = useState(false);
+  const [hideCommentsGlobally, setHideCommentsGlobally] = useState(false);
+  const [hideLikesGlobally, setHideLikesGlobally] = useState(false);
   const [unlockedPostIds, setUnlockedPostIds] = useState<string[]>([]);
   const db = getFirebaseDb();
   const { user } = useAuth();
@@ -1193,8 +1206,16 @@ export default function HomeFeedPage() {
         const d = snap.exists() ? (snap.data() as SiteConfigContent) : {};
         const pinned = Array.isArray(d.pinnedPostIds) ? d.pinnedPostIds.map((v) => String(v)) : [];
         setCreatorPinnedPostIds(pinned);
+        setHideLikeCountsGlobally(!!d.hideLikeCountsGlobally);
+        setHideCommentsGlobally(!!d.hideCommentsGlobally);
+        setHideLikesGlobally(!!d.hideLikesGlobally);
       })
-      .catch(() => setCreatorPinnedPostIds([]));
+      .catch(() => {
+        setCreatorPinnedPostIds([]);
+        setHideLikeCountsGlobally(false);
+        setHideCommentsGlobally(false);
+        setHideLikesGlobally(false);
+      });
   }, [db]);
 
   useEffect(() => {
@@ -1273,6 +1294,46 @@ export default function HomeFeedPage() {
             Saved Posts ({savedPostIds.length})
           </Link>
         )}
+        {showAdminEdit && db && (
+          <div className="feed-header-visibility">
+            <label className="feed-header-visibility-label">
+              <input
+                type="checkbox"
+                checked={!!hideLikeCountsGlobally}
+                onChange={(e) => {
+                  const v = e.target.checked;
+                  setHideLikeCountsGlobally(v);
+                  updateDoc(doc(db, "site_config", SITE_CONFIG_CONTENT_ID), { hideLikeCountsGlobally: v }).catch(() => setHideLikeCountsGlobally(!v));
+                }}
+              />
+              <span>Hide like counts</span>
+            </label>
+            <label className="feed-header-visibility-label">
+              <input
+                type="checkbox"
+                checked={!!hideCommentsGlobally}
+                onChange={(e) => {
+                  const v = e.target.checked;
+                  setHideCommentsGlobally(v);
+                  updateDoc(doc(db, "site_config", SITE_CONFIG_CONTENT_ID), { hideCommentsGlobally: v }).catch(() => setHideCommentsGlobally(!v));
+                }}
+              />
+              <span>Hide comments</span>
+            </label>
+            <label className="feed-header-visibility-label">
+              <input
+                type="checkbox"
+                checked={!!hideLikesGlobally}
+                onChange={(e) => {
+                  const v = e.target.checked;
+                  setHideLikesGlobally(v);
+                  updateDoc(doc(db, "site_config", SITE_CONFIG_CONTENT_ID), { hideLikesGlobally: v }).catch(() => setHideLikesGlobally(!v));
+                }}
+              />
+              <span>Hide likes</span>
+            </label>
+          </div>
+        )}
       </div>
 
       {loading && <p className="feed-loading">Loading…</p>}
@@ -1297,6 +1358,9 @@ export default function HomeFeedPage() {
             unlockedPostIds={unlockedPostIds}
             onSavedUpdated={(savedIds) => setSavedPostIds(savedIds)}
             onCreatorPinUpdated={showAdminEdit ? (pinnedIds) => setCreatorPinnedPostIds(pinnedIds) : undefined}
+            hideLikesGlobally={hideLikesGlobally}
+            hideCommentsGlobally={hideCommentsGlobally}
+            hideLikeCountsGlobally={hideLikeCountsGlobally}
             onUnlockRequest={startUnlockCheckout}
           />
         ))}
