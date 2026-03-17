@@ -221,6 +221,7 @@ function FeedCard({
   unlockedPostIds,
   onSavedUpdated,
   onPinUpdated,
+  onCreatorPinUpdated,
   onUnlockRequest,
 }: {
   post: FeedPost;
