@@ -2,9 +2,9 @@
   "name": "stormij-xo",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "npm run generate-firebase-config && next build",
-    "start": "next start",
+    "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev",
+    "build": "npm run generate-firebase-config && cross-env NODE_OPTIONS=--no-deprecation next build",
+    "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
     "verify:smoke": "npm run build",
     "test:captions": "node scripts/test-caption-api.mjs",
     "check:firebase-admin": "node scripts/check-firebase-admin-env.js",
@@ -12,6 +12,7 @@
     "generate-firebase-config": "node scripts/generate-firebase-config.js"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "@types/node": "^25.3.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

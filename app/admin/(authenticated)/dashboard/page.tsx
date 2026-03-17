@@ -47,6 +47,19 @@ const TOOLS_QUICK_LINKS = [
   { id: "treats", label: "Treats" },
 ] as const;
 
+function isVideoUrl(url: string): boolean {
+  return /\.(mp4|webm|mov|ogg)(\?|$)/i.test(url);
+}
+
+function BestPostPreview({ url }: { url: string }) {
+  if (isVideoUrl(url)) {
+    return (
+      <video src={url} muted playsInline className="best-post-card-preview-media" />
+    );
+  }
+  return <img src={url} alt="" loading="lazy" decoding="async" className="best-post-card-preview-media" />;
+}
+
 export default function AdminDashboardPage() {
   const searchParams = useSearchParams();
   const panel = searchParams.get("panel") === "tools" ? "tools" : "overview";
@@ -171,6 +184,9 @@ export default function AdminDashboardPage() {
         monthBuckets.forEach((m, idx) => {
           monthIndexByKey[m.key] = idx;
         });
+        const readCents = (d: Record<string, unknown>): number =>
+          typeof d.amountCents === "number" ? (d.amountCents as number) : typeof d.amount_paid === "number" ? (d.amount_paid as number) : typeof d.amount_total === "number" ? (d.amount_total as number) : typeof d.amount === "number" ? Math.round((d.amount as number) * 100) : 0;
+
         const monthly = monthBuckets.map((m) => ({
           label: m.label,
           totalCents: 0,
@@ -224,7 +240,7 @@ export default function AdminDashboardPage() {
         let tipsCount = 0;
         tipsSnap.forEach((docSnap) => {
           const d = docSnap.data();
-          const cents = typeof d.amountCents === "number" ? d.amountCents : 0;
+          const cents = readCents(d);
           tipsTotalCents += cents;
           if (cents > 0) tipsCount++;
           const tippedAt = (d.tippedAt as Timestamp)?.toDate?.() ?? (d.createdAt as Timestamp)?.toDate?.() ?? null;
@@ -238,7 +254,7 @@ export default function AdminDashboardPage() {
         const byProduct: Record<string, { count: number; cents: number }> = {};
         purchasesSnap.forEach((docSnap: { data: () => Record<string, unknown> }) => {
           const d = docSnap.data();
-          const cents = typeof d.amountCents === "number" ? (d.amountCents as number) : typeof d.amount === "number" ? Math.round((d.amount as number) * 100) : 0;
+          const cents = readCents(d);
           storeTotalCents += cents;
           const createdAt = (d.createdAt as Timestamp)?.toDate?.() ?? (d.purchasedAt as Timestamp)?.toDate?.() ?? null;
           if (createdAt && createdAt >= cutoff30) store30dCents += cents;
@@ -255,7 +271,7 @@ export default function AdminDashboardPage() {
         let subscriptionsCount = 0;
         subscriptionSnap.forEach((docSnap: { data: () => Record<string, unknown> }) => {
           const d = docSnap.data();
-          const cents = typeof d.amountCents === "number" ? (d.amountCents as number) : 0;
+          const cents = readCents(d);
           subscriptionsTotalCents += cents;
           if (cents > 0) subscriptionsCount++;
           const paidAt =
@@ -478,7 +494,7 @@ export default function AdminDashboardPage() {
                           <div className="best-post-card-inner">
                             {topPostLikes.imageUrl && (
                               <div className="best-post-card-preview">
-                                <img src={topPostLikes.imageUrl} alt="" loading="lazy" decoding="async" />
+                                <BestPostPreview url={topPostLikes.imageUrl} />
                               </div>
                             )}
                             <div className="best-post-card-meta">
@@ -516,7 +532,7 @@ export default function AdminDashboardPage() {
                           <div className="best-post-card-inner">
                             {topPostComments.imageUrl && (
                               <div className="best-post-card-preview">
-                                <img src={topPostComments.imageUrl} alt="" loading="lazy" decoding="async" />
+                                <BestPostPreview url={topPostComments.imageUrl} />
                               </div>
                             )}
                             <div className="best-post-card-meta">
@@ -554,7 +570,7 @@ export default function AdminDashboardPage() {
                           <div className="best-post-card-inner">
                             {topPostTips.imageUrl && (
                               <div className="best-post-card-preview">
-                                <img src={topPostTips.imageUrl} alt="" loading="lazy" decoding="async" />
+                                <BestPostPreview url={topPostTips.imageUrl} />
                               </div>
                             )}
                             <div className="best-post-card-meta">

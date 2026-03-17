@@ -2389,7 +2389,8 @@ main:not([class]) .section-title::after {
 .best-post-card-sublabel { font-size: 0.8rem; color: var(--text-muted); margin: 0 0 1rem; }
 .best-post-card-inner { display: flex; gap: 1.25rem; align-items: flex-start; }
 .best-post-card-preview { width: 160px; flex-shrink: 0; border-radius: 12px; overflow: hidden; background: var(--bg); aspect-ratio: 1; }
-.best-post-card-preview img { width: 100%; height: 100%; object-fit: cover; }
+.best-post-card-preview img,
+.best-post-card-preview video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .best-post-card-meta { flex: 1; min-width: 0; }
 .best-post-card-caption { font-size: 0.95rem; color: var(--text); line-height: 1.45; margin: 0 0 0.75rem; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 .best-post-card-caption-empty { color: var(--text-muted); font-style: italic; }
