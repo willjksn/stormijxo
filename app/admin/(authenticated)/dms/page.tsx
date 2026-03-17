@@ -787,6 +787,11 @@ export default function AdminDmsPage() {
                 </div>
               </div>
               <div className="chat-messages">
+                {messages.length === 0 && (
+                  <p className="chat-empty-in-thread" style={{ margin: "1.5rem 1rem", fontSize: "0.9rem", color: "var(--text-muted)", textAlign: "center" }}>
+                    No messages yet. Send a message below to start the conversation — or the member can message you from their Messages page.
+                  </p>
+                )}
                 {messagesWithDates.map((item, i) =>
                   item.type === "date" ? (
                     <div key={`date-${i}`} className="chat-date-separator"><span>{formatMessageDate(item.date)}</span></div>

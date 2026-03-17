@@ -9,6 +9,7 @@ import {
   subscribeMessages,
   sendMessage,
   uploadDmFile,
+  setFirstMessageFlagIfFirst,
   type MessageDoc,
 } from "../../../lib/dms";
 import { NOTIFICATIONS_COLLECTION } from "../../../lib/notifications";
@@ -101,21 +102,12 @@ export default function MemberDmsPage() {
   useEffect(() => {
     if (!db || !user?.uid) return;
     setConvError(null);
-    let unsub: (() => void) | null = null;
-    ensureConversation(db, user.uid, user.email ?? null, user.displayName ?? null)
-      .then(() => {
-        unsub = subscribeMessages(db, user.uid, (list) => {
-          setMessages(list);
-          setTimeout(scrollToBottom, 100);
-        });
-      })
-      .catch((e) => {
-        setConvError((e instanceof Error ? e.message : String(e)) || "Could not load messages.");
-      });
-    return () => {
-      if (unsub) unsub();
-    };
-  }, [db, user?.uid, user?.email, user?.displayName, scrollToBottom]);
+    const unsub = subscribeMessages(db, user.uid, (list) => {
+      setMessages(list);
+      setTimeout(scrollToBottom, 100);
+    });
+    return () => unsub();
+  }, [db, user?.uid, scrollToBottom]);
 
   useEffect(() => {
     if (!db || !user?.uid) return;
@@ -213,6 +205,7 @@ export default function MemberDmsPage() {
                 const ext = recorder.mimeType.includes("ogg") ? "ogg" : "webm";
                 const file = new File([blob], `voice-note-${Date.now()}.${ext}`, { type: recorder.mimeType || "audio/webm" });
                 const audioUrl = await uploadDmFile(storage, user.uid, `voice-${Date.now()}`, file);
+                await ensureConversation(db, user.uid, user.email ?? null, user.displayName ?? null);
                 await sendMessage(db, user.uid, user.uid, user.email ?? null, "", [], [], [audioUrl]);
                 await createNotificationForAdmin("New voice message from member.");
                 setError(null);
@@ -255,6 +248,7 @@ export default function MemberDmsPage() {
     setSending(true);
     setError(null);
     try {
+      await ensureConversation(db, user.uid, user.email ?? null, user.displayName ?? null);
       if (hasFiles) {
         if (!storage) {
           throw new Error("File upload is not available right now. Please refresh and try again.");
@@ -288,6 +282,7 @@ export default function MemberDmsPage() {
           lastMessageAt: serverTimestamp(),
           lastMessagePreview: text.trim() || "(attachment)",
         });
+        await setFirstMessageFlagIfFirst(db, user.uid, user.uid);
         await createNotificationForAdmin(
           text.trim()
             ? (user.displayName || user.email || "A member") + ": " + text.trim().slice(0, 60) + (text.length > 60 ? "…" : "")
