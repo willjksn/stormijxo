@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { TipModal } from "../../components/TipModal";
 import { collection, getDocs, query, orderBy, limit, doc, runTransaction, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { getFirebaseDb } from "../../../lib/firebase";
@@ -293,9 +294,13 @@ function FeedCard({
   const [likersModalOpen, setLikersModalOpen] = useState(false);
   const [likersLoading, setLikersLoading] = useState(false);
   const [likersList, setLikersList] = useState<LikerRow[]>([]);
+  const likersModalOpenedAtRef = useRef(0);
+  /** Align with who liked; likeCount can be stale */
+  const displayLikeCount = Math.max(post.likeCount ?? 0, (post.likedBy ?? []).length);
 
   const openLikersModal = async () => {
     if (!showAdminEdit) return;
+    likersModalOpenedAtRef.current = typeof performance !== "undefined" ? performance.now() : Date.now();
     setLikersModalOpen(true);
     const uids = [...new Set(post.likedBy ?? [])];
     if (!db || uids.length === 0) {
@@ -785,21 +790,29 @@ function FeedCard({
               <HeartOutline />
               <HeartFilled />
             </button>
-            {showLikeCountToViewer &&
+            {showLikeCountToViewer && displayLikeCount > 0 &&
               (showAdminEdit ? (
-                <button
-                  type="button"
-                  className="feed-card-action-count feed-card-likes-count-btn"
-                  aria-label={`${post.likeCount ?? 0} likes — who liked`}
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className="feed-card-action-count feed-card-likes-count-hit"
+                  aria-label={`${displayLikeCount} likes — who liked`}
                   onClick={(e) => {
                     e.stopPropagation();
+                    e.preventDefault();
                     void openLikersModal();
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      void openLikersModal();
+                    }
+                  }}
                 >
-                  {post.likeCount ?? 0}
-                </button>
+                  {displayLikeCount}
+                </span>
               ) : (
-                <span className="feed-card-action-count">{post.likeCount ?? 0}</span>
+                <span className="feed-card-action-count">{displayLikeCount}</span>
               ))}
           </span>
           {!effectiveHideComments && (
@@ -962,21 +975,29 @@ function FeedCard({
                 <HeartOutline />
                 <HeartFilled />
               </button>
-              {showLikeCountToViewer &&
+              {showLikeCountToViewer && displayLikeCount > 0 &&
                 (showAdminEdit ? (
-                  <button
-                    type="button"
-                    className="feed-card-action-count feed-card-likes-count-btn"
-                    aria-label={`${post.likeCount ?? 0} likes — who liked`}
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="feed-card-action-count feed-card-likes-count-hit"
+                    aria-label={`${displayLikeCount} likes — who liked`}
                     onClick={(e) => {
                       e.stopPropagation();
+                      e.preventDefault();
                       void openLikersModal();
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        void openLikersModal();
+                      }
+                    }}
                   >
-                    {post.likeCount ?? 0}
-                  </button>
+                    {displayLikeCount}
+                  </span>
                 ) : (
-                  <span className="feed-card-action-count">{post.likeCount ?? 0}</span>
+                  <span className="feed-card-action-count">{displayLikeCount}</span>
                 ))}
             </span>
             {!effectiveHideComments && (
@@ -1214,67 +1235,76 @@ function FeedCard({
           </div>
         </div>
       )}
-      {likersModalOpen && showAdminEdit && (
-        <div
-          className="feed-likers-modal-backdrop"
-          role="presentation"
-          onClick={() => setLikersModalOpen(false)}
-        >
+      {likersModalOpen &&
+        showAdminEdit &&
+        typeof document !== "undefined" &&
+        createPortal(
           <div
-            className="feed-likers-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="feed-likers-modal-title"
-            onClick={(e) => e.stopPropagation()}
+            className="feed-likers-modal-backdrop"
+            role="presentation"
+            onMouseDown={(e) => {
+              if (e.target !== e.currentTarget) return;
+              const t = typeof performance !== "undefined" ? performance.now() : Date.now();
+              if (t - likersModalOpenedAtRef.current < 450) return;
+              setLikersModalOpen(false);
+            }}
           >
-            <div className="feed-likers-modal-head">
-              <h3 id="feed-likers-modal-title">Who liked this</h3>
-              <button
-                type="button"
-                className="feed-likers-modal-close"
-                onClick={() => setLikersModalOpen(false)}
-                aria-label="Close"
-              >
-                ×
-              </button>
+            <div
+              className="feed-likers-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="feed-likers-modal-title"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="feed-likers-modal-head">
+                <h3 id="feed-likers-modal-title">Who liked this</h3>
+                <button
+                  type="button"
+                  className="feed-likers-modal-close"
+                  onClick={() => setLikersModalOpen(false)}
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="feed-likers-modal-body">
+                {likersLoading ? (
+                  <p className="feed-likers-modal-loading">Loading…</p>
+                ) : likersList.length === 0 ? (
+                  <p className="feed-likers-modal-empty">No members loaded.</p>
+                ) : (
+                  <ul className="feed-likers-modal-list">
+                    {likersList.map((liker) => {
+                      const name =
+                        liker.displayName?.trim() ||
+                        (liker.email ? liker.email.split("@")[0] : null) ||
+                        "Member";
+                      const initial = name.charAt(0).toUpperCase();
+                      return (
+                        <li key={liker.uid} className="feed-likers-modal-item">
+                          <div className="feed-likers-modal-avatar" aria-hidden>
+                            {liker.photoURL ? (
+                              <img src={liker.photoURL} alt="" className="feed-likers-modal-avatar-img" />
+                            ) : (
+                              <span className="feed-likers-modal-avatar-initial">{initial}</span>
+                            )}
+                          </div>
+                          <div className="feed-likers-modal-name-block">
+                            <span className="feed-likers-modal-name">{name}</span>
+                            {liker.email && name !== liker.email && (
+                              <span className="feed-likers-modal-email">{liker.email}</span>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
             </div>
-            <div className="feed-likers-modal-body">
-              {likersLoading ? (
-                <p className="feed-likers-modal-loading">Loading…</p>
-              ) : likersList.length === 0 ? (
-                <p className="feed-likers-modal-empty">No likes yet.</p>
-              ) : (
-                <ul className="feed-likers-modal-list">
-                  {likersList.map((liker) => {
-                    const name =
-                      liker.displayName?.trim() ||
-                      (liker.email ? liker.email.split("@")[0] : null) ||
-                      "Member";
-                    const initial = name.charAt(0).toUpperCase();
-                    return (
-                      <li key={liker.uid} className="feed-likers-modal-item">
-                        <div className="feed-likers-modal-avatar" aria-hidden>
-                          {liker.photoURL ? (
-                            <img src={liker.photoURL} alt="" className="feed-likers-modal-avatar-img" />
-                          ) : (
-                            <span className="feed-likers-modal-avatar-initial">{initial}</span>
-                          )}
-                        </div>
-                        <div className="feed-likers-modal-name-block">
-                          <span className="feed-likers-modal-name">{name}</span>
-                          {liker.email && name !== liker.email && (
-                            <span className="feed-likers-modal-email">{liker.email}</span>
-                          )}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </article>
   );
 }

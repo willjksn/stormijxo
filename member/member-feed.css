@@ -36,18 +36,10 @@
 .feed-header-visibility-label input { accent-color: var(--accent); }
 .feed-header-visibility-label span { user-select: none; }
 
-.feed-card-likes-count-btn {
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  border: none;
-  background: none;
-  padding: 0;
-  margin: 0;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-.feed-card-likes-count-btn:hover { color: var(--accent); }
+/* Admin: same look as fan count; only cursor hints it’s clickable */
+.feed-card-likes-count-hit { cursor: pointer; }
+.feed-card-likes-count-hit:focus { outline: none; }
+.feed-card-likes-count-hit:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .feed-likers-modal-backdrop {
   position: fixed;
