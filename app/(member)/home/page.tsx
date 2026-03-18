@@ -286,6 +286,46 @@ function FeedCard({
   const effectiveHideLikes = post.hideLikes || !!hideLikesGlobally;
   const effectiveHideComments = post.hideComments || !!hideCommentsGlobally;
   const showLikeCount = !effectiveHideLikes && !hideLikeCountsGlobally;
+  /** Admin always sees like row + count (fans respect hide globals). */
+  const showLikeRow = !effectiveHideLikes || !!showAdminEdit;
+  const showLikeCountToViewer = showLikeCount || !!showAdminEdit;
+  type LikerRow = { uid: string; displayName: string | null; photoURL: string | null; email: string | null };
+  const [likersModalOpen, setLikersModalOpen] = useState(false);
+  const [likersLoading, setLikersLoading] = useState(false);
+  const [likersList, setLikersList] = useState<LikerRow[]>([]);
+
+  const openLikersModal = async () => {
+    if (!showAdminEdit) return;
+    setLikersModalOpen(true);
+    const uids = [...new Set(post.likedBy ?? [])];
+    if (!db || uids.length === 0) {
+      setLikersList([]);
+      return;
+    }
+    setLikersLoading(true);
+    try {
+      const results: LikerRow[] = await Promise.all(
+        uids.map(async (uid) => {
+          try {
+            const snap = await getDoc(doc(db, "users", uid));
+            if (!snap.exists()) return { uid, displayName: null, photoURL: null, email: null };
+            const d = snap.data();
+            return {
+              uid,
+              displayName: typeof d.displayName === "string" ? d.displayName : null,
+              photoURL: typeof d.photoURL === "string" ? d.photoURL : null,
+              email: typeof d.email === "string" ? d.email : null,
+            };
+          } catch {
+            return { uid, displayName: null, photoURL: null, email: null };
+          }
+        })
+      );
+      setLikersList(results);
+    } finally {
+      setLikersLoading(false);
+    }
+  };
   const isLockedForViewer =
     !!post.lockedContent?.enabled &&
     (post.lockedContent?.priceCents ?? 0) >= 100 &&
@@ -312,6 +352,15 @@ function FeedCard({
       document.removeEventListener("touchstart", onPointerDown);
     };
   }, [postMenuOpen]);
+
+  useEffect(() => {
+    if (!likersModalOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLikersModalOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [likersModalOpen]);
 
   const visibleEmojis = useMemo(() => {
     const q = emojiQuery.trim().toLowerCase();
@@ -723,7 +772,7 @@ function FeedCard({
         </div>
       )}
 
-      {firstUrl && !effectiveHideLikes && (
+      {firstUrl && showLikeRow && (
         <div className="feed-card-actions">
           <span className="feed-card-action-group">
             <button
@@ -736,7 +785,22 @@ function FeedCard({
               <HeartOutline />
               <HeartFilled />
             </button>
-            {showLikeCount && <span className="feed-card-action-count">{post.likeCount ?? 0}</span>}
+            {showLikeCountToViewer &&
+              (showAdminEdit ? (
+                <button
+                  type="button"
+                  className="feed-card-action-count feed-card-likes-count-btn"
+                  aria-label={`${post.likeCount ?? 0} likes — who liked`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void openLikersModal();
+                  }}
+                >
+                  {post.likeCount ?? 0}
+                </button>
+              ) : (
+                <span className="feed-card-action-count">{post.likeCount ?? 0}</span>
+              ))}
           </span>
           {!effectiveHideComments && (
             <button type="button" className="feed-card-action-group feed-card-action-link" aria-label="Comments" onClick={() => setCommentsOpen(true)}>
@@ -884,7 +948,7 @@ function FeedCard({
           </Link>
         )}
       </div>
-      {!firstUrl && !effectiveHideLikes && (
+      {!firstUrl && showLikeRow && (
         <div className="feed-card-text-only-footer">
           <div className="feed-card-actions">
             <span className="feed-card-action-group">
@@ -898,7 +962,22 @@ function FeedCard({
                 <HeartOutline />
                 <HeartFilled />
               </button>
-              {showLikeCount && <span className="feed-card-action-count">{post.likeCount ?? 0}</span>}
+              {showLikeCountToViewer &&
+                (showAdminEdit ? (
+                  <button
+                    type="button"
+                    className="feed-card-action-count feed-card-likes-count-btn"
+                    aria-label={`${post.likeCount ?? 0} likes — who liked`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void openLikersModal();
+                    }}
+                  >
+                    {post.likeCount ?? 0}
+                  </button>
+                ) : (
+                  <span className="feed-card-action-count">{post.likeCount ?? 0}</span>
+                ))}
             </span>
             {!effectiveHideComments && (
               <button type="button" className="feed-card-action-group feed-card-action-link" aria-label="Comments" onClick={() => setCommentsOpen(true)}>
@@ -1131,6 +1210,67 @@ function FeedCard({
                   </form>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {likersModalOpen && showAdminEdit && (
+        <div
+          className="feed-likers-modal-backdrop"
+          role="presentation"
+          onClick={() => setLikersModalOpen(false)}
+        >
+          <div
+            className="feed-likers-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="feed-likers-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="feed-likers-modal-head">
+              <h3 id="feed-likers-modal-title">Who liked this</h3>
+              <button
+                type="button"
+                className="feed-likers-modal-close"
+                onClick={() => setLikersModalOpen(false)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <div className="feed-likers-modal-body">
+              {likersLoading ? (
+                <p className="feed-likers-modal-loading">Loading…</p>
+              ) : likersList.length === 0 ? (
+                <p className="feed-likers-modal-empty">No likes yet.</p>
+              ) : (
+                <ul className="feed-likers-modal-list">
+                  {likersList.map((liker) => {
+                    const name =
+                      liker.displayName?.trim() ||
+                      (liker.email ? liker.email.split("@")[0] : null) ||
+                      "Member";
+                    const initial = name.charAt(0).toUpperCase();
+                    return (
+                      <li key={liker.uid} className="feed-likers-modal-item">
+                        <div className="feed-likers-modal-avatar" aria-hidden>
+                          {liker.photoURL ? (
+                            <img src={liker.photoURL} alt="" className="feed-likers-modal-avatar-img" />
+                          ) : (
+                            <span className="feed-likers-modal-avatar-initial">{initial}</span>
+                          )}
+                        </div>
+                        <div className="feed-likers-modal-name-block">
+                          <span className="feed-likers-modal-name">{name}</span>
+                          {liker.email && name !== liker.email && (
+                            <span className="feed-likers-modal-email">{liker.email}</span>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           </div>
         </div>

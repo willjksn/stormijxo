@@ -98,9 +98,12 @@ export function LoginForm() {
           await setDoc(userRef, {
             email: firebaseUser.email ?? null,
             displayName: firebaseUser.displayName ?? null,
+            photoURL: firebaseUser.photoURL ?? null,
             username,
             createdAt: serverTimestamp(),
           });
+        } else if (firebaseUser.photoURL) {
+          await setDoc(userRef, { photoURL: firebaseUser.photoURL, displayName: firebaseUser.displayName ?? null }, { merge: true });
         }
       }
       const path = await getPostLoginPath(db, firebaseUser.email ?? null, firebaseUser.uid, redirect);
