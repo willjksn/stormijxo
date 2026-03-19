@@ -50,10 +50,11 @@ export async function POST(req: NextRequest) {
     }
     const stripe = new Stripe(stripeSecret);
     try {
-      const subscription = await stripe.subscriptions.update(subscriptionId, {
+      const sub = await stripe.subscriptions.update(subscriptionId, {
         cancel_at_period_end: true,
       });
-      const periodEnd = subscription.current_period_end;
+      const raw = sub as unknown as { current_period_end?: number };
+      const periodEnd = typeof raw.current_period_end === "number" ? raw.current_period_end : null;
       if (periodEnd) {
         accessEndsAt = new Date(periodEnd * 1000);
       }
