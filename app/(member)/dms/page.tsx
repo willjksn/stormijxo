@@ -12,6 +12,7 @@ import {
   setFirstMessageFlagIfFirst,
   type MessageDoc,
 } from "../../../lib/dms";
+import { CREATOR_DISPLAY_NAME } from "../../../lib/constants";
 import { NOTIFICATIONS_COLLECTION } from "../../../lib/notifications";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -374,7 +375,7 @@ export default function MemberDmsPage() {
               ) : (
                 <div key={item.message.id} className={`chat-bubble-row ${item.message.senderId === user?.uid ? "row-me" : "row-them"}`}>
                   <div className={`chat-bubble ${item.message.senderId === user?.uid ? "me" : "them"}`}>
-                    <span className="chat-bubble-role">{item.message.senderId === user?.uid ? "Fan" : "Creator"}</span>
+                    <span className="chat-bubble-role">{item.message.senderId === user?.uid ? "Fan" : CREATOR_DISPLAY_NAME}</span>
                     {item.message.text ? <span style={{ whiteSpace: "pre-wrap" }}>{item.message.text}</span> : null}
                   {item.message.imageUrls.length > 0 && (
                     <div className="chat-bubble-images">

@@ -14,6 +14,7 @@ import {
   type MessageDoc,
 } from "../../../../lib/dms";
 import { CHAT_SESSIONS_COLLECTION } from "../../../../lib/chat-sessions";
+import { CREATOR_DISPLAY_NAME } from "../../../../lib/constants";
 import { NOTIFICATIONS_COLLECTION } from "../../../../lib/notifications";
 import { useAuth } from "../../../contexts/AuthContext";
 import { MemberProfileCard } from "../../components/MemberProfileCard";
@@ -797,10 +798,12 @@ export default function AdminDmsPage() {
                     <div key={`date-${i}`} className="chat-date-separator"><span>{formatMessageDate(item.date)}</span></div>
                   ) : (() => {
                     const isCreator = selectedId != null && item.message.senderId !== selectedId;
+                    const creatorLabel = CREATOR_DISPLAY_NAME;
+                    const fanLabel = selected?.memberDisplayName || selected?.memberEmail || "Fan";
                     return (
                     <div key={item.message.id} className={`chat-bubble-row ${isCreator ? "row-me" : "row-them"}`}>
                       <div className={`chat-bubble ${isCreator ? "me" : "them"}`}>
-                      <span className="chat-bubble-role">{isCreator ? "You" : "Fan"}</span>
+                      <span className="chat-bubble-role">{isCreator ? creatorLabel : fanLabel}</span>
                       <button
                         type="button"
                         onClick={() => handleDeleteMessage(item.message.id)}
