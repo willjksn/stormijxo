@@ -287,9 +287,11 @@ function FeedCard({
   const effectiveHideLikes = post.hideLikes || !!hideLikesGlobally;
   const effectiveHideComments = post.hideComments || !!hideCommentsGlobally;
   const showLikeCount = !effectiveHideLikes && !hideLikeCountsGlobally;
-  /** Admin always sees like row + count (fans respect hide globals). */
+  /** Admin always sees like row + count (fans respect hide globals/per-post). */
   const showLikeRow = !effectiveHideLikes || !!showAdminEdit;
   const showLikeCountToViewer = showLikeCount || !!showAdminEdit;
+  /** Admin always sees comments and count; fans respect hideCommentsGlobally + post.hideComments. */
+  const showCommentsToViewer = !effectiveHideComments || !!showAdminEdit;
   type LikerRow = { uid: string; displayName: string | null; photoURL: string | null; email: string | null };
   const [likersModalOpen, setLikersModalOpen] = useState(false);
   const [likersLoading, setLikersLoading] = useState(false);
@@ -815,10 +817,10 @@ function FeedCard({
                 <span className="feed-card-action-count">{displayLikeCount}</span>
               ))}
           </span>
-          {!effectiveHideComments && (
+          {showCommentsToViewer && (
             <button type="button" className="feed-card-action-group feed-card-action-link" aria-label="Comments" onClick={() => setCommentsOpen(true)}>
               <CommentIcon />
-              <span className="feed-card-action-count">{commentsForViewer.length}</span>
+              {commentsForViewer.length > 0 && <span className="feed-card-action-count">{commentsForViewer.length}</span>}
             </button>
           )}
           {post.showTipButton !== false && (
@@ -932,7 +934,7 @@ function FeedCard({
             </div>
           </div>
         )}
-        {!effectiveHideComments && (
+        {showCommentsToViewer && (
           <>
             {commentsForViewer.length > 0 && (
               <button type="button" className="feed-card-view-comments" onClick={() => setCommentsOpen(true)}>
@@ -1000,10 +1002,10 @@ function FeedCard({
                   <span className="feed-card-action-count">{displayLikeCount}</span>
                 ))}
             </span>
-            {!effectiveHideComments && (
+            {showCommentsToViewer && (
               <button type="button" className="feed-card-action-group feed-card-action-link" aria-label="Comments" onClick={() => setCommentsOpen(true)}>
                 <CommentIcon />
-                <span className="feed-card-action-count">{commentsForViewer.length}</span>
+                {commentsForViewer.length > 0 && <span className="feed-card-action-count">{commentsForViewer.length}</span>}
               </button>
             )}
             {post.showTipButton !== false && (

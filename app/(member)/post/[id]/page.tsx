@@ -541,7 +541,7 @@ export default function PostByIdPage() {
           customerEmail={user?.email ?? null}
           uid={user?.uid ?? null}
         />
-        {!post.hideComments && !hideCommentsGlobally && (
+        {((!post.hideComments && !hideCommentsGlobally) || isAdminEmail(user?.email ?? null)) && (
           <div className="post-comments" id="comments">
             <h3>Comments</h3>
             {user ? (
