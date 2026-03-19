@@ -151,6 +151,9 @@ export async function POST(req: NextRequest) {
       stripe_subscription_id?: string;
     };
     const stripe = new Stripe(stripeSecret);
+    // Optional: use a portal config with subscription_cancel.mode = 'at_period_end' and proration_behavior = 'none'
+    // so members cancel at end of billing period with no refund. Run scripts/create-portal-config.js and set env.
+    const portalConfigId = process.env.STRIPE_PORTAL_CONFIGURATION_ID?.trim() || undefined;
     let customerId = (member?.stripeCustomerId || member?.stripe_customer_id || "").trim();
     const subscriptionId = (member?.stripeSubscriptionId || member?.stripe_subscription_id || "").trim();
     if (!customerId && subscriptionId) {
@@ -201,6 +204,7 @@ export async function POST(req: NextRequest) {
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: returnUrl,
+      ...(portalConfigId ? { configuration: portalConfigId } : {}),
     });
     return NextResponse.json({ url: session.url });
   } catch (err) {

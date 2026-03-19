@@ -736,6 +736,30 @@ export default function AdminUsersPage() {
     setManageLoading(true);
     setManageMessage(null);
     try {
+      if ((manageStatus || "active") === "cancelled") {
+        const token = await getAuthToken();
+        const res = await fetch("/api/admin/cancel-member-subscription", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ memberId: manageUser.id }),
+        });
+        const data = (await res.json().catch(() => ({}))) as { ok?: boolean; message?: string; error?: string };
+        if (!res.ok) {
+          setManageMessage({ type: "error", text: data.error || "Could not cancel subscription." });
+          return;
+        }
+        if (manageDisplayName.trim() !== (manageUser.name || "").trim()) {
+          await updateDoc(doc(db, "members", manageUser.id), {
+            displayName: manageDisplayName.trim() || null,
+            note: manageDisplayName.trim() || null,
+            updatedAt: serverTimestamp(),
+          });
+        }
+        setManageMessage({ type: "success", text: data.message || "Member cancelled. They have access until the end of their billing period." });
+        setTimeout(closeManage, 2000);
+        return;
+      }
+
       await updateDoc(doc(db, "members", manageUser.id), {
         status: manageStatus || "active",
         displayName: manageDisplayName.trim() || null,
@@ -1153,7 +1177,7 @@ export default function AdminUsersPage() {
                   <option value="cancelled">Cancelled</option>
                 </select>
                 <p className="um-manage-hint">
-                  Changing status here overrides current subscription state. Use for complimentary access or partners.
+                  Setting to Cancelled will cancel their subscription in Stripe at the end of the billing period; they keep access until then. Use Active for complimentary access or partners.
                 </p>
                 <div className="um-manage-field">
                   <label htmlFor="um-manage-displayname">Display name / note</label>

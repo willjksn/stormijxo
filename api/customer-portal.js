@@ -188,9 +188,12 @@ module.exports = async (req, res) => {
       return;
     }
 
+    const portalConfigId =
+      (process.env.STRIPE_PORTAL_CONFIGURATION_ID && process.env.STRIPE_PORTAL_CONFIGURATION_ID.trim()) || undefined;
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: returnUrl,
+      ...(portalConfigId ? { configuration: portalConfigId } : {}),
     });
     json(res, 200, { url: session.url });
   } catch (err) {

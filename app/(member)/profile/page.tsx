@@ -292,7 +292,7 @@ export default function ProfilePage() {
   };
 
   const handleManageSubscription = async () => {
-    if (!confirm("You will be taken to Stripe to manage your subscription (update payment, view billing, cancel). Continue?")) return;
+    if (!confirm("You'll be taken to Stripe to manage your subscription (update payment, view billing, or cancel). If you cancel, you keep access until the end of your billing period; no refunds are issued. Continue?")) return;
     if (!user) return;
     setPortalLoading(true);
     setMessage(null);
@@ -538,7 +538,7 @@ export default function ProfilePage() {
         <section className="profile-card profile-subscription-card">
           <h2>Subscription</h2>
           <p className="profile-subscription-desc">
-            Manage your subscription, update payment method, or cancel anytime. You&apos;ll be taken to Stripe&apos;s secure portal.
+            Manage your subscription, update payment method, or cancel through Stripe&apos;s secure portal. If you cancel, you keep access until the end of your current billing period. No refunds are issued for partial periods.
           </p>
           {adminWithoutStripeMembership && (
             <p className="profile-subscription-desc" style={{ marginTop: "0.5rem" }}>

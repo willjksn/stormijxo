@@ -38,6 +38,8 @@ type AuthModalProps = {
   initialTab: "login" | "signup";
   /** After login, redirect here (e.g. from landing ?redirect=/home). */
   redirectPath?: string | null;
+  /** True when URL has pay=required (expired/cancelled member must renew). */
+  payRequired?: boolean;
 };
 
 async function checkUsernameAvailable(db: ReturnType<typeof getFirebaseDb>, username: string): Promise<boolean> {
@@ -71,7 +73,7 @@ async function createUserProfile(
   });
 }
 
-export function AuthModal({ isOpen, onClose, initialTab, redirectPath }: AuthModalProps) {
+export function AuthModal({ isOpen, onClose, initialTab, redirectPath, payRequired }: AuthModalProps) {
   const router = useRouter();
   const [tab, setTab] = useState<"login" | "signup">(initialTab);
   const [error, setError] = useState("");
@@ -321,7 +323,12 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath }: AuthMod
   if (!isOpen) return null;
 
   const title = tab === "signup" ? "Create your account" : "Welcome back";
-  const subtitle = tab === "signup" ? "Create your account, then continue to secure checkout." : "Log in to Inner Circle.";
+  const subtitle =
+    tab === "signup"
+      ? "Create your account, then continue to secure checkout."
+      : payRequired
+        ? "Your membership has ended. Log in to renew—you'll be taken to checkout after signing in."
+        : "Log in to Inner Circle.";
 
   const modalContent = (
     <div

@@ -128,6 +128,7 @@ export function LandingHeaderWithAuth() {
         onClose={handleCloseModal}
         initialTab={modalTab}
         redirectPath={redirect}
+        payRequired={searchParams.get("pay") === "required"}
       />
     </>
   );
