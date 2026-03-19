@@ -19,6 +19,7 @@ import {
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import { getFirebaseAuth } from "../../../lib/firebase";
 import { getAuthErrorMessage, isAdminEmail } from "../../../lib/auth-redirect";
+import { pickLatestMemberAccessEnd } from "../../../lib/member-access-end";
 
 const PROFILE_EMOJI_CATEGORIES = {
   faces: "😀 😃 😄 😁 😆 😅 🤣 😂 🙂 🙃 😉 😊 😇 🥰 😍 🤩 😘 😎 🥳 😏 😒 😞 😔 😟 😕 🙁 😣 😖 😫 😩 🥺 😭 😤 😠 😡 🤬 😳 😱 😨 😰 😥 😓 🤗 🤔 😴 🤤 😪 🤒 🤕 🤠 🤡 💩 👻 💀 🎃".split(" "),
@@ -172,21 +173,9 @@ export default function ProfilePage() {
       return !!customerId || !!subscriptionId;
     };
 
-    const accessEndFromData = (data: Record<string, unknown>): Date | null => {
-      const raw = data.access_ends_at ?? data.accessEndsAt;
-      if (raw && typeof raw === "object" && "toDate" in raw && typeof (raw as { toDate: () => Date }).toDate === "function") {
-        try {
-          return (raw as { toDate: () => Date }).toDate();
-        } catch {
-          return null;
-        }
-      }
-      return null;
-    };
-
     const pickPlanFromDoc = (data: Record<string, unknown>) => ({
       status: String(data.status ?? "active").toLowerCase(),
-      accessEndsAt: accessEndFromData(data),
+      accessEndsAt: pickLatestMemberAccessEnd(data),
     });
 
     (async () => {
@@ -253,6 +242,14 @@ export default function ProfilePage() {
       document.removeEventListener("touchstart", onPointerDown);
     };
   }, [bioEmojiOpen]);
+
+  /** Days until access ends for cancelled members still in their paid period (null otherwise). */
+  const cancelledAccessDaysLeft = useMemo(() => {
+    if (!memberPlan?.accessEndsAt || memberPlan.status !== "cancelled") return null;
+    const end = memberPlan.accessEndsAt.getTime();
+    if (end <= Date.now()) return null;
+    return Math.ceil((end - Date.now()) / (24 * 60 * 60 * 1000));
+  }, [memberPlan]);
 
   const handleEdit = () => {
     if (profile) {
@@ -579,18 +576,13 @@ export default function ProfilePage() {
                 fontSize: "0.95rem",
               }}
             >
-              {memberPlan.status === "cancelled" && memberPlan.accessEndsAt && memberPlan.accessEndsAt.getTime() > Date.now() ? (
+              {memberPlan.status === "cancelled" && memberPlan.accessEndsAt && cancelledAccessDaysLeft != null ? (
                 <>
-                  <strong>Plan scheduled to end.</strong> You keep full access until{" "}
-                  <strong>
-                    {memberPlan.accessEndsAt.toLocaleDateString(undefined, {
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </strong>
-                  . After that, your membership ends.
+                  {`until ${memberPlan.accessEndsAt.toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })} (${cancelledAccessDaysLeft === 1 ? "1 day left" : `${cancelledAccessDaysLeft} days left`})`}
                 </>
               ) : memberPlan.status === "cancelled" ? (
                 <>

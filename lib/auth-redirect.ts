@@ -1,5 +1,6 @@
 import type { Firestore } from "firebase/firestore";
 import { collection, getDocs, limit, query, where } from "firebase/firestore";
+import { pickLatestMemberAccessEnd } from "./member-access-end";
 
 /** Map Firebase Auth errors (e.g. 400 invalid-credential) to user-friendly messages. */
 export function getAuthErrorMessage(err: unknown, fallback: string): string {
@@ -66,17 +67,7 @@ function isMembershipDocActive(docData: Record<string, unknown>): boolean {
   if (status === "active") return true;
   if (status !== "cancelled") return false;
 
-  const accessEndsRaw = docData.access_ends_at as
-    | { toDate?: () => Date }
-    | Date
-    | null
-    | undefined;
-  const accessEnds =
-    accessEndsRaw instanceof Date
-      ? accessEndsRaw
-      : accessEndsRaw && typeof accessEndsRaw.toDate === "function"
-        ? accessEndsRaw.toDate()
-        : null;
+  const accessEnds = pickLatestMemberAccessEnd(docData);
   return !!accessEnds && accessEnds.getTime() > Date.now();
 }
 

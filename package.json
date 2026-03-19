@@ -9,6 +9,8 @@
     "test:captions": "node scripts/test-caption-api.mjs",
     "check:firebase-admin": "node scripts/check-firebase-admin-env.js",
     "backfill:subscription-payments": "node scripts/backfill-subscription-payments.js",
+    "backfill:member-access-ends-at": "node scripts/backfill-member-access-ends-at.js",
+    "backfill:member-access-ends-at:force": "node scripts/backfill-member-access-ends-at.js --force",
     "logo-transparent": "node scripts/make-logo-transparent.js",
     "generate-firebase-config": "node scripts/generate-firebase-config.js"
   },

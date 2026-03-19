@@ -16,6 +16,7 @@ import {
   writeBatch,
   updateDoc,
 } from "firebase/firestore";
+import { pickLatestMemberAccessEnd } from "../../../../lib/member-access-end";
 import { getFirebaseDb, getFirebaseAuth } from "../../../../lib/firebase";
 import { MEDIA_UNLOCKS_COLLECTION } from "../../../../lib/dms";
 import { ALLOWED_ADMIN_EMAILS } from "../../../../lib/auth-redirect";
@@ -88,50 +89,33 @@ function formatUnlockCents(cents: number | undefined): string {
   return typeof cents === "number" && cents > 0 ? "$" + (cents / 100).toFixed(2) : "—";
 }
 
-function parseDateLike(value: unknown): Date | null {
-  if (!value) return null;
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
-  if (typeof value === "number") {
-    const ms = value < 1e12 ? value * 1000 : value;
-    const d = new Date(ms);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-  if (typeof value === "string") {
-    const asNum = Number(value);
-    if (!Number.isNaN(asNum)) {
-      const ms = asNum < 1e12 ? asNum * 1000 : asNum;
-      const d = new Date(ms);
-      return Number.isNaN(d.getTime()) ? null : d;
-    }
-    const d = new Date(value);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-  if (typeof value === "object") {
-    const maybeToDate = value as { toDate?: () => Date; _seconds?: number };
-    if (typeof maybeToDate.toDate === "function") {
-      const d = maybeToDate.toDate();
-      return d instanceof Date && !Number.isNaN(d.getTime()) ? d : null;
-    }
-    if (typeof maybeToDate._seconds === "number") {
-      const d = new Date(maybeToDate._seconds * 1000);
-      return Number.isNaN(d.getTime()) ? null : d;
-    }
-  }
-  return null;
-}
-
 function remainingAccessText(accessEndsAt: Date | null, status: string): string {
-  if (!accessEndsAt) return status === "active" ? "Active" : "—";
+  const st = (status || "").toLowerCase();
+  if (!accessEndsAt) {
+    if (st === "active") return "Active";
+    if (st === "cancelled") return "Cancelled — end date not on file";
+    return "—";
+  }
   const now = new Date();
   const end = accessEndsAt instanceof Date ? accessEndsAt : new Date(accessEndsAt);
-  if (end <= now) return "Expired";
-  const days = Math.ceil((end.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
-  if (status === "cancelled") {
-    if (days <= 1) return "1 day left";
-    if (days < 30) return `${days} days left`;
-    return "Until " + end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  if (Number.isNaN(end.getTime())) {
+    if (st === "cancelled") return "Cancelled — invalid end date";
+    return "—";
   }
-  return "Until " + end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  const dateStr = end.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  if (end <= now) {
+    return "Expired";
+  }
+  const days = Math.ceil((end.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+  const daysPart = days === 1 ? "1 day left" : `${days} days left`;
+  if (st === "cancelled") {
+    return `until ${dateStr} (${daysPart})`;
+  }
+  return `until ${dateStr} (${daysPart})`;
 }
 
 export default function AdminUsersPage() {
@@ -252,9 +236,7 @@ export default function AdminUsersPage() {
             .toString()
             .trim();
           const joined = (d.joinedAt as { toDate?: () => Date })?.toDate?.();
-          const accessEndsAt = parseDateLike(
-            d.access_ends_at ?? d.accessEndsAt ?? d.current_period_end ?? d.currentPeriodEnd ?? null
-          );
+          const accessEndsAt = pickLatestMemberAccessEnd(d as Record<string, unknown>);
           list.push({
             id: doc.id,
             type: "member",
