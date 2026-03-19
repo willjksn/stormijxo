@@ -361,38 +361,127 @@ module.exports = async (req, res) => {
     ) {
       const subscription = event.data.object;
       const subId = subscription.id;
-      const customerId = subscription.customer;
-      const periodEnd = subscription.current_period_end;
-      const cancelAtPeriodEnd = subscription.cancel_at_period_end;
+      const customerId =
+        typeof subscription.customer === "string" ? subscription.customer : "";
+      const periodEndSec =
+        typeof subscription.current_period_end === "number"
+          ? subscription.current_period_end
+          : typeof subscription.ended_at === "number"
+            ? subscription.ended_at
+            : typeof subscription.canceled_at === "number"
+              ? subscription.canceled_at
+              : null;
+      const cancelAtPeriodEnd = subscription.cancel_at_period_end === true;
       const isDeleted = event.type === "customer.subscription.deleted";
+      const status = (subscription.status || "").toString();
+      const isCanceledInStripe =
+        status === "canceled" || status === "cancelled" || isDeleted;
 
-      if (!isDeleted && !cancelAtPeriodEnd) {
+      // Member fully active again (e.g. resumed after scheduling cancel).
+      if (
+        !isDeleted &&
+        (status === "active" || status === "trialing") &&
+        !cancelAtPeriodEnd
+      ) {
+        let docRef = null;
+        const bySub = await membersRef.where("stripeSubscriptionId", "==", subId).limit(1).get();
+        if (!bySub.empty) docRef = bySub.docs[0].ref;
+        if (!docRef) {
+          const bySubSnake = await membersRef
+            .where("stripe_subscription_id", "==", subId)
+            .limit(1)
+            .get();
+          if (!bySubSnake.empty) docRef = bySubSnake.docs[0].ref;
+        }
+        if (!docRef && customerId) {
+          try {
+            const byCustomer = await membersRef
+              .where("stripeCustomerId", "==", customerId)
+              .orderBy("joinedAt", "desc")
+              .limit(1)
+              .get();
+            if (!byCustomer.empty) docRef = byCustomer.docs[0].ref;
+          } catch {
+            const byCustomerPlain = await membersRef
+              .where("stripeCustomerId", "==", customerId)
+              .limit(5)
+              .get();
+            if (!byCustomerPlain.empty) {
+              docRef = byCustomerPlain.docs[0].ref;
+            }
+          }
+        }
+        if (docRef) {
+          await docRef.update({
+            status: "active",
+            cancelledAt: null,
+            access_ends_at: null,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
         json(res, 200, { received: true });
         return;
       }
 
-      const bySub = await membersRef.where("stripeSubscriptionId", "==", subId).limit(1).get();
-      let docRef = bySub.empty ? null : bySub.docs[0].ref;
+      // Skip only when subscription is still a normal active renewal with no cancel scheduled.
+      if (!isDeleted && !cancelAtPeriodEnd && !isCanceledInStripe) {
+        json(res, 200, { received: true });
+        return;
+      }
 
+      let docRef = null;
+      const bySub = await membersRef.where("stripeSubscriptionId", "==", subId).limit(1).get();
+      if (!bySub.empty) docRef = bySub.docs[0].ref;
       if (!docRef) {
-        const byCustomer = await membersRef
-          .where("stripeCustomerId", "==", customerId)
-          .orderBy("joinedAt", "desc")
+        const bySubSnake = await membersRef
+          .where("stripe_subscription_id", "==", subId)
           .limit(1)
           .get();
-        if (!byCustomer.empty) {
-          docRef = byCustomer.docs[0].ref;
-          await docRef.update({ stripeSubscriptionId: subId });
+        if (!bySubSnake.empty) docRef = bySubSnake.docs[0].ref;
+      }
+      if (!docRef && customerId) {
+        try {
+          const byCustomer = await membersRef
+            .where("stripeCustomerId", "==", customerId)
+            .orderBy("joinedAt", "desc")
+            .limit(1)
+            .get();
+          if (!byCustomer.empty) docRef = byCustomer.docs[0].ref;
+        } catch {
+          const byCustomerPlain = await membersRef
+            .where("stripeCustomerId", "==", customerId)
+            .limit(5)
+            .get();
+          if (!byCustomerPlain.empty) docRef = byCustomerPlain.docs[0].ref;
+        }
+      }
+      if (!docRef && customerId) {
+        try {
+          const byCustomerSnake = await membersRef
+            .where("stripe_customer_id", "==", customerId)
+            .orderBy("joinedAt", "desc")
+            .limit(1)
+            .get();
+          if (!byCustomerSnake.empty) docRef = byCustomerSnake.docs[0].ref;
+        } catch {
+          const byCustomerSnakePlain = await membersRef
+            .where("stripe_customer_id", "==", customerId)
+            .limit(5)
+            .get();
+          if (!byCustomerSnakePlain.empty) docRef = byCustomerSnakePlain.docs[0].ref;
         }
       }
 
       if (docRef) {
         await docRef.update({
+          stripeSubscriptionId: subId,
+          stripe_subscription_id: subId,
           status: "cancelled",
           cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
-          access_ends_at: periodEnd
-            ? admin.firestore.Timestamp.fromMillis(periodEnd * 1000)
+          access_ends_at: periodEndSec
+            ? admin.firestore.Timestamp.fromMillis(periodEndSec * 1000)
             : null,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       }
     }

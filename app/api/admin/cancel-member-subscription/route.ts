@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { requireAdminAuth } from "../_lib/require-admin";
+import { requireAdminAuthResult } from "../_lib/require-admin";
 
 /**
  * POST { memberId } — cancel a member's subscription in Stripe at period end and update Firestore.
@@ -8,13 +8,9 @@ import { requireAdminAuth } from "../_lib/require-admin";
  * If the member has no Stripe subscription, marks them cancelled with no access.
  */
 export async function POST(req: NextRequest) {
-  let authResult: Awaited<ReturnType<typeof requireAdminAuth>>;
-  try {
-    authResult = await requireAdminAuth(req);
-  } catch (res) {
-    return res as NextResponse;
-  }
-  const { admin } = authResult;
+  const auth = await requireAdminAuthResult(req);
+  if (!auth.ok) return auth.response;
+  const { admin } = auth.value;
 
   let body: { memberId?: string };
   try {
@@ -59,8 +55,35 @@ export async function POST(req: NextRequest) {
         accessEndsAt = new Date(periodEnd * 1000);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Stripe request failed.";
-      return NextResponse.json({ error: "Could not cancel subscription in Stripe: " + message }, { status: 502 });
+      const errMsg = err instanceof Error ? err.message : "Stripe request failed.";
+      const isMissingOrCanceled =
+        /No such subscription/i.test(errMsg) ||
+        /already been canceled/i.test(errMsg) ||
+        /canceled subscription/i.test(errMsg);
+      if (isMissingOrCanceled) {
+        try {
+          const sub = await stripe.subscriptions.retrieve(subscriptionId);
+          const raw = sub as unknown as {
+            current_period_end?: number;
+            ended_at?: number;
+            canceled_at?: number;
+            status?: string;
+          };
+          const sec =
+            typeof raw.current_period_end === "number"
+              ? raw.current_period_end
+              : typeof raw.ended_at === "number"
+                ? raw.ended_at
+                : typeof raw.canceled_at === "number"
+                  ? raw.canceled_at
+                  : null;
+          if (sec) accessEndsAt = new Date(sec * 1000);
+        } catch {
+          // Subscription may be fully removed from Stripe; still sync Firestore as cancelled.
+        }
+      } else {
+        return NextResponse.json({ error: "Could not cancel subscription in Stripe: " + errMsg }, { status: 502 });
+      }
     }
   }
 

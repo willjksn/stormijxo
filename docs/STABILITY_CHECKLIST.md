@@ -32,7 +32,8 @@ This runs a full Next.js build (including Firebase config generation). If it pas
 - [ ] **Landing tip** — Anonymous; no login; calls `/api/landing-tip`; buttons work after closing modal and after browser back from Stripe.
 - [ ] **In-app tip** — From feed post or `/tip` page; uses `/api/tip-checkout`; modal presets + custom amount; no "post not locked" for tips.
 - [ ] **Unlock** — Locked post "Unlock" uses `/api/unlock-checkout` only (not tip).
-- [ ] **Manage subscription** — Profile "Manage subscription" opens Stripe portal; disabled for admins without a Stripe membership link.
+- [ ] **Manage subscription** — Profile "Manage subscription" calls **`/api/customer-portal`** (not unlock-checkout). If you see **"Missing postId"**, the wrong API was hit (e.g. cached bundle or wrong URL).
+- [ ] **Stripe webhooks for membership** — The webhook endpoint must receive **`customer.subscription.updated`** and **`customer.subscription.deleted`** (plus `checkout.session.completed`). Without these, canceling in Stripe will not update Firestore `members` (`status`, `access_ends_at`), so the app can show "active" after cancel.
 
 ### Visuals & UX
 

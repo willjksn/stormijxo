@@ -63,9 +63,20 @@ async function main() {
         enabled: true,
         mode: "at_period_end",
         proration_behavior: "none",
+        // Required by Stripe API (e.g. 2026-01-28+): `options` must be present even when
+        // `enabled` is false — otherwise POST /v1/billing_portal/configurations returns 400.
         cancellation_reason: {
           enabled: false,
-          options: ["other", "too_expensive"],
+          options: [
+            "customer_service",
+            "low_quality",
+            "missing_features",
+            "other",
+            "switched_service",
+            "too_complex",
+            "too_expensive",
+            "unused",
+          ],
         },
       },
       subscription_update: { enabled: false },

@@ -76,6 +76,11 @@ export default function ProfilePage() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [accountSectionOpen, setAccountSectionOpen] = useState<"password" | null>(null);
   const [hasStripeMembership, setHasStripeMembership] = useState<boolean | null>(null);
+  /** From Firestore members doc (Stripe webhook + admin tools keep this in sync). */
+  const [memberPlan, setMemberPlan] = useState<{
+    status: string;
+    accessEndsAt: Date | null;
+  } | null>(null);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -152,9 +157,10 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user || !db) {
       setHasStripeMembership(null);
+      setMemberPlan(null);
       return;
     }
-    let active = true;
+    let cancelled = false;
     const uid = user.uid || "";
     const email = (user.email || "").trim().toLowerCase();
     const membersRef = collection(db, "members");
@@ -166,45 +172,69 @@ export default function ProfilePage() {
       return !!customerId || !!subscriptionId;
     };
 
+    const accessEndFromData = (data: Record<string, unknown>): Date | null => {
+      const raw = data.access_ends_at ?? data.accessEndsAt;
+      if (raw && typeof raw === "object" && "toDate" in raw && typeof (raw as { toDate: () => Date }).toDate === "function") {
+        try {
+          return (raw as { toDate: () => Date }).toDate();
+        } catch {
+          return null;
+        }
+      }
+      return null;
+    };
+
+    const pickPlanFromDoc = (data: Record<string, unknown>) => ({
+      status: String(data.status ?? "active").toLowerCase(),
+      accessEndsAt: accessEndFromData(data),
+    });
+
     (async () => {
       try {
-        const checks: Promise<boolean>[] = [];
-        if (uid) {
-          checks.push(
-            getDocs(query(membersRef, where("uid", "==", uid), limit(2))).then((snap) =>
-              snap.docs.some((d) => hasStripeLink(d.data() as Record<string, unknown>))
-            )
-          );
-          checks.push(
-            getDocs(query(membersRef, where("userId", "==", uid), limit(2))).then((snap) =>
-              snap.docs.some((d) => hasStripeLink(d.data() as Record<string, unknown>))
-            )
-          );
-        }
-        if (email) {
-          checks.push(
-            getDocs(query(membersRef, where("email", "==", email), limit(2))).then((snap) =>
-              snap.docs.some((d) => hasStripeLink(d.data() as Record<string, unknown>))
-            )
-          );
-        }
-
-        let linked = false;
-        for (const check of checks) {
-          // eslint-disable-next-line no-await-in-loop
-          if (await check) {
-            linked = true;
-            break;
+        const tryDoc = async (): Promise<{ linked: boolean; plan: { status: string; accessEndsAt: Date | null } | null }> => {
+          if (uid) {
+            const byDocId = await getDoc(doc(db, "members", uid));
+            if (byDocId.exists()) {
+              const d = byDocId.data() as Record<string, unknown>;
+              if (hasStripeLink(d)) return { linked: true, plan: pickPlanFromDoc(d) };
+            }
           }
+          const queries = [];
+          if (uid) {
+            queries.push(getDocs(query(membersRef, where("uid", "==", uid), limit(3))));
+            queries.push(getDocs(query(membersRef, where("userId", "==", uid), limit(3))));
+          }
+          if (email) {
+            queries.push(getDocs(query(membersRef, where("email", "==", email), limit(3))));
+          }
+          for (const p of queries) {
+            // eslint-disable-next-line no-await-in-loop
+            const snap = await p;
+            for (const d of snap.docs) {
+              const data = d.data() as Record<string, unknown>;
+              if (hasStripeLink(data)) {
+                return { linked: true, plan: pickPlanFromDoc(data) };
+              }
+            }
+          }
+          return { linked: false, plan: null };
+        };
+
+        const { linked, plan } = await tryDoc();
+        if (!cancelled) {
+          setHasStripeMembership(linked);
+          setMemberPlan(plan);
         }
-        if (active) setHasStripeMembership(linked);
       } catch {
-        if (active) setHasStripeMembership(false);
+        if (!cancelled) {
+          setHasStripeMembership(false);
+          setMemberPlan(null);
+        }
       }
     })();
 
     return () => {
-      active = false;
+      cancelled = true;
     };
   }, [db, user]);
 
@@ -537,6 +567,42 @@ export default function ProfilePage() {
 
         <section className="profile-card profile-subscription-card">
           <h2>Subscription</h2>
+          {hasStripeMembership && memberPlan && (
+            <div
+              className="profile-subscription-status"
+              style={{
+                marginBottom: "0.75rem",
+                padding: "0.75rem 1rem",
+                borderRadius: "8px",
+                background: "var(--accent-soft, rgba(212, 85, 139, 0.08))",
+                border: "1px solid var(--border)",
+                fontSize: "0.95rem",
+              }}
+            >
+              {memberPlan.status === "cancelled" && memberPlan.accessEndsAt && memberPlan.accessEndsAt.getTime() > Date.now() ? (
+                <>
+                  <strong>Plan scheduled to end.</strong> You keep full access until{" "}
+                  <strong>
+                    {memberPlan.accessEndsAt.toLocaleDateString(undefined, {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </strong>
+                  . After that, your membership ends.
+                </>
+              ) : memberPlan.status === "cancelled" ? (
+                <>
+                  <strong>Membership ended or canceled.</strong> If you just canceled in Stripe, this can take a minute to update — refresh the page. Contact support if it still looks wrong.
+                </>
+              ) : (
+                <>
+                  <strong>Plan active.</strong> Use Manage subscription to update payment or cancel (you keep access through the end of the paid period).
+                </>
+              )}
+            </div>
+          )}
           <p className="profile-subscription-desc">
             Manage your subscription, update payment method, or cancel through Stripe&apos;s secure portal. If you cancel, you keep access until the end of your current billing period. No refunds are issued for partial periods.
           </p>

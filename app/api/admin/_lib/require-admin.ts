@@ -9,13 +9,19 @@ const { getFirebaseAdmin } = require("../../../../api/_lib/firebase-admin");
 
 type DecodedToken = { uid: string; email?: string };
 
-export async function requireAdminAuth(
+export type AdminAuthSuccess = {
+  decoded: DecodedToken;
+  admin: ReturnType<typeof getFirebaseAdmin>;
+};
+
+/** Prefer this in routes that should `return` errors instead of throwing a Response (avoids odd proxy status codes). */
+export async function requireAdminAuthResult(
   req: NextRequest
-): Promise<{ decoded: DecodedToken; admin: ReturnType<typeof getFirebaseAdmin> }> {
+): Promise<{ ok: true; value: AdminAuthSuccess } | { ok: false; response: NextResponse }> {
   const authHeader = req.headers.get("authorization") || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
   if (!token) {
-    throw NextResponse.json({ error: "Missing auth token." }, { status: 401 });
+    return { ok: false, response: NextResponse.json({ error: "Missing auth token." }, { status: 401 }) };
   }
 
   const admin = getFirebaseAdmin();
@@ -27,7 +33,7 @@ export async function requireAdminAuth(
     const d = await auth.verifyIdToken(token);
     decoded = { uid: d.uid, email: (d.email || "").trim() || undefined };
   } catch {
-    throw NextResponse.json({ error: "Invalid or expired token." }, { status: 401 });
+    return { ok: false, response: NextResponse.json({ error: "Invalid or expired token." }, { status: 401 }) };
   }
 
   const email = (decoded.email || "").toLowerCase();
@@ -36,7 +42,7 @@ export async function requireAdminAuth(
       { email: decoded.email || email, role: "admin" },
       { merge: true }
     );
-    return { decoded, admin };
+    return { ok: true, value: { decoded, admin } };
   }
 
   const adminUsersSnap = await db
@@ -47,8 +53,14 @@ export async function requireAdminAuth(
     .get();
 
   if (adminUsersSnap.empty) {
-    throw NextResponse.json({ error: "Admin access required." }, { status: 403 });
+    return { ok: false, response: NextResponse.json({ error: "Admin access required." }, { status: 403 }) };
   }
 
-  return { decoded, admin };
+  return { ok: true, value: { decoded, admin } };
+}
+
+export async function requireAdminAuth(req: NextRequest): Promise<AdminAuthSuccess> {
+  const r = await requireAdminAuthResult(req);
+  if (!r.ok) throw r.response;
+  return r.value;
 }
