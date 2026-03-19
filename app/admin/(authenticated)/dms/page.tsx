@@ -795,8 +795,12 @@ export default function AdminDmsPage() {
                 {messagesWithDates.map((item, i) =>
                   item.type === "date" ? (
                     <div key={`date-${i}`} className="chat-date-separator"><span>{formatMessageDate(item.date)}</span></div>
-                  ) : (
-                    <div key={item.message.id} className={`chat-bubble ${item.message.senderId === user?.uid ? "me" : "them"}`}>
+                  ) : (() => {
+                    const isCreator = selectedId != null && item.message.senderId !== selectedId;
+                    return (
+                    <div key={item.message.id} className={`chat-bubble-row ${isCreator ? "row-me" : "row-them"}`}>
+                      <div className={`chat-bubble ${isCreator ? "me" : "them"}`}>
+                      <span className="chat-bubble-role">{isCreator ? "You" : "Fan"}</span>
                       <button
                         type="button"
                         onClick={() => handleDeleteMessage(item.message.id)}
@@ -881,11 +885,13 @@ export default function AdminDmsPage() {
                       {item.message.createdAt && (
                         <span className="chat-bubble-time">
                           {formatMessageTime(item.message.createdAt)}
-                          {item.message.senderId === user?.uid && <CheckIcon />}
+                          {isCreator && <CheckIcon />}
                         </span>
                       )}
+                      </div>
                     </div>
-                  )
+                    );
+                  })()
                 )}
                 <div ref={messagesEndRef} />
               </div>

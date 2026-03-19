@@ -301,6 +301,17 @@ module.exports = async (req, res) => {
           source: "stripe",
           ...(uid ? { uid, userId: uid } : {}),
         });
+        const notificationsRef = db.collection("notifications");
+        await notificationsRef.add({
+          forAdmin: true,
+          forMemberEmail: null,
+          type: "member_joined",
+          title: "New member",
+          body: `${email} joined.`,
+          link: "/admin/users",
+          read: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
       }
     } else if (event.type === "invoice.paid") {
       const invoice = event.data.object;

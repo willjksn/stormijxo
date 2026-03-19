@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { TipModal } from "../../components/TipModal";
-import { collection, getDocs, query, orderBy, limit, doc, runTransaction, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, limit, doc, runTransaction, getDoc, setDoc, updateDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { getFirebaseDb } from "../../../lib/firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { isAdminEmail } from "../../../lib/auth-redirect";
 import { SITE_CONFIG_CONTENT_ID, type SiteConfigContent } from "../../../lib/site-config";
+import { NOTIFICATIONS_COLLECTION } from "../../../lib/notifications";
 
 const GridIcon = () => (
   <svg className="icon-grid" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -508,6 +509,18 @@ function FeedCard({
         tx.update(postRef, { comments: nextComments });
       });
       onCommentsUpdated?.(post.id, nextComments);
+      if (!isAdminEmail(currentUser.email ?? null)) {
+        await addDoc(collection(db, NOTIFICATIONS_COLLECTION), {
+          forAdmin: true,
+          forMemberEmail: null,
+          type: "comment",
+          title: "New comment",
+          body: `${username}: ${text.slice(0, 80)}${text.length > 80 ? "…" : ""}`,
+          link: `/post/${post.id}`,
+          read: false,
+          createdAt: serverTimestamp(),
+        });
+      }
       setModalComment("");
       setCommentEmojiOpen(false);
     } finally {

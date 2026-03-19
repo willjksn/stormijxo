@@ -3,12 +3,13 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { doc, getDoc, runTransaction } from "firebase/firestore";
+import { collection, doc, getDoc, runTransaction, addDoc, serverTimestamp } from "firebase/firestore";
 import { TipModal } from "../../../components/TipModal";
 import { getFirebaseDb } from "../../../../lib/firebase";
 import { useAuth } from "../../../contexts/AuthContext";
 import { isAdminEmail } from "../../../../lib/auth-redirect";
 import { SITE_CONFIG_CONTENT_ID, type SiteConfigContent } from "../../../../lib/site-config";
+import { NOTIFICATIONS_COLLECTION } from "../../../../lib/notifications";
 
 type PostCommentReply = {
   author?: string;
@@ -237,6 +238,18 @@ export default function PostByIdPage() {
           comments: [...existing, { username, text: text.slice(0, 500) }],
         });
       });
+      if (!isAdminEmail(user.email ?? null)) {
+        await addDoc(collection(db, NOTIFICATIONS_COLLECTION), {
+          forAdmin: true,
+          forMemberEmail: null,
+          type: "comment",
+          title: "New comment",
+          body: `${username}: ${text.slice(0, 80)}${text.length > 80 ? "…" : ""}`,
+          link: `/post/${id}`,
+          read: false,
+          createdAt: serverTimestamp(),
+        });
+      }
       setPost((prev) => (prev ? { ...prev, comments: [...prev.comments, { username, text: text.slice(0, 500) }] } : prev));
       setNewComment("");
       setCommentEmojiOpen(false);

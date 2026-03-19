@@ -372,8 +372,10 @@ export default function MemberDmsPage() {
               item.type === "date" ? (
                 <div key={`date-${i}`} className="chat-date-separator"><span>{formatMessageDate(item.date)}</span></div>
               ) : (
-                <div key={item.message.id} className={`chat-bubble ${item.message.senderId === user?.uid ? "me" : "them"}`}>
-                  {item.message.text ? <span style={{ whiteSpace: "pre-wrap" }}>{item.message.text}</span> : null}
+                <div key={item.message.id} className={`chat-bubble-row ${item.message.senderId === user?.uid ? "row-me" : "row-them"}`}>
+                  <div className={`chat-bubble ${item.message.senderId === user?.uid ? "me" : "them"}`}>
+                    <span className="chat-bubble-role">{item.message.senderId === user?.uid ? "Fan" : "Creator"}</span>
+                    {item.message.text ? <span style={{ whiteSpace: "pre-wrap" }}>{item.message.text}</span> : null}
                   {item.message.imageUrls.length > 0 && (
                     <div className="chat-bubble-images">
                       {item.message.imageUrls.map((url) => (
@@ -441,6 +443,7 @@ export default function MemberDmsPage() {
                       {item.message.senderId === user?.uid && <CheckIcon />}
                     </span>
                   )}
+                  </div>
                 </div>
               )
             )}

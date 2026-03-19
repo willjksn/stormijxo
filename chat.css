@@ -326,6 +326,19 @@
   font-weight: 500;
 }
 
+/* Row wrapper: fan on one side, creator on the other */
+.chat-bubble-row {
+  display: flex;
+  width: 100%;
+  clear: both;
+}
+.chat-bubble-row.row-them {
+  justify-content: flex-start;   /* Creator (member view) or Fan (admin view) = left */
+}
+.chat-bubble-row.row-me {
+  justify-content: flex-end;     /* Fan (member view) or Creator (admin view) = right */
+}
+
 .chat-bubble {
   max-width: 75%;
   padding: 0.6rem 1rem;
@@ -338,19 +351,39 @@
   gap: 0.35rem;
 }
 
+/* Them = other party (creator when you're fan; fan when you're creator) — always LEFT */
 .chat-bubble.them {
   align-self: flex-start;
-  background: #e5e7eb;
+  background: #e8ecf1;
   color: var(--text);
+  border: 1px solid #dde1e6;
   border-bottom-left-radius: 4px;
 }
 
+/* Me = you (fan or creator) — always RIGHT, creator/accent color */
 .chat-bubble.me {
   align-self: flex-end;
-  background: var(--accent);
-  color: #fff;
+  background: var(--accent, #6366f1) !important;
+  color: #fff !important;
+  border: 1px solid var(--accent, #6366f1) !important;
   border-bottom-right-radius: 4px;
 }
+.chat-page .chat-bubble.me {
+  background: var(--accent, #6366f1) !important;
+  color: #fff !important;
+}
+
+/* Role label so you can tell Fan vs Creator at a glance */
+.chat-bubble-role {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.9;
+  margin-bottom: 0.15rem;
+}
+.chat-bubble.them .chat-bubble-role { color: var(--text-muted); }
+.chat-bubble.me .chat-bubble-role { color: rgba(255,255,255,0.9); }
 
 .chat-bubble-time {
   font-size: 0.7rem;
