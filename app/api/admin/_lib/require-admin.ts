@@ -3,9 +3,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { ALLOWED_ADMIN_EMAILS } from "../../../../lib/auth-redirect";
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { getFirebaseAdmin } = require("../../../../api/_lib/firebase-admin");
+import { getFirebaseAdmin } from "../../../../lib/firebase-admin";
 
 type DecodedToken = { uid: string; email?: string };
 
@@ -24,7 +22,17 @@ export async function requireAdminAuthResult(
     return { ok: false, response: NextResponse.json({ error: "Missing auth token." }, { status: 401 }) };
   }
 
-  const admin = getFirebaseAdmin();
+  let admin: ReturnType<typeof getFirebaseAdmin>;
+  try {
+    admin = getFirebaseAdmin();
+  } catch (e) {
+    console.error("requireAdminAuth: Firebase Admin init failed:", e);
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "Server configuration error (Firebase Admin)." }, { status: 500 }),
+    };
+  }
+
   const auth = admin.auth();
   const db = admin.firestore();
 
@@ -36,10 +44,20 @@ export async function requireAdminAuthResult(
     return { ok: false, response: NextResponse.json({ error: "Invalid or expired token." }, { status: 401 }) };
   }
 
-  const email = (decoded.email || "").toLowerCase();
-  if (ALLOWED_ADMIN_EMAILS.includes(email)) {
+  const emailNorm = (decoded.email || "").trim().toLowerCase();
+  if (!emailNorm) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: "Admin access requires an email on your Firebase account." },
+        { status: 403 }
+      ),
+    };
+  }
+
+  if (ALLOWED_ADMIN_EMAILS.includes(emailNorm)) {
     await db.collection("admin_users").doc(decoded.uid).set(
-      { email: decoded.email || email, role: "admin" },
+      { email: decoded.email || emailNorm, role: "admin" },
       { merge: true }
     );
     return { ok: true, value: { decoded, admin } };
@@ -47,7 +65,7 @@ export async function requireAdminAuthResult(
 
   const adminUsersSnap = await db
     .collection("admin_users")
-    .where("email", "==", decoded.email || "")
+    .where("email", "==", emailNorm)
     .where("role", "==", "admin")
     .limit(1)
     .get();
