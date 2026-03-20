@@ -24,6 +24,7 @@ import { useStudioSettings } from "../../../features/premium-studio/hooks/useStu
 import { LazyMediaImage } from "../../../components/LazyMediaImage";
 import { AdminEmojiPicker } from "../../components/AdminEmojiPicker";
 import type { PostStatus } from "../../../../lib/posts";
+import { isImageMediaAtIndex } from "../../../../lib/locked-post-media";
 import { useRouter } from "next/navigation";
 
 const OVERLAY_ANIMATIONS = [
@@ -94,6 +95,8 @@ export default function AdminPostsPage() {
   const [tipGoalRaisedCents, setTipGoalRaisedCents] = useState(0);
   const [lockEnabled, setLockEnabled] = useState(false);
   const [lockPriceDollars, setLockPriceDollars] = useState("");
+  /** When 2+ media: optional image index shown unblurred; null = blur everything until unlock. */
+  const [lockPreviewMediaIndex, setLockPreviewMediaIndex] = useState<number | null>(null);
   const [overlaySectionOpen, setOverlaySectionOpen] = useState(false);
   const captionRef = useRef<HTMLTextAreaElement | null>(null);
   const pollQuestionRef = useRef<HTMLInputElement | null>(null);
@@ -132,6 +135,7 @@ export default function AdminPostsPage() {
     setTipGoalRaisedCents(0);
     setLockEnabled(false);
     setLockPriceDollars("");
+    setLockPreviewMediaIndex(null);
     setMessage(null);
     try {
       sessionStorage.removeItem(DRAFT_STORAGE_KEY);
@@ -293,7 +297,11 @@ export default function AdminPostsPage() {
           setTipGoalTargetDollars("");
           setTipGoalRaisedCents(0);
         }
-        const locked = d.lockedContent as { enabled?: boolean; priceCents?: number } | undefined;
+        const locked = d.lockedContent as {
+          enabled?: boolean;
+          priceCents?: number;
+          previewMediaIndex?: number | null;
+        } | undefined;
         if (locked?.enabled) {
           setLockEnabled(true);
           setLockPriceDollars(
@@ -301,9 +309,15 @@ export default function AdminPostsPage() {
               ? String((locked.priceCents / 100).toFixed(2))
               : ""
           );
+          if (typeof locked.previewMediaIndex === "number") {
+            setLockPreviewMediaIndex(locked.previewMediaIndex);
+          } else {
+            setLockPreviewMediaIndex(null);
+          }
         } else {
           setLockEnabled(false);
           setLockPriceDollars("");
+          setLockPreviewMediaIndex(null);
         }
         const urls = (d.mediaUrls as string[]) ?? [];
         const types = (d.mediaTypes as ("image" | "video")[]) ?? [];
@@ -725,6 +739,18 @@ export default function AdminPostsPage() {
       setMessage({ type: "error", text: "Set unlock price between $1 and $1000." });
       return;
     }
+    if (
+      lockEnabled &&
+      selectedMedia.length > 1 &&
+      lockPreviewMediaIndex != null
+    ) {
+      const urls = selectedMedia.map((m) => m.url);
+      const types = selectedMedia.map((m) => (m.isVideo ? "video" : "image")) as ("image" | "video")[];
+      if (!isImageMediaAtIndex(urls, types, lockPreviewMediaIndex)) {
+        setMessage({ type: "error", text: "Preview must be an image slot (not video)." });
+        return;
+      }
+    }
     if (tipGoalEnabled && tipGoalDescription.trim()) {
       const targetDollars = parseFloat(tipGoalTargetDollars);
       if (!Number.isFinite(targetDollars) || targetDollars <= 0) {
@@ -828,10 +854,23 @@ export default function AdminPostsPage() {
       } else if (editId) {
         payload.tipGoal = deleteField();
       }
-      payload.lockedContent = {
-        enabled: lockEnabled,
-        priceCents: lockEnabled ? lockPriceCents : 0,
-      };
+      if (lockEnabled && lockPriceCents >= 100) {
+        const lc: Record<string, unknown> = { enabled: true, priceCents: lockPriceCents };
+        if (
+          selectedMedia.length > 1 &&
+          lockPreviewMediaIndex != null &&
+          isImageMediaAtIndex(
+            selectedMedia.map((m) => m.url),
+            selectedMedia.map((m) => (m.isVideo ? "video" : "image")) as ("image" | "video")[],
+            lockPreviewMediaIndex
+          )
+        ) {
+          lc.previewMediaIndex = lockPreviewMediaIndex;
+        }
+        payload.lockedContent = lc;
+      } else {
+        payload.lockedContent = { enabled: false, priceCents: 0 };
+      }
       if (calendarTime) payload.calendarTime = calendarTime;
 
       if (editId) {
@@ -932,6 +971,7 @@ export default function AdminPostsPage() {
       });
       setLockEnabled(false);
       setLockPriceDollars("");
+      setLockPreviewMediaIndex(null);
       setMessage({ type: "success", text: "Post unlocked." });
     } catch (err) {
       setMessage({ type: "error", text: (err as Error).message || "Could not unlock post." });
@@ -1326,7 +1366,9 @@ export default function AdminPostsPage() {
             ) : (
               <div className="admin-posts-tip-goal-block">
                 <p className="admin-posts-hint">
-                  Blur all post media and require one-time payment to unlock permanently for that customer.
+                  One-time payment unlocks all media for that member. With <strong>2 or more</strong> attachments, you can
+                  optionally set <strong>one image</strong> as a free preview; everything else (including videos) stays
+                  blurred until they pay. A <strong>single</strong> image/video stays fully blurred until unlock.
                 </p>
                 <div className="admin-posts-tip-goal-row">
                   <label className="admin-posts-overlay-label">Unlock price ($)</label>
@@ -1341,6 +1383,32 @@ export default function AdminPostsPage() {
                     className="admin-posts-tip-goal-amount"
                   />
                 </div>
+                {selectedMedia.length > 1 && (
+                  <div className="admin-posts-tip-goal-row" style={{ flexDirection: "column", alignItems: "stretch", gap: "0.35rem" }}>
+                    <label className="admin-posts-overlay-label" htmlFor="admin-lock-preview">
+                      Preview image (optional)
+                    </label>
+                    <select
+                      id="admin-lock-preview"
+                      className="admin-posts-overlay-select"
+                      value={lockPreviewMediaIndex === null ? "" : String(lockPreviewMediaIndex)}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setLockPreviewMediaIndex(v === "" ? null : parseInt(v, 10));
+                      }}
+                      aria-label="Which image to show as preview while locked"
+                    >
+                      <option value="">Blur all media until unlock</option>
+                      {selectedMedia.map((m, i) =>
+                        m.isVideo ? null : (
+                          <option key={i} value={i}>
+                            Image slot {i + 1} — show as preview
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </div>
+                )}
                 <div className="admin-posts-poll-actions">
                   <button
                     type="button"
@@ -1365,6 +1433,7 @@ export default function AdminPostsPage() {
                     onClick={() => {
                       setLockEnabled(false);
                       setLockPriceDollars("");
+                      setLockPreviewMediaIndex(null);
                     }}
                   >
                     Cancel

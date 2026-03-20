@@ -16,6 +16,7 @@ import {
   fanHubListLabel,
   fanHubCommentAuthorLabel,
 } from "../../../lib/fan-hub-display";
+import { feedHeroMediaIndex, isHeroMediaLocked } from "../../../lib/locked-post-media";
 
 const GridIcon = () => (
   <svg className="icon-grid" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -167,7 +168,7 @@ export type FeedPost = {
   showTipButton?: boolean;
   poll?: { question: string; options: string[]; optionVotes?: number[] };
   tipGoal?: { description: string; targetCents: number; raisedCents: number };
-  lockedContent?: { enabled?: boolean; priceCents?: number };
+  lockedContent?: { enabled?: boolean; priceCents?: number; previewMediaIndex?: number | null };
 };
 
 function displayPublicName(nameLike: string): string {
@@ -254,9 +255,7 @@ function FeedCard({
   hideLikeCountsGlobally?: boolean;
   onUnlockRequest?: (postId: string) => Promise<boolean>;
 }) {
-  const firstUrl = post.mediaUrls?.[0];
   const hasTipGoal = !!(post.tipGoal && typeof post.tipGoal.targetCents === "number" && post.tipGoal.targetCents > 0);
-  const isVideo = post.mediaTypes?.[0] === "video" || (firstUrl && /\.(mp4|webm|mov|ogg)(\?|$)/i.test(firstUrl));
   const mediaTotals = useMemo(() => {
     const items = Array.isArray(post.mediaUrls) ? post.mediaUrls : [];
     return items.reduce(
@@ -352,6 +351,12 @@ function FeedCard({
     !!post.lockedContent?.enabled &&
     (post.lockedContent?.priceCents ?? 0) >= 100 &&
     !unlockedPostIds.includes(post.id);
+  const mediaUrlsArr = post.mediaUrls ?? [];
+  const heroIndex = feedHeroMediaIndex(mediaUrlsArr, post.mediaTypes, post.lockedContent, isLockedForViewer);
+  const firstUrl = mediaUrlsArr[heroIndex];
+  const isVideo =
+    post.mediaTypes?.[heroIndex] === "video" || (firstUrl && /\.(mp4|webm|mov|ogg)(\?|$)/i.test(firstUrl));
+  const heroLocked = isHeroMediaLocked(mediaUrlsArr, post.mediaTypes, post.lockedContent, isLockedForViewer, heroIndex);
   const [unlockLoading, setUnlockLoading] = useState(false);
   const [tipModalOpen, setTipModalOpen] = useState(false);
   const [postMenuOpen, setPostMenuOpen] = useState(false);
@@ -666,7 +671,7 @@ function FeedCard({
             onClick={(e) => {
               e.preventDefault();
               const v = feedVideoRef.current;
-              if (!v || isLockedForViewer) return;
+              if (!v || heroLocked) return;
               if (v.paused) v.play();
               else v.pause();
             }}
@@ -674,7 +679,7 @@ function FeedCard({
               if (e.key !== "Enter" && e.key !== " ") return;
               e.preventDefault();
               const v = feedVideoRef.current;
-              if (!v || isLockedForViewer) return;
+              if (!v || heroLocked) return;
               if (v.paused) v.play();
               else v.pause();
             }}
@@ -685,7 +690,7 @@ function FeedCard({
               src={firstUrl.includes("#t=") ? firstUrl : `${firstUrl}#t=0.1`}
               muted={feedVideoMuted}
               playsInline
-              className={`feed-card-media feed-card-media-video${isLockedForViewer ? " feed-card-media-locked" : ""}`}
+              className={`feed-card-media feed-card-media-video${heroLocked ? " feed-card-media-locked" : ""}`}
               preload="auto"
               onLoadedMetadata={(e) => {
                 const video = e.currentTarget;
@@ -708,12 +713,12 @@ function FeedCard({
               onPause={() => setFeedVideoPlaying(false)}
               onVolumeChange={(e) => setFeedVideoMuted(e.currentTarget.muted)}
             />
-            {!isLockedForViewer && !feedVideoPlaying && (
+            {!heroLocked && !feedVideoPlaying && (
               <span className="feed-card-play-overlay" aria-hidden>
                 <PlayIcon />
               </span>
             )}
-            {!isLockedForViewer && (
+            {!heroLocked && (
               <button
                 type="button"
                 className={`feed-card-sound-toggle${feedVideoMuted ? " muted" : ""}`}
@@ -747,7 +752,7 @@ function FeedCard({
                 )}
               </span>
             )}
-            {isLockedForViewer && (
+            {heroLocked && (
               <div className="feed-card-lock-overlay" aria-hidden={unlockLoading ? "true" : "false"}>
                 <button type="button" className="feed-card-unlock-btn" onClick={startUnlock} disabled={unlockLoading}>
                   {unlockLoading
@@ -759,7 +764,7 @@ function FeedCard({
           </div>
         ) : (
         <Link href={`/post/${post.id}`} className="feed-card-media-wrap">
-          <img src={firstUrl} alt="" className={`feed-card-media${isLockedForViewer ? " feed-card-media-locked" : ""}`} loading="lazy" decoding="async" />
+          <img src={firstUrl} alt="" className={`feed-card-media${heroLocked ? " feed-card-media-locked" : ""}`} loading="lazy" decoding="async" />
           {showCaptionOnMedia && (
             <FeedCardCaptionOverlay caption={post.body} style={captionStyle} size={post.overlayTextSize} />
           )}
@@ -779,7 +784,7 @@ function FeedCard({
               )}
             </span>
           )}
-          {isLockedForViewer && (
+          {heroLocked && (
             <div className="feed-card-lock-overlay" aria-hidden={unlockLoading ? "true" : "false"}>
               <button type="button" className="feed-card-unlock-btn" onClick={startUnlock} disabled={unlockLoading}>
                 {unlockLoading

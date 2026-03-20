@@ -38,6 +38,11 @@ export type PostDoc = {
   lockedContent?: {
     enabled: boolean;
     priceCents: number;
+    /**
+     * When there are 2+ media items, index into `mediaUrls` for one **image** shown unblurred
+     * while locked; all other slots stay blurred until paid. Omit or invalid = blur everything (e.g. single image).
+     */
+    previewMediaIndex?: number | null;
   };
   status: PostStatus;
   /** YYYY-MM-DD for calendar placement */

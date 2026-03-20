@@ -5,8 +5,14 @@ import { useEffect, useState, useMemo } from "react";
 import { collection, getDocs, query, orderBy, limit, doc, getDoc } from "firebase/firestore";
 import { getFirebaseDb } from "../../../lib/firebase";
 import { SITE_CONFIG_CONTENT_ID, type SiteConfigContent } from "../../../lib/site-config";
+import { feedHeroMediaIndex, type LockedContentForPreview } from "../../../lib/locked-post-media";
 
-type GridPost = { id: string; mediaUrls: string[]; mediaTypes?: ("image" | "video")[] };
+type GridPost = {
+  id: string;
+  mediaUrls: string[];
+  mediaTypes?: ("image" | "video")[];
+  lockedContent?: LockedContentForPreview;
+};
 
 export default function GridPage() {
   const [loading, setLoading] = useState(true);
@@ -90,8 +96,18 @@ export default function GridPage() {
           <p className="feed-empty" style={{ gridColumn: "1 / -1" }}>No posts yet.</p>
         )}
         {!loading && posts.map((post) => {
-          const firstUrl = post.mediaUrls[0];
-          const isVideo = post.mediaTypes?.[0] === "video" || (firstUrl && /\.(mp4|webm|mov|ogg)(\?|$)/i.test(firstUrl));
+          const locked =
+            !!post.lockedContent?.enabled && (post.lockedContent?.priceCents ?? 0) >= 100;
+          const thumbIdx = feedHeroMediaIndex(
+            post.mediaUrls,
+            post.mediaTypes,
+            post.lockedContent,
+            locked
+          );
+          const firstUrl = post.mediaUrls[thumbIdx];
+          const isVideo =
+            post.mediaTypes?.[thumbIdx] === "video" ||
+            (firstUrl && /\.(mp4|webm|mov|ogg)(\?|$)/i.test(firstUrl));
           return (
             <Link key={post.id} href={`/post/${post.id}`} className="feed-grid-item">
               {isVideo ? (

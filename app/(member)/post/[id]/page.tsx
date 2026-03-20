@@ -11,6 +11,7 @@ import { isAdminEmail } from "../../../../lib/auth-redirect";
 import { SITE_CONFIG_CONTENT_ID, type SiteConfigContent } from "../../../../lib/site-config";
 import { NOTIFICATIONS_COLLECTION } from "../../../../lib/notifications";
 import { fanHubHandle, fanHubCommentAuthorLabel } from "../../../../lib/fan-hub-display";
+import { isCarouselSlideLocked, resolvePreviewMediaIndex } from "../../../../lib/locked-post-media";
 
 type PostCommentReply = {
   author?: string;
@@ -38,7 +39,7 @@ type PostData = {
   hideComments?: boolean;
   hideLikes?: boolean;
   tipGoal?: { description: string; targetCents: number; raisedCents: number };
-  lockedContent?: { enabled?: boolean; priceCents?: number };
+  lockedContent?: { enabled?: boolean; priceCents?: number; previewMediaIndex?: number | null };
   showTipButton?: boolean;
 };
 
@@ -184,6 +185,23 @@ export default function PostByIdPage() {
         setMemberProfileUsername(null);
       });
   }, [db, user?.uid]);
+
+  const isUnlockedForPost = unlockedPostIds.includes(id);
+  useEffect(() => {
+    if (!post) return;
+    const urls = post.mediaUrls || [];
+    const locked =
+      !!post.lockedContent?.enabled &&
+      (post.lockedContent?.priceCents ?? 0) >= 100 &&
+      !isUnlockedForPost;
+    const previewIdx = resolvePreviewMediaIndex(urls, post.mediaTypes, post.lockedContent);
+    if (locked && previewIdx != null) {
+      setCurrentMediaIndex(previewIdx);
+    } else {
+      const idx = imgIndex >= 0 && imgIndex < urls.length ? imgIndex : 0;
+      setCurrentMediaIndex(idx);
+    }
+  }, [post, id, isUnlockedForPost, imgIndex]);
 
   useEffect(() => {
     if (!id) {
@@ -367,7 +385,6 @@ export default function PostByIdPage() {
   const urls = post.mediaUrls || [];
   const audioUrls = post.audioUrls || [];
   const altTexts = post.altTexts ?? [];
-  const startIdx = imgIndex >= 0 && imgIndex < urls.length ? imgIndex : 0;
   const mediaTypes = post.mediaTypes ?? [];
   const captionStyle = post.captionStyle ?? "static";
   const showCaptionOnMedia = captionStyle !== "static" && post.body?.trim();
@@ -378,6 +395,7 @@ export default function PostByIdPage() {
     !!post.lockedContent?.enabled &&
     (post.lockedContent?.priceCents ?? 0) >= 100 &&
     !unlockedPostIds.includes(id);
+  const slideLocked = isCarouselSlideLocked(urls, mediaTypes, post.lockedContent, isLockedForViewer, visibleIndex);
 
   const startUnlockCheckout = async () => {
     const pid = (typeof id === "string" ? id : "").trim();
@@ -448,14 +466,14 @@ export default function PostByIdPage() {
                     controlsList="nodownload noplaybackrate noremoteplayback"
                     disablePictureInPicture
                     onContextMenu={(e) => e.preventDefault()}
-                    className={`post-media-img${isLockedForViewer ? " post-media-img-locked" : ""}`}
+                    className={`post-media-img${slideLocked ? " post-media-img-locked" : ""}`}
                     key={visibleIndex}
                   />
                 ) : (
                   <img
                     src={visibleUrl}
                     alt={altTexts[visibleIndex]?.trim() || ""}
-                    className={`post-media-img${isLockedForViewer ? " post-media-img-locked" : ""}`}
+                    className={`post-media-img${slideLocked ? " post-media-img-locked" : ""}`}
                     loading="eager"
                     onContextMenu={(e) => e.preventDefault()}
                     draggable={false}
@@ -467,7 +485,7 @@ export default function PostByIdPage() {
                     <span className="post-caption-overlay-text" style={post.overlayTextSize != null && post.overlayTextSize > 0 ? { fontSize: `${post.overlayTextSize}px` } : undefined}>{post.body}</span>
                   </div>
                 )}
-                {isLockedForViewer && (
+                {slideLocked && (
                   <div className="post-lock-overlay">
                     <button type="button" className="post-unlock-btn" onClick={startUnlockCheckout} disabled={unlockLoading}>
                       {unlockLoading
