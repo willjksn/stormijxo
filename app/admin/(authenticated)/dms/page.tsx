@@ -18,6 +18,7 @@ import { CREATOR_DISPLAY_NAME } from "../../../../lib/constants";
 import { NOTIFICATIONS_COLLECTION } from "../../../../lib/notifications";
 import { useAuth } from "../../../contexts/AuthContext";
 import { MemberProfileCard } from "../../components/MemberProfileCard";
+import { useAutosizeTextarea } from "../../../../lib/use-autosize-textarea";
 
 type UserOption = { uid: string; email: string | null; displayName: string | null; memberId?: string };
 
@@ -140,6 +141,7 @@ export default function AdminDmsPage() {
   const profileCardAnchorRef = useRef<HTMLButtonElement | null>(null);
   const [memberPhotoUrls, setMemberPhotoUrls] = useState<Record<string, string>>({});
   const fetchedPhotoUidsRef = useRef<Set<string>>(new Set());
+  const messageTextareaRef = useAutosizeTextarea(text);
 
   const selected = conversations.find((c) => c.id === selectedId);
   const filteredConversations = useMemo(() => {
@@ -925,13 +927,21 @@ export default function AdminDmsPage() {
                 >
                   <MicIcon />
                 </button>
-                <input
-                  type="text"
+                <textarea
+                  ref={messageTextareaRef}
                   className="chat-input-field"
+                  rows={1}
                   placeholder="Message"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  enterKeyHint="send"
+                  aria-label="Message"
                 />
                 <button type="button" className="send-btn" onClick={handleSend} disabled={sending || uploading || (!text.trim() && selectedFilesCount === 0)}>{sending ? "…" : "Send"}</button>
               </div>

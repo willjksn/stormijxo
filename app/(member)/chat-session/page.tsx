@@ -21,6 +21,7 @@ import {
   type MessageDoc,
 } from "../../../lib/dms";
 import { useAuth } from "../../contexts/AuthContext";
+import { useAutosizeTextarea } from "../../../lib/use-autosize-textarea";
 
 function formatSessionTime(d: Date): string {
   return d.toLocaleString(undefined, {
@@ -52,6 +53,7 @@ export default function ChatSessionPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const readReceiptDebounceRef = useRef<number | null>(null);
+  const messageTextareaRef = useAutosizeTextarea(text);
   const searchParams = useSearchParams();
 
   const emailNorm = user?.email?.trim().toLowerCase() ?? "";
@@ -491,21 +493,29 @@ export default function ChatSessionPage() {
               >
                 📎
               </button>
-              <input
-                type="text"
+              <textarea
+                ref={messageTextareaRef}
+                className="chat-input-field"
+                rows={1}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!sending && sessionStartedByCreator && (text.trim() || pendingFile)) {
+                      handleSend();
+                    }
+                  }
+                }}
                 placeholder={sessionStartedByCreator ? "Type your message..." : "Waiting for session to start..."}
                 style={{
                   flex: 1,
-                  minWidth: 120,
-                  padding: "0.6rem 0.75rem",
+                  minWidth: 0,
                   borderRadius: 10,
-                  border: "1px solid var(--border)",
-                  fontSize: "1rem",
                 }}
                 aria-label="Message"
                 disabled={!sessionStartedByCreator}
+                enterKeyHint="send"
               />
               <button
                 type="submit"

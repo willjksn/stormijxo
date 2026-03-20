@@ -16,6 +16,7 @@ import {
 import { CREATOR_DISPLAY_NAME } from "../../../lib/constants";
 import { NOTIFICATIONS_COLLECTION } from "../../../lib/notifications";
 import { useAuth } from "../../contexts/AuthContext";
+import { useAutosizeTextarea } from "../../../lib/use-autosize-textarea";
 
 function formatMessageTime(d: Date): string {
   return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12: true });
@@ -93,6 +94,7 @@ export default function MemberDmsPage() {
   const countdownIntervalRef = useRef<number | null>(null);
   const recentRecordingStopAtRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messageTextareaRef = useAutosizeTextarea(text);
 
   const initials = useInitials(user?.displayName ?? null, user?.email ?? null);
   const avatarUrl = profileAvatarUrl ?? user?.photoURL ?? null;
@@ -502,13 +504,21 @@ export default function MemberDmsPage() {
             >
               <MicIcon />
             </button>
-            <input
-              type="text"
+            <textarea
+              ref={messageTextareaRef}
               className="chat-input-field"
+              rows={1}
               placeholder="Message"
               value={text}
               onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              enterKeyHint="send"
+              aria-label="Message"
             />
             <button type="button" className="send-btn" onClick={handleSend} disabled={sending || uploading || (!text.trim() && selectedFilesCount === 0)}>{sending ? "…" : "Send"}</button>
           </div>

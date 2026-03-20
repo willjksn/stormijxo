@@ -426,7 +426,7 @@
   padding: 0.75rem 1rem;
   border-top: 1px solid var(--border);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 0.5rem;
   background: var(--bg-card);
   flex-shrink: 0;
@@ -470,6 +470,21 @@
   font-family: inherit;
   background: var(--bg-page, #fff);
   color: var(--text);
+}
+
+/* Textarea composer: multi-line + internal scroll after max height (mobile-friendly). */
+textarea.chat-input-field {
+  resize: none;
+  min-height: 2.5rem;
+  max-height: 140px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  line-height: 1.4;
+  display: block;
+  box-sizing: border-box;
+  vertical-align: top;
+  word-break: break-word;
 }
 
 .chat-input-field::placeholder {
@@ -550,6 +565,11 @@
   }
   .admin-main.admin-content-main > .chat-page {
     min-width: 0;
+  }
+  /* 16px+ avoids iOS zoom-on-focus and improves legibility while typing. */
+  textarea.chat-input-field,
+  input.chat-input-field {
+    font-size: max(16px, 0.95rem);
   }
 }
 
