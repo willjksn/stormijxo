@@ -10,6 +10,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { isAdminEmail } from "../../../lib/auth-redirect";
 import { SITE_CONFIG_CONTENT_ID, type SiteConfigContent } from "../../../lib/site-config";
 import { NOTIFICATIONS_COLLECTION } from "../../../lib/notifications";
+import { fanHubHandle, fanHubInitials, fanHubListLabel } from "../../../lib/fan-hub-display";
 
 const GridIcon = () => (
   <svg className="icon-grid" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -233,7 +234,7 @@ function FeedCard({
   showAdminEdit?: boolean;
   onCommentsUpdated?: (postId: string, comments: FeedPost["comments"]) => void;
   onLikeUpdated?: (postId: string, likedBy: string[], likeCount: number) => void;
-  currentUser: { uid: string; email: string | null; displayName: string | null } | null;
+  currentUser: { uid: string; email: string | null; displayName: string | null; username: string | null } | null;
   savedPostIds: string[];
   pinnedPostIds: string[];
   unlockedPostIds: string[];
@@ -293,7 +294,13 @@ function FeedCard({
   const showLikeCountToViewer = showLikeCount || !!showAdminEdit;
   /** Admin always sees comments and count; fans respect hideCommentsGlobally + post.hideComments. */
   const showCommentsToViewer = !effectiveHideComments || !!showAdminEdit;
-  type LikerRow = { uid: string; displayName: string | null; photoURL: string | null; email: string | null };
+  type LikerRow = {
+    uid: string;
+    displayName: string | null;
+    username: string | null;
+    photoURL: string | null;
+    email: string | null;
+  };
   const [likersModalOpen, setLikersModalOpen] = useState(false);
   const [likersLoading, setLikersLoading] = useState(false);
   const [likersList, setLikersList] = useState<LikerRow[]>([]);
@@ -316,16 +323,17 @@ function FeedCard({
         uids.map(async (uid) => {
           try {
             const snap = await getDoc(doc(db, "users", uid));
-            if (!snap.exists()) return { uid, displayName: null, photoURL: null, email: null };
+            if (!snap.exists()) return { uid, displayName: null, username: null, photoURL: null, email: null };
             const d = snap.data();
             return {
               uid,
               displayName: typeof d.displayName === "string" ? d.displayName : null,
+              username: typeof d.username === "string" ? String(d.username).trim().toLowerCase() : null,
               photoURL: typeof d.photoURL === "string" ? d.photoURL : null,
               email: typeof d.email === "string" ? d.email : null,
             };
           } catch {
-            return { uid, displayName: null, photoURL: null, email: null };
+            return { uid, displayName: null, username: null, photoURL: null, email: null };
           }
         })
       );
@@ -498,7 +506,7 @@ function FeedCard({
       const postRef = doc(db, "posts", post.id);
       const username = isAdminEmail(currentUser.email ?? null)
         ? "stormij_xo"
-        : (currentUser.displayName || currentUser.email?.split("@")[0] || "member").toString().trim().slice(0, 60);
+        : fanHubHandle(currentUser.username, currentUser.displayName, currentUser.email);
       let nextComments: FeedPost["comments"] = post.comments;
       await runTransaction(db, async (tx) => {
         const snap = await tx.get(postRef);
@@ -1169,7 +1177,9 @@ function FeedCard({
                       {isAdminEmail(currentUser.email ?? null) ? (
                         <img src="/assets/sj-heart-avatar.png" alt="" className="feed-comments-modal-avatar-img" />
                       ) : (
-                        <span>{(currentUser.displayName || currentUser.email || "u").charAt(0).toUpperCase()}</span>
+                        <span>
+                          {fanHubInitials(currentUser.username, currentUser.displayName, currentUser.email).charAt(0)}
+                        </span>
                       )}
                     </div>
                     <div
@@ -1290,11 +1300,8 @@ function FeedCard({
                 ) : (
                   <ul className="feed-likers-modal-list">
                     {likersList.map((liker) => {
-                      const name =
-                        liker.displayName?.trim() ||
-                        (liker.email ? liker.email.split("@")[0] : null) ||
-                        "Member";
-                      const initial = name.charAt(0).toUpperCase();
+                      const name = fanHubListLabel(liker.username, liker.displayName, liker.email);
+                      const initial = fanHubInitials(liker.username, liker.displayName, liker.email).charAt(0);
                       return (
                         <li key={liker.uid} className="feed-likers-modal-item">
                           <div className="feed-likers-modal-avatar" aria-hidden>
@@ -1336,6 +1343,24 @@ export default function HomeFeedPage() {
   const db = getFirebaseDb();
   const { user } = useAuth();
   const showAdminEdit = !!user && isAdminEmail(user.email ?? null);
+  const [memberProfileUsername, setMemberProfileUsername] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!db || !user?.uid) {
+      setMemberProfileUsername(null);
+      return;
+    }
+    getDoc(doc(db, "users", user.uid))
+      .then((snap) => {
+        if (!snap.exists()) {
+          setMemberProfileUsername(null);
+          return;
+        }
+        const u = snap.data()?.username;
+        setMemberProfileUsername(typeof u === "string" ? u.trim().toLowerCase() : null);
+      })
+      .catch(() => setMemberProfileUsername(null));
+  }, [db, user?.uid]);
 
   useEffect(() => {
     if (!db || user === undefined) {
@@ -1537,7 +1562,16 @@ export default function HomeFeedPage() {
             onLikeUpdated={(postId, likedBy, likeCount) => {
               setFirestorePosts((prev) => prev.map((p) => (p.id === postId ? { ...p, likedBy, likeCount } : p)));
             }}
-            currentUser={user ? { uid: user.uid, email: user.email, displayName: user.displayName } : null}
+            currentUser={
+              user
+                ? {
+                    uid: user.uid,
+                    email: user.email,
+                    displayName: user.displayName,
+                    username: memberProfileUsername,
+                  }
+                : null
+            }
             savedPostIds={savedPostIds}
             pinnedPostIds={creatorPinnedPostIds}
             unlockedPostIds={unlockedPostIds}

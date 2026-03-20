@@ -10,6 +10,8 @@ export type MemberProfileCardMember = {
   uid?: string | null;
   email: string | null;
   displayName?: string | null;
+  /** Preferred public label (lowercase handle). */
+  username?: string | null;
 };
 
 type ProfileData = {
@@ -138,9 +140,14 @@ export function MemberProfileCard({ member, anchorRef, open, onClose }: MemberPr
 
   if (!open) return null;
 
-  const displayName = profile?.displayName ?? member.displayName ?? profile?.email ?? member.email ?? "—";
-  const username = profile?.username ?? null;
+  const username =
+    profile?.username != null && String(profile.username).trim()
+      ? String(profile.username).trim().toLowerCase()
+      : member.username != null && String(member.username).trim()
+        ? String(member.username).trim().toLowerCase()
+        : null;
   const email = profile?.email ?? member.email ?? null;
+  const primaryTitle = username ? `@${username}` : email ?? "—";
 
   return (
     <div
@@ -169,13 +176,14 @@ export function MemberProfileCard({ member, anchorRef, open, onClose }: MemberPr
             {profile?.photoURL ? (
               <img src={profile.photoURL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             ) : (
-              (displayName.charAt(0) ?? "?").toUpperCase()
+              (username?.[0] ?? email?.[0] ?? "?").toUpperCase()
             )}
           </div>
           <div style={{ minWidth: 0 }}>
-            <p style={{ margin: 0, fontWeight: 600, fontSize: "1rem" }}>{displayName}</p>
-            {username && <p style={{ margin: "0.2rem 0 0", fontSize: "0.9rem", color: "var(--text-muted)" }}>@{username}</p>}
-            {email && <p style={{ margin: "0.15rem 0 0", fontSize: "0.85rem", color: "var(--text-muted)", wordBreak: "break-all" }}>{email}</p>}
+            <p style={{ margin: 0, fontWeight: 600, fontSize: "1rem" }}>{primaryTitle}</p>
+            {username && email && (
+              <p style={{ margin: "0.15rem 0 0", fontSize: "0.85rem", color: "var(--text-muted)", wordBreak: "break-all" }}>{email}</p>
+            )}
           </div>
         </div>
       </div>

@@ -10,6 +10,7 @@ import { useAuth } from "../../../contexts/AuthContext";
 import { isAdminEmail } from "../../../../lib/auth-redirect";
 import { SITE_CONFIG_CONTENT_ID, type SiteConfigContent } from "../../../../lib/site-config";
 import { NOTIFICATIONS_COLLECTION } from "../../../../lib/notifications";
+import { fanHubHandle } from "../../../../lib/fan-hub-display";
 
 type PostCommentReply = {
   author?: string;
@@ -104,6 +105,7 @@ export default function PostByIdPage() {
   const [unlockLoading, setUnlockLoading] = useState(false);
   const [tipModalOpen, setTipModalOpen] = useState(false);
   const [hideCommentsGlobally, setHideCommentsGlobally] = useState(false);
+  const [memberProfileUsername, setMemberProfileUsername] = useState<string | null>(null);
   const db = getFirebaseDb();
   const { user } = useAuth();
 
@@ -158,17 +160,28 @@ export default function PostByIdPage() {
   useEffect(() => {
     if (!db || !user?.uid) {
       setUnlockedPostIds([]);
+      setMemberProfileUsername(null);
       return;
     }
     getDoc(doc(db, "users", user.uid))
       .then((snap) => {
-        const d = snap.exists() ? snap.data() : {};
+        if (!snap.exists()) {
+          setUnlockedPostIds([]);
+          setMemberProfileUsername(null);
+          return;
+        }
+        const d = snap.data();
         const unlocked = Array.isArray(d.unlockedPostIds)
           ? (d.unlockedPostIds as unknown[]).map((v) => String(v))
           : [];
         setUnlockedPostIds(unlocked);
+        const u = d.username;
+        setMemberProfileUsername(typeof u === "string" ? u.trim().toLowerCase() : null);
       })
-      .catch(() => setUnlockedPostIds([]));
+      .catch(() => {
+        setUnlockedPostIds([]);
+        setMemberProfileUsername(null);
+      });
   }, [db, user?.uid]);
 
   useEffect(() => {
@@ -228,7 +241,7 @@ export default function PostByIdPage() {
       const username =
         isAdminEmail(user.email ?? null)
           ? "stormij_xo"
-          : (user.displayName || user.email?.split("@")[0] || "member").toString().trim().slice(0, 60);
+          : fanHubHandle(memberProfileUsername, user.displayName, user.email);
       await runTransaction(db, async (tx) => {
         const snap = await tx.get(postRef);
         if (!snap.exists()) throw new Error("Post not found.");

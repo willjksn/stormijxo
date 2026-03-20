@@ -10,6 +10,8 @@ import {
   sendMessage,
   uploadDmFile,
   setFirstMessageFlagIfFirst,
+  fanPublicLabel,
+  fanInitialsFromConversation,
   type ConversationDoc,
   type MessageDoc,
 } from "../../../../lib/dms";
@@ -20,7 +22,13 @@ import { useAuth } from "../../../contexts/AuthContext";
 import { MemberProfileCard } from "../../components/MemberProfileCard";
 import { useAutosizeTextarea } from "../../../../lib/use-autosize-textarea";
 
-type UserOption = { uid: string; email: string | null; displayName: string | null; memberId?: string };
+type UserOption = {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  username: string | null;
+  memberId?: string;
+};
 
 function formatMessageTime(d: Date): string {
   return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12: true });
@@ -44,16 +52,6 @@ function formatRelativeTime(d: Date | null): string {
   if (diffDays < 7) return `${diffDays}d`;
   if (diffWeeks < 4) return `${diffWeeks}w`;
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
-function getInitials(displayName: string | null, email: string | null): string {
-  if (displayName?.trim()) {
-    const parts = displayName.trim().split(/\s+/);
-    if (parts.length >= 2) return ((parts[0][0] ?? "") + (parts[parts.length - 1][0] ?? "")).toUpperCase().slice(0, 2);
-    return (parts[0][0] ?? "?").toUpperCase();
-  }
-  if (email?.trim()) return email.trim()[0].toUpperCase();
-  return "?";
 }
 
 function EnvelopeIcon() {
@@ -153,6 +151,7 @@ export default function AdminDmsPage() {
       const q = searchQuery.trim().toLowerCase();
       list = list.filter(
         (c) =>
+          (c.memberUsername ?? "").toLowerCase().includes(q) ||
           (c.memberDisplayName ?? "").toLowerCase().includes(q) ||
           (c.memberEmail ?? "").toLowerCase().includes(q) ||
           (c.lastMessagePreview ?? "").toLowerCase().includes(q)
@@ -258,18 +257,23 @@ export default function AdminDmsPage() {
           const emailRaw = data.email != null ? String(data.email).trim().toLowerCase() : "";
           if (!emailRaw) return;
           const displayNameRaw = data.displayName != null ? String(data.displayName).trim() : "";
+          const usernameRaw = data.username != null ? String(data.username).trim().toLowerCase() : "";
           const existing = byEmail.get(emailRaw);
           if (!existing) {
             byEmail.set(emailRaw, {
               uid: d.id,
               email: emailRaw,
               displayName: displayNameRaw || emailRaw,
+              username: usernameRaw || null,
             });
             return;
           }
-          if ((!existing.displayName || existing.displayName === existing.email) && displayNameRaw) {
-            byEmail.set(emailRaw, { ...existing, displayName: displayNameRaw });
-          }
+          const withProfile = {
+            ...existing,
+            ...((!existing.displayName || existing.displayName === existing.email) && displayNameRaw ? { displayName: displayNameRaw } : {}),
+            ...(usernameRaw && !existing.username ? { username: usernameRaw } : {}),
+          };
+          byEmail.set(emailRaw, withProfile);
           if ((!existing.uid || existing.uid.startsWith("member-")) && d.id) {
             byEmail.set(emailRaw, { ...byEmail.get(emailRaw)!, uid: d.id });
           }
@@ -289,6 +293,7 @@ export default function AdminDmsPage() {
               uid: memberKey,
               email,
               displayName: displayName || email,
+              username: null,
               memberId: uid ? undefined : d.id,
             });
             return;
@@ -301,8 +306,8 @@ export default function AdminDmsPage() {
         });
         const list = Array.from(byEmail.values());
         list.sort((a, b) => {
-          const na = (a.displayName || a.email || a.uid).toLowerCase();
-          const nb = (b.displayName || b.email || b.uid).toLowerCase();
+          const na = (a.username || a.displayName || a.email || a.uid).toLowerCase();
+          const nb = (b.username || b.displayName || b.email || b.uid).toLowerCase();
           return na.localeCompare(nb);
         });
         setUserList(list);
@@ -371,7 +376,13 @@ export default function AdminDmsPage() {
         }
       }
       try {
-        await ensureConversation(db, uid, userOption.email, userOption.displayName);
+        await ensureConversation(
+          db,
+          uid,
+          userOption.email,
+          userOption.displayName,
+          userOption.username ?? null
+        );
         setSelectedId(uid);
         setConversations((prev) => {
           if (prev.some((c) => c.id === uid)) return prev;
@@ -382,6 +393,7 @@ export default function AdminDmsPage() {
               memberUid: uid,
               memberEmail: userOption.email,
               memberDisplayName: userOption.displayName,
+              memberUsername: userOption.username?.trim().toLowerCase() ?? null,
               createdAt: null,
               updatedAt: null,
               lastMessageAt: null,
@@ -713,11 +725,11 @@ export default function AdminDmsPage() {
                     {memberPhotoUrls[c.id] ? (
                       <img src={memberPhotoUrls[c.id]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", borderRadius: "50%" }} />
                     ) : (
-                      getInitials(c.memberDisplayName, c.memberEmail)
+                      fanInitialsFromConversation(c)
                     )}
                   </span>
                   <div className="chat-conversation-body" style={{ flex: 1, minWidth: 0 }}>
-                    <p className="chat-conversation-name" style={{ margin: 0, fontWeight: 600, fontSize: "0.95rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.memberDisplayName || c.memberEmail || "Member"}</p>
+                    <p className="chat-conversation-name" style={{ margin: 0, fontWeight: 600, fontSize: "0.95rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fanPublicLabel(c)}</p>
                     <p className="chat-conversation-preview" style={{ margin: "0.15rem 0 0", fontSize: "0.85rem", color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.lastMessagePreview ? (c.lastMessagePreview.length > 40 ? c.lastMessagePreview.slice(0, 40) + "…" : c.lastMessagePreview) : "No messages yet"}</p>
                   </div>
                   <span className="chat-conversation-time" style={{ fontSize: "0.75rem", color: "var(--text-muted)", flexShrink: 0 }}>{formatRelativeTime(c.lastMessageAt)}</span>
@@ -750,12 +762,12 @@ export default function AdminDmsPage() {
                   {selected && memberPhotoUrls[selectedId ?? ""] ? (
                     <img src={memberPhotoUrls[selectedId ?? ""]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", borderRadius: "50%" }} />
                   ) : selected ? (
-                    getInitials(selected.memberDisplayName, selected.memberEmail)
+                    fanInitialsFromConversation(selected)
                   ) : (
                     "?"
                   )}
                 </span>
-                <h3 className="chat-thread-name" style={{ margin: 0 }}>{selected?.memberDisplayName || selected?.memberEmail || "Member"}</h3>
+                <h3 className="chat-thread-name" style={{ margin: 0 }}>{selected ? fanPublicLabel(selected) : "Member"}</h3>
                 <div className="chat-thread-actions" style={{ position: "relative" }}>
                   <button
                     type="button"
@@ -773,7 +785,12 @@ export default function AdminDmsPage() {
                   </button>
                   {selectedId && profileOpenForId === selectedId && (
                     <MemberProfileCard
-                      member={{ uid: selectedId, email: selected?.memberEmail ?? null, displayName: selected?.memberDisplayName ?? null }}
+                      member={{
+                        uid: selectedId,
+                        email: selected?.memberEmail ?? null,
+                        displayName: null,
+                        username: selected?.memberUsername ?? null,
+                      }}
                       anchorRef={profileCardAnchorRef}
                       open={true}
                       onClose={() => setProfileOpenForId(null)}
@@ -793,7 +810,7 @@ export default function AdminDmsPage() {
                   ) : (() => {
                     const isCreator = selectedId != null && item.message.senderId !== selectedId;
                     const creatorLabel = CREATOR_DISPLAY_NAME;
-                    const fanLabel = selected?.memberDisplayName || selected?.memberEmail || "Fan";
+                    const fanLabel = selected ? fanPublicLabel(selected) : "Fan";
                     return (
                     <div key={item.message.id} className={`chat-bubble-row ${isCreator ? "row-me" : "row-them"}`}>
                       <div className={`chat-bubble ${isCreator ? "me" : "them"}`}>
@@ -1060,7 +1077,9 @@ export default function AdminDmsPage() {
                           font: "inherit",
                         }}
                       >
-                        <span style={{ fontWeight: 600 }}>{u.displayName || u.email || "Member"}</span>
+                        <span style={{ fontWeight: 600 }}>
+                          {u.username ? `@${u.username}` : u.displayName || u.email || "Member"}
+                        </span>
                         {u.email && (
                           <span style={{ display: "block", fontSize: "0.85rem", color: "var(--text-muted)" }}>{u.email}</span>
                         )}

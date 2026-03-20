@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import type { FanOption } from "../types";
 
 function getDisplay(fan: FanOption): string {
+  if (fan.username?.trim()) return `@${fan.username.trim().toLowerCase()}`;
   if (fan.displayName?.trim()) return fan.displayName.trim();
   if (fan.email?.trim()) return fan.email.trim();
   return fan.uid.slice(0, 8);
@@ -14,8 +15,9 @@ function matchFan(fan: FanOption, q: string): boolean {
   const lower = q.trim().toLowerCase();
   const display = getDisplay(fan).toLowerCase();
   const email = (fan.email ?? "").toLowerCase();
+  const uname = (fan.username ?? "").toLowerCase();
   const uid = fan.uid.toLowerCase();
-  return display.includes(lower) || email.includes(lower) || uid.includes(lower);
+  return display.includes(lower) || email.includes(lower) || uid.includes(lower) || uname.includes(lower);
 }
 
 function UsersIcon() {

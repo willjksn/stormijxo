@@ -9,6 +9,7 @@ import { isAdminEmail } from "../../lib/auth-redirect";
 import { getFirebaseDb } from "../../lib/firebase";
 import { SITE_CONFIG_CONTENT_ID, type SiteConfigContent } from "../../lib/site-config";
 import { NOTIFICATIONS_COLLECTION } from "../../lib/notifications";
+import { fanHubInitials } from "../../lib/fan-hub-display";
 import { NotificationBell } from "./NotificationBell";
 import { AboutStormiJModal } from "./AboutStormiJModal";
 
@@ -45,23 +46,6 @@ const MessagesIcon = () => (
   </svg>
 );
 
-function useInitials(displayName: string | null, email: string | null): string {
-  if (displayName?.trim()) {
-    const parts = displayName.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      const init = (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-      if (/[A-Z0-9]/i.test(init)) return init.slice(0, 2);
-    }
-    const first = parts[0][0]?.toUpperCase();
-    if (first) return first.slice(0, 2);
-  }
-  if (email?.trim()) {
-    const c = email.trim()[0].toUpperCase();
-    if (/[A-Z0-9]/i.test(c)) return c;
-  }
-  return "?";
-}
-
 export function MemberHeader({ active }: MemberHeaderProps) {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
@@ -69,10 +53,11 @@ export function MemberHeader({ active }: MemberHeaderProps) {
   const [aboutStormiJOpen, setAboutStormiJOpen] = useState(false);
   const [aboutStormiJVisible, setAboutStormiJVisible] = useState(true);
   const [unreadDmsCount, setUnreadDmsCount] = useState(0);
+  const [profileUsername, setProfileUsername] = useState<string | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const avatarStableRef = useRef<{ photoURL: string | null; initials: string }>({ photoURL: null, initials: "?" });
 
-  const initials = useInitials(user?.displayName ?? null, user?.email ?? null);
+  const initials = fanHubInitials(profileUsername, user?.displayName ?? null, user?.email ?? null);
   const photoURL = user?.photoURL ?? null;
   if (user) {
     avatarStableRef.current = { photoURL, initials };
@@ -112,6 +97,24 @@ export function MemberHeader({ active }: MemberHeaderProps) {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const db = getFirebaseDb();
+    if (!db || !user?.uid) {
+      setProfileUsername(null);
+      return;
+    }
+    getDoc(doc(db, "users", user.uid))
+      .then((snap) => {
+        if (!snap.exists()) {
+          setProfileUsername(null);
+          return;
+        }
+        const u = snap.data()?.username;
+        setProfileUsername(typeof u === "string" ? u.trim().toLowerCase() : null);
+      })
+      .catch(() => setProfileUsername(null));
+  }, [user?.uid]);
 
   useEffect(() => {
     const db = getFirebaseDb();

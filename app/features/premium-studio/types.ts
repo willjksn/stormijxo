@@ -76,6 +76,8 @@ export interface FanOption {
   displayName: string | null;
   email: string | null;
   memberId?: string;
+  /** When set, show @username instead of display name in studio fan pickers. */
+  username?: string | null;
 }
 
 // --- Interactive Post Ideas ---

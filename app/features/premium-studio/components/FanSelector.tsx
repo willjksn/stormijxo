@@ -11,6 +11,7 @@ interface FanSelectorProps {
 }
 
 function getDisplay(fan: FanOption): string {
+  if (fan.username?.trim()) return `@${fan.username.trim().toLowerCase()}`;
   if (fan.displayName?.trim()) return fan.displayName.trim();
   if (fan.email?.trim()) return fan.email.trim();
   return fan.uid.slice(0, 8);

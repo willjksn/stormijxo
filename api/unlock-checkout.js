@@ -70,6 +70,14 @@ module.exports = async (req, res) => {
     const subscriptionCheckoutHandler = require("./subscription-checkout");
     return subscriptionCheckoutHandler(req, res);
   }
+  if (requestPath.includes("treat-checkout")) {
+    const treatCheckoutHandler = require("./treat-checkout");
+    return treatCheckoutHandler(req, res);
+  }
+  if (typeof body.treatId === "string" && body.treatId.trim()) {
+    const treatCheckoutHandler = require("./treat-checkout");
+    return treatCheckoutHandler(req, res);
+  }
 
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");

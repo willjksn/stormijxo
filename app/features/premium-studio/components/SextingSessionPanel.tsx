@@ -35,6 +35,7 @@ function subscriberToFan(s: SubscriberDoc): FanOption {
     displayName: s.displayName || s.email,
     email: s.email,
     memberId: s.id,
+    username: null,
   };
 }
 

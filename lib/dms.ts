@@ -35,7 +35,10 @@ export type ConversationDoc = {
   id: string;
   memberUid: string;
   memberEmail: string | null;
+  /** Legacy / internal; prefer {@link memberUsername} for fan-facing labels. */
   memberDisplayName: string | null;
+  /** Lowercase handle from `users/{uid}.username` — use for admin list/thread labels. */
+  memberUsername: string | null;
   createdAt: Date | null;
   updatedAt: Date | null;
   lastMessageAt: Date | null;
@@ -75,6 +78,7 @@ export function conversationFromDoc(id: string, data: Record<string, unknown>): 
     memberUid: (data.memberUid as string) ?? id,
     memberEmail: data.memberEmail != null ? String(data.memberEmail) : null,
     memberDisplayName: data.memberDisplayName != null ? String(data.memberDisplayName) : null,
+    memberUsername: data.memberUsername != null ? String(data.memberUsername).trim().toLowerCase() : null,
     createdAt,
     updatedAt,
     lastMessageAt,
@@ -203,22 +207,56 @@ export async function ensureConversation(
   db: Firestore,
   memberUid: string,
   memberEmail: string | null,
-  memberDisplayName: string | null
+  memberDisplayName: string | null,
+  memberUsername: string | null = null
 ): Promise<string> {
   const convRef = doc(db, CONVERSATIONS_COLLECTION, memberUid);
   const snap = await getDoc(convRef);
+  const email = memberEmail?.trim().toLowerCase() ?? null;
+  const uname = memberUsername?.trim().toLowerCase() || null;
+  const mergeFields: Record<string, unknown> = {
+    memberUid,
+    memberEmail: email,
+    memberDisplayName: memberDisplayName?.trim() ?? null,
+    updatedAt: serverTimestamp(),
+  };
+  if (uname) mergeFields.memberUsername = uname;
+
   if (!snap.exists()) {
     await setDoc(convRef, {
-      memberUid,
-      memberEmail: memberEmail?.trim().toLowerCase() ?? null,
-      memberDisplayName: memberDisplayName?.trim() ?? null,
+      ...mergeFields,
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
       lastMessageAt: serverTimestamp(),
       lastMessagePreview: null,
     });
+  } else {
+    await setDoc(convRef, mergeFields, { merge: true });
   }
   return memberUid;
+}
+
+/** Admin DM labels: @username, else email — not real names. */
+export function fanPublicLabel(c: Pick<ConversationDoc, "memberUsername" | "memberEmail">): string {
+  const u = c.memberUsername?.trim();
+  if (u) return `@${u}`;
+  return c.memberEmail?.trim() || "Member";
+}
+
+/** Avatar initials from username, else first letter of email. */
+export function fanInitialsFromConversation(c: Pick<ConversationDoc, "memberUsername" | "memberEmail">): string {
+  const u = c.memberUsername?.trim();
+  if (u) {
+    const alnum = u.replace(/[^a-z0-9]/gi, "");
+    if (alnum.length >= 2) return alnum.slice(0, 2).toUpperCase();
+    if (alnum.length === 1) return alnum[0].toUpperCase();
+    return u.slice(0, 2).toUpperCase();
+  }
+  const e = c.memberEmail?.trim();
+  if (e) {
+    const ch = e[0].toUpperCase();
+    return /[A-Z0-9]/i.test(ch) ? ch : "?";
+  }
+  return "?";
 }
 
 export async function uploadDmFile(

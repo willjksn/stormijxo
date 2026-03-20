@@ -17,6 +17,7 @@ import { CREATOR_DISPLAY_NAME } from "../../../lib/constants";
 import { NOTIFICATIONS_COLLECTION } from "../../../lib/notifications";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAutosizeTextarea } from "../../../lib/use-autosize-textarea";
+import { fanHubInitials } from "../../../lib/fan-hub-display";
 
 function formatMessageTime(d: Date): string {
   return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12: true });
@@ -24,23 +25,6 @@ function formatMessageTime(d: Date): string {
 
 function formatMessageDate(d: Date): string {
   return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
-}
-
-function useInitials(displayName: string | null, email: string | null): string {
-  if (displayName?.trim()) {
-    const parts = displayName.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      const init = (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-      if (/[A-Z0-9]/i.test(init)) return init.slice(0, 2);
-    }
-    const first = parts[0][0]?.toUpperCase();
-    if (first) return first.slice(0, 2);
-  }
-  if (email?.trim()) {
-    const c = email.trim()[0].toUpperCase();
-    if (/[A-Z0-9]/i.test(c)) return c;
-  }
-  return "?";
 }
 
 function CheckIcon() {
@@ -84,6 +68,8 @@ export default function MemberDmsPage() {
   const [error, setError] = useState<string | null>(null);
   const [convError, setConvError] = useState<string | null>(null);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
+  /** Lowercase handle for conversation doc + admin notifications (not legal name). */
+  const [fanUsername, setFanUsername] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingCountdown, setRecordingCountdown] = useState<number | null>(null);
   const [mediaPreview, setMediaPreview] = useState<{ url: string; type: "image" | "video" } | null>(null);
@@ -96,7 +82,7 @@ export default function MemberDmsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messageTextareaRef = useAutosizeTextarea(text);
 
-  const initials = useInitials(user?.displayName ?? null, user?.email ?? null);
+  const initials = fanHubInitials(fanUsername, user?.displayName ?? null, user?.email ?? null);
   const avatarUrl = profileAvatarUrl ?? user?.photoURL ?? null;
 
   const scrollToBottom = useCallback(() => {
@@ -146,6 +132,8 @@ export default function MemberDmsPage() {
         const data = snap.data();
         const url = (data?.avatarUrl ?? null) as string | null;
         setProfileAvatarUrl(url || null);
+        const u = data?.username != null ? String(data.username).trim().toLowerCase() : "";
+        setFanUsername(u || null);
       }
     }).catch(() => {});
   }, [db, user?.uid]);
@@ -235,7 +223,7 @@ export default function MemberDmsPage() {
                 const ext = recorder.mimeType.includes("ogg") ? "ogg" : "webm";
                 const file = new File([blob], `voice-note-${Date.now()}.${ext}`, { type: recorder.mimeType || "audio/webm" });
                 const audioUrl = await uploadDmFile(storage, user.uid, `voice-${Date.now()}`, file);
-                await ensureConversation(db, user.uid, user.email ?? null, user.displayName ?? null);
+                await ensureConversation(db, user.uid, user.email ?? null, user.displayName ?? null, fanUsername);
                 await sendMessage(db, user.uid, user.uid, user.email ?? null, "", [], [], [audioUrl]);
                 await createNotificationForAdmin("New voice message from member.");
                 setError(null);
@@ -261,7 +249,7 @@ export default function MemberDmsPage() {
     }
     recentRecordingStopAtRef.current = Date.now();
     mediaRecorderRef.current?.stop();
-  }, [db, user, storage, isRecording, recordingCountdown, createNotificationForAdmin, stopRecordingTracks, clearCountdown]);
+  }, [db, user, storage, isRecording, recordingCountdown, createNotificationForAdmin, stopRecordingTracks, clearCountdown, fanUsername]);
 
   useEffect(() => {
     return () => {
@@ -278,7 +266,7 @@ export default function MemberDmsPage() {
     setSending(true);
     setError(null);
     try {
-      await ensureConversation(db, user.uid, user.email ?? null, user.displayName ?? null);
+      await ensureConversation(db, user.uid, user.email ?? null, user.displayName ?? null, fanUsername);
       if (hasFiles) {
         if (!storage) {
           throw new Error("File upload is not available right now. Please refresh and try again.");
@@ -315,7 +303,7 @@ export default function MemberDmsPage() {
         await setFirstMessageFlagIfFirst(db, user.uid, user.uid);
         await createNotificationForAdmin(
           text.trim()
-            ? (user.displayName || user.email || "A member") + ": " + text.trim().slice(0, 60) + (text.length > 60 ? "…" : "")
+            ? (fanUsername ? `@${fanUsername}` : user.email || "A member") + ": " + text.trim().slice(0, 60) + (text.length > 60 ? "…" : "")
             : "New attachment from member."
         );
         setText("");
@@ -325,7 +313,7 @@ export default function MemberDmsPage() {
       }
       await sendMessage(db, user.uid, user.uid, user.email ?? null, text.trim());
       await createNotificationForAdmin(
-        (user.displayName || user.email || "A member") + ": " + text.trim().slice(0, 60) + (text.length > 60 ? "…" : "")
+        (fanUsername ? `@${fanUsername}` : user.email || "A member") + ": " + text.trim().slice(0, 60) + (text.length > 60 ? "…" : "")
       );
       setText("");
     } catch (e) {
@@ -335,7 +323,7 @@ export default function MemberDmsPage() {
       setSending(false);
       setUploading(false);
     }
-  }, [db, user, text, selectedFilesCount, storage, createNotificationForAdmin]);
+  }, [db, user, text, selectedFilesCount, storage, createNotificationForAdmin, fanUsername]);
 
   const messagesWithDates = useMemo(() => {
     type Item = { type: "date"; date: Date } | { type: "message"; message: MessageDoc };

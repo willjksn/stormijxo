@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { collection, doc, onSnapshot, query, where, updateDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, getDoc, onSnapshot, query, where, updateDoc, serverTimestamp } from "firebase/firestore";
 import { getFirebaseDb, getFirebaseStorage } from "../../../lib/firebase";
 import {
   CHAT_SESSIONS_COLLECTION,
@@ -55,8 +55,21 @@ export default function ChatSessionPage() {
   const readReceiptDebounceRef = useRef<number | null>(null);
   const messageTextareaRef = useAutosizeTextarea(text);
   const searchParams = useSearchParams();
+  const [fanUsername, setFanUsername] = useState<string | null>(null);
 
   const emailNorm = user?.email?.trim().toLowerCase() ?? "";
+
+  useEffect(() => {
+    if (!db || !user?.uid) return;
+    getDoc(doc(db, "users", user.uid))
+      .then((snap) => {
+        if (!snap.exists()) return;
+        const data = snap.data();
+        const u = data?.username != null ? String(data.username).trim().toLowerCase() : "";
+        setFanUsername(u || null);
+      })
+      .catch(() => {});
+  }, [db, user?.uid]);
 
   useEffect(() => {
     if (!db || !emailNorm) {
@@ -172,13 +185,13 @@ export default function ChatSessionPage() {
         conversationId: user.uid,
         updatedAt: serverTimestamp(),
       });
-      await ensureConversation(db, user.uid, user.email ?? null, user.displayName ?? null);
+      await ensureConversation(db, user.uid, user.email ?? null, user.displayName ?? null, fanUsername);
     } catch {
       // ignore
     } finally {
       setLinking(false);
     }
-  }, [db, user?.uid, user?.email, user?.displayName, activeSession]);
+  }, [db, user?.uid, user?.email, user?.displayName, activeSession, fanUsername]);
 
   useEffect(() => {
     if (needsLink && !linking && user?.uid) {

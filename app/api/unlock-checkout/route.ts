@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
 
   type Body = {
     checkoutType?: string;
+    treatId?: string;
     amountCents?: number | string;
     amount?: number | string;
     postId?: string;
@@ -73,6 +74,17 @@ export async function POST(req: NextRequest) {
     body.amountCents !== undefined || body.amount !== undefined;
   if (body.checkoutType === "tip" || checkoutHeader === "tip" || hasTipAmount) {
     return tipCheckoutPost(tipForwardReq as unknown as NextRequest);
+  }
+
+  if (typeof body.treatId === "string" && body.treatId.trim()) {
+    const { POST: treatCheckoutPost } = await import("../treat-checkout/route");
+    return treatCheckoutPost(
+      new NextRequest(req.url, {
+        method: "POST",
+        headers: req.headers,
+        body: JSON.stringify(body),
+      }) as NextRequest
+    );
   }
 
   const looksLikeCaptionRequest =

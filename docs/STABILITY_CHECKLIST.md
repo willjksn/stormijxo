@@ -32,7 +32,8 @@ This runs a full Next.js build (including Firebase config generation). If it pas
 - [ ] **Landing tip** — Anonymous; no login; calls `/api/landing-tip`; buttons work after closing modal and after browser back from Stripe.
 - [ ] **In-app tip** — From feed post or `/tip` page; uses `/api/tip-checkout`; modal presets + custom amount; no "post not locked" for tips.
 - [ ] **Unlock** — Locked post "Unlock" uses `/api/unlock-checkout` only (not tip).
-- [ ] **Manage subscription** — Profile "Manage subscription" calls **`/api/customer-portal`** (not unlock-checkout). If you see **"Missing postId"**, the wrong API was hit (e.g. cached bundle or wrong URL).
+- [ ] **Treats** — `/treats` → **`/api/treat-checkout`** with `treatId` (not `postId`). Legacy Vercel misroutes could send this to **`unlock-checkout`**, which then returned **"Missing postId."** — fixed by **`api/treat-checkout.js`** + forwards in **`api/unlock-checkout.js`** / **`api/tip-checkout.js`** (and App Router unlock forwards when `treatId` is present).
+- [ ] **Manage subscription** — Profile "Manage subscription" calls **`/api/customer-portal`** (not unlock-checkout). If you see **"Missing postId"** on unlock/tip flows, the wrong API was hit (e.g. cached bundle or wrong URL).
 - [ ] **Stripe webhooks for membership** — The webhook endpoint must receive **`customer.subscription.updated`** and **`customer.subscription.deleted`** (plus `checkout.session.completed`). Without these, canceling in Stripe will not update Firestore `members` (`status`, `access_ends_at`), so the app can show "active" after cancel.
 
 ### Visuals & UX
