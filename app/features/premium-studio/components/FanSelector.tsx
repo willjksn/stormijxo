@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { fanHubListLabel } from "../../../../lib/fan-hub-display";
 import type { FanOption } from "../types";
 
 interface FanSelectorProps {
@@ -11,10 +12,9 @@ interface FanSelectorProps {
 }
 
 function getDisplay(fan: FanOption): string {
-  if (fan.username?.trim()) return `@${fan.username.trim().toLowerCase()}`;
-  if (fan.displayName?.trim()) return fan.displayName.trim();
-  if (fan.email?.trim()) return fan.email.trim();
-  return fan.uid.slice(0, 8);
+  const label = fanHubListLabel(fan.username ?? null, fan.displayName ?? null, fan.email ?? null);
+  if (label === "Member" && fan.uid) return fan.uid.slice(0, 8);
+  return label;
 }
 
 export function FanSelector({ fans, selectedUid, onSelect, loading }: FanSelectorProps) {

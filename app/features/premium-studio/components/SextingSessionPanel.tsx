@@ -27,12 +27,14 @@ import { SessionEndModal } from "./SessionEndModal";
 import { generateSextingSuggestion, generateChatSessionSummary } from "../api/client";
 import { AdminEmojiPicker } from "../../../admin/components/AdminEmojiPicker";
 import { useStudioSettings } from "../hooks/useStudioSettings";
+import { fanHubListLabel } from "../../../../lib/fan-hub-display";
 
 function subscriberToFan(s: SubscriberDoc): FanOption {
   const uid = s.uid || s.userId || s.id;
   return {
     uid,
-    displayName: s.displayName || s.email,
+    // Do not put email in displayName — fanHubListLabel uses email local part when needed.
+    displayName: s.displayName ?? null,
     email: s.email,
     memberId: s.id,
     username: null,
@@ -1084,8 +1086,13 @@ export function SextingSessionPanel({ getToken, adminUid, adminEmail, usageRemai
                     <img src={fanProfileData.avatarUrl} alt="" style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover" }} />
                   )}
                   <div style={{ flex: "1 1 200px", minWidth: 0 }}>
-                    <p style={{ margin: "0 0 0.25rem", fontWeight: 600 }}>{fanProfileData.displayName || selectedFan?.displayName || selectedFan?.email || "—"}</p>
-                    {fanProfileData.username && <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-muted)" }}>@{fanProfileData.username}</p>}
+                    <p style={{ margin: "0 0 0.25rem", fontWeight: 600 }}>
+                      {fanHubListLabel(
+                        fanProfileData.username ?? selectedFan?.username ?? null,
+                        fanProfileData.displayName ?? selectedFan?.displayName ?? null,
+                        selectedFan?.email ?? null
+                      )}
+                    </p>
                     {fanProfileData.bio && <p style={{ margin: "0.5rem 0 0", fontSize: "0.9rem", whiteSpace: "pre-wrap" }}>{fanProfileData.bio}</p>}
                     {(fanProfileData.likes || fanProfileData.whatYouWantToSee || fanProfileData.notes) && (
                       <div style={{ marginTop: "0.5rem", fontSize: "0.85rem" }}>

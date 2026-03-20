@@ -21,6 +21,7 @@ import { NOTIFICATIONS_COLLECTION } from "../../../../lib/notifications";
 import { useAuth } from "../../../contexts/AuthContext";
 import { MemberProfileCard } from "../../components/MemberProfileCard";
 import { useAutosizeTextarea } from "../../../../lib/use-autosize-textarea";
+import { fanHubListLabel } from "../../../../lib/fan-hub-display";
 
 type UserOption = {
   uid: string;
@@ -1078,7 +1079,7 @@ export default function AdminDmsPage() {
                         }}
                       >
                         <span style={{ fontWeight: 600 }}>
-                          {u.username ? `@${u.username}` : u.displayName || u.email || "Member"}
+                          {fanHubListLabel(u.username, u.displayName, u.email)}
                         </span>
                         {u.email && (
                           <span style={{ display: "block", fontSize: "0.85rem", color: "var(--text-muted)" }}>{u.email}</span>

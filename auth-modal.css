@@ -132,6 +132,58 @@
   margin-bottom: 0.35rem;
   color: var(--text);
 }
+.auth-label-muted {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+.auth-required-mark {
+  color: var(--accent);
+  font-weight: 700;
+}
+.auth-field-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: -0.15rem 0 0.5rem;
+  line-height: 1.35;
+}
+.auth-username-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.auth-username-field input[type="text"] {
+  flex: 1;
+  margin-bottom: 0 !important;
+}
+.auth-username-status-slot {
+  min-width: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.auth-username-checking {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.auth-username-available {
+  color: #1b9e3e;
+  font-weight: 700;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+.auth-username-inline-msg {
+  font-size: 0.85rem;
+  color: #b33a5c;
+  margin: -0.5rem 0 0.75rem;
+}
+.auth-modal-form .btn-primary:disabled,
+.auth-modal-form .btn-google:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 .auth-modal-form input[type="text"],
 .auth-modal-form input[type="email"],
 .auth-modal-form input[type="password"] {

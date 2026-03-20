@@ -10,7 +10,7 @@ import { useAuth } from "../../../contexts/AuthContext";
 import { isAdminEmail } from "../../../../lib/auth-redirect";
 import { SITE_CONFIG_CONTENT_ID, type SiteConfigContent } from "../../../../lib/site-config";
 import { NOTIFICATIONS_COLLECTION } from "../../../../lib/notifications";
-import { fanHubHandle } from "../../../../lib/fan-hub-display";
+import { fanHubHandle, fanHubCommentAuthorLabel } from "../../../../lib/fan-hub-display";
 
 type PostCommentReply = {
   author?: string;
@@ -77,9 +77,10 @@ function escapeHtml(text: string): string {
 }
 
 function displayPublicName(nameLike: string): string {
-  const n = (nameLike || "").toString().trim();
-  if (!n) return "user";
-  if (isAdminEmail(n.includes("@") ? n : null)) return "stormij_xo";
+  const raw = (nameLike || "").toString().trim();
+  if (raw.includes("@") && isAdminEmail(raw)) return "stormij_xo";
+  const n = fanHubCommentAuthorLabel(nameLike);
+  if (!n || n === "user") return "user";
   if (/^will\b/i.test(n) || /will[\s_.-]*jackson/i.test(n)) return "stormij_xo";
   return n;
 }

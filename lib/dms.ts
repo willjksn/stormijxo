@@ -24,6 +24,7 @@ import {
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import type { Firestore } from "firebase/firestore";
 import type { FirebaseStorage } from "firebase/storage";
+import { fanHubInitials, fanHubListLabel } from "./fan-hub-display";
 
 export const CONVERSATIONS_COLLECTION = "conversations";
 export const MESSAGES_SUBCOLLECTION = "messages";
@@ -235,28 +236,14 @@ export async function ensureConversation(
   return memberUid;
 }
 
-/** Admin DM labels: @username, else email — not real names. */
+/** Admin DM labels: @username, else email local part — not full addresses. */
 export function fanPublicLabel(c: Pick<ConversationDoc, "memberUsername" | "memberEmail">): string {
-  const u = c.memberUsername?.trim();
-  if (u) return `@${u}`;
-  return c.memberEmail?.trim() || "Member";
+  return fanHubListLabel(c.memberUsername, null, c.memberEmail);
 }
 
-/** Avatar initials from username, else first letter of email. */
+/** Avatar initials from username, else email local part. */
 export function fanInitialsFromConversation(c: Pick<ConversationDoc, "memberUsername" | "memberEmail">): string {
-  const u = c.memberUsername?.trim();
-  if (u) {
-    const alnum = u.replace(/[^a-z0-9]/gi, "");
-    if (alnum.length >= 2) return alnum.slice(0, 2).toUpperCase();
-    if (alnum.length === 1) return alnum[0].toUpperCase();
-    return u.slice(0, 2).toUpperCase();
-  }
-  const e = c.memberEmail?.trim();
-  if (e) {
-    const ch = e[0].toUpperCase();
-    return /[A-Z0-9]/i.test(ch) ? ch : "?";
-  }
-  return "?";
+  return fanHubInitials(c.memberUsername, null, c.memberEmail);
 }
 
 export async function uploadDmFile(

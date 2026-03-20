@@ -8,12 +8,14 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signOut,
   updateProfile,
   GoogleAuthProvider,
 } from "firebase/auth";
 import { doc, getDoc, runTransaction, serverTimestamp, setDoc } from "firebase/firestore";
 import { getFirebaseAuth, getFirebaseDb } from "../../lib/firebase";
 import { getAuthErrorMessage, getPostLoginPath } from "../../lib/auth-redirect";
+import { isUsernameAvailable, validateUsernameFormat, USERNAME_MAX_LENGTH, USERNAME_MIN_LENGTH } from "../../lib/username";
 
 const PASSWORD_REQUIREMENTS = [
   { id: "len", test: (p: string) => p.length >= 8, label: "At least 8 characters" },
@@ -41,13 +43,6 @@ type AuthModalProps = {
   /** True when URL has pay=required (expired/cancelled member must renew). */
   payRequired?: boolean;
 };
-
-async function checkUsernameAvailable(db: ReturnType<typeof getFirebaseDb>, username: string): Promise<boolean> {
-  const u = username.trim().toLowerCase();
-  if (!u) return false;
-  const snap = await getDoc(doc(db!, "usernames", u));
-  return !snap.exists();
-}
 
 async function createUserProfile(
   db: NonNullable<ReturnType<typeof getFirebaseDb>>,
@@ -88,6 +83,9 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath, payRequir
   const [signupTerms, setSignupTerms] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showSignupConfirm, setShowSignupConfirm] = useState(false);
+  /** Live username availability on Sign Up tab (email + Google). */
+  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
+  const [usernameHint, setUsernameHint] = useState("");
 
   // Login form
   const [loginEmail, setLoginEmail] = useState("");
@@ -131,6 +129,47 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath, payRequir
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (tab !== "signup" || !db) {
+      setUsernameStatus("idle");
+      setUsernameHint("");
+      return;
+    }
+    const raw = signupUsername.trim();
+    if (!raw) {
+      setUsernameStatus("idle");
+      setUsernameHint("");
+      return;
+    }
+    const formatErr = validateUsernameFormat(raw);
+    if (formatErr) {
+      setUsernameStatus("invalid");
+      setUsernameHint(formatErr);
+      return;
+    }
+    setUsernameStatus("checking");
+    setUsernameHint("");
+    let cancelled = false;
+    const t = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const ok = await isUsernameAvailable(db, raw);
+          if (cancelled) return;
+          setUsernameStatus(ok ? "available" : "taken");
+          setUsernameHint(ok ? "" : "Username already in use.");
+        } catch {
+          if (cancelled) return;
+          setUsernameStatus("idle");
+          setUsernameHint("");
+        }
+      })();
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [signupUsername, tab, db]);
 
   const handleOverlayClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose();
@@ -197,7 +236,16 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath, payRequir
       showError("Password does not meet all requirements.");
       return;
     }
-    const available = await checkUsernameAvailable(db, signupUsername);
+    if (!signupName.trim()) {
+      showError("Please enter your full name.");
+      return;
+    }
+    const formatErr = validateUsernameFormat(signupUsername);
+    if (formatErr) {
+      showError(formatErr);
+      return;
+    }
+    const available = await isUsernameAvailable(db, signupUsername);
     if (!available) {
       showError("Username already in use.");
       return;
@@ -245,7 +293,7 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath, payRequir
           await setDoc(userRef, {
             email: cred.user.email ?? null,
             displayName: cred.user.displayName ?? null,
-            username: (cred.user.email ?? "").split("@")[0]?.toLowerCase().slice(0, 32) || cred.user.uid.slice(0, 12),
+            username: "",
             createdAt: serverTimestamp(),
           });
         }
@@ -267,6 +315,28 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath, payRequir
       showError("You must agree to the Terms and Privacy Policy.");
       return;
     }
+    if (!signupName.trim()) {
+      showError("Please enter your full name.");
+      return;
+    }
+    const uErr = validateUsernameFormat(signupUsername);
+    if (uErr) {
+      showError(uErr);
+      return;
+    }
+    if (usernameStatus !== "available") {
+      showError(
+        usernameStatus === "checking"
+          ? "Please wait for username verification."
+          : "Choose an available username before continuing."
+      );
+      return;
+    }
+    const available = await isUsernameAvailable(db, signupUsername);
+    if (!available) {
+      showError("Username already in use.");
+      return;
+    }
     setError("");
     setLoading(true);
     try {
@@ -277,10 +347,14 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath, payRequir
       let isNewUser = false;
       if (!snap.exists()) {
         isNewUser = true;
-        let username = (user.displayName || "").replace(/\s+/g, "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 24) || "user";
-        const available = await checkUsernameAvailable(db, username);
-        if (!available) username = "user_" + user.uid.slice(0, 10);
-        await createUserProfile(db, user.uid, user.email ?? null, user.displayName ?? null, username);
+        await createUserProfile(
+          db,
+          user.uid,
+          user.email ?? null,
+          signupName.trim(),
+          signupUsername.trim()
+        );
+        await updateProfile(user, { displayName: signupName.trim() });
       }
       if (isNewUser) {
         await startMembershipCheckout({ email: user.email, uid: user.uid });
@@ -307,10 +381,11 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath, payRequir
       const userRef = doc(db, "users", user.uid);
       const snap = await getDoc(userRef);
       if (!snap.exists()) {
-        let username = (user.displayName || "").replace(/\s+/g, "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 24) || "user";
-        const available = await checkUsernameAvailable(db, username);
-        if (!available) username = "user_" + user.uid.slice(0, 10);
-        await createUserProfile(db, user.uid, user.email ?? null, user.displayName ?? null, username);
+        showError(
+          "No account found. Use the Sign Up tab to create your account and choose a member username."
+        );
+        await signOut(auth);
+        return;
       }
       await goAfterLoginOrCheckout(user);
     } catch (err) {
@@ -319,6 +394,11 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath, payRequir
       setLoading(false);
     }
   };
+
+  const signupUsernameOk =
+    signupName.trim().length > 0 &&
+    signupUsername.trim().length > 0 &&
+    usernameStatus === "available";
 
   if (!isOpen) return null;
 
@@ -398,16 +478,45 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath, payRequir
                 value={signupName}
                 onChange={(e) => setSignupName(e.target.value)}
               />
-              <label htmlFor="auth-signup-username">Username</label>
-              <input
-                type="text"
-                id="auth-signup-username"
-                required
-                autoComplete="username"
-                placeholder="username"
-                value={signupUsername}
-                onChange={(e) => setSignupUsername(e.target.value)}
-              />
+              <label htmlFor="auth-signup-username">
+                Username <span className="auth-required-mark" aria-hidden="true">*</span>{" "}
+                <span className="auth-label-muted">(required)</span>
+              </label>
+              <p className="auth-field-hint" id="auth-signup-username-hint">
+                {USERNAME_MIN_LENGTH}–{USERNAME_MAX_LENGTH} characters: lowercase letters, numbers, and underscores only.
+              </p>
+              <div className="auth-username-field">
+                <input
+                  type="text"
+                  id="auth-signup-username"
+                  name="username"
+                  required
+                  autoComplete="username"
+                  placeholder="your_handle"
+                  aria-describedby="auth-signup-username-hint auth-signup-username-status"
+                  minLength={USERNAME_MIN_LENGTH}
+                  maxLength={USERNAME_MAX_LENGTH}
+                  value={signupUsername}
+                  onChange={(e) =>
+                    setSignupUsername(
+                      e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, USERNAME_MAX_LENGTH)
+                    )
+                  }
+                />
+                <span className="auth-username-status-slot" id="auth-signup-username-status" aria-live="polite">
+                  {usernameStatus === "checking" && <span className="auth-username-checking">Checking…</span>}
+                  {usernameStatus === "available" && (
+                    <span className="auth-username-available" title="Username available" aria-label="Username available">
+                      ✓
+                    </span>
+                  )}
+                </span>
+              </div>
+              {(usernameStatus === "taken" || usernameStatus === "invalid") && usernameHint && (
+                <p className="auth-username-inline-msg" role="status">
+                  {usernameHint}
+                </p>
+              )}
               <label htmlFor="auth-signup-email">Email</label>
               <input
                 type="email"
@@ -485,11 +594,16 @@ export function AuthModal({ isOpen, onClose, initialTab, redirectPath, payRequir
                   <Link href="/privacy" target="_blank">Privacy Policy</Link>
                 </label>
               </div>
-              <button type="submit" className="btn btn-primary" disabled={loading}>
+              <button type="submit" className="btn btn-primary" disabled={loading || !signupUsernameOk}>
                 {loading ? "Opening checkout…" : "Continue"}
               </button>
               <div className="auth-modal-divider">or</div>
-              <button type="button" className="btn-google" onClick={handleSignupGoogle} disabled={loading}>
+              <button
+                type="button"
+                className="btn-google"
+                onClick={handleSignupGoogle}
+                disabled={loading || !signupUsernameOk || !signupTerms}
+              >
                 {GOOGLE_ICON}
                 Continue with Google
               </button>

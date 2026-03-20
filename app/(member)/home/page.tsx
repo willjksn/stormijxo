@@ -10,7 +10,12 @@ import { useAuth } from "../../contexts/AuthContext";
 import { isAdminEmail } from "../../../lib/auth-redirect";
 import { SITE_CONFIG_CONTENT_ID, type SiteConfigContent } from "../../../lib/site-config";
 import { NOTIFICATIONS_COLLECTION } from "../../../lib/notifications";
-import { fanHubHandle, fanHubInitials, fanHubListLabel } from "../../../lib/fan-hub-display";
+import {
+  fanHubHandle,
+  fanHubInitials,
+  fanHubListLabel,
+  fanHubCommentAuthorLabel,
+} from "../../../lib/fan-hub-display";
 
 const GridIcon = () => (
   <svg className="icon-grid" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -166,9 +171,10 @@ export type FeedPost = {
 };
 
 function displayPublicName(nameLike: string): string {
-  const n = (nameLike || "").toString().trim();
-  if (!n) return "user";
-  if (isAdminEmail(n.includes("@") ? n : null)) return "stormij_xo";
+  const raw = (nameLike || "").toString().trim();
+  if (raw.includes("@") && isAdminEmail(raw)) return "stormij_xo";
+  const n = fanHubCommentAuthorLabel(nameLike);
+  if (!n || n === "user") return "user";
   if (/^will\b/i.test(n) || /will[\s_.-]*jackson/i.test(n)) return "stormij_xo";
   return n;
 }

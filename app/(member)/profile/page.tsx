@@ -20,6 +20,12 @@ import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCre
 import { getFirebaseAuth } from "../../../lib/firebase";
 import { getAuthErrorMessage, isAdminEmail } from "../../../lib/auth-redirect";
 import { pickLatestMemberAccessEnd } from "../../../lib/member-access-end";
+import {
+  isUsernameAvailable,
+  validateUsernameFormat,
+  USERNAME_MAX_LENGTH,
+  USERNAME_MIN_LENGTH,
+} from "../../../lib/username";
 
 const PROFILE_EMOJI_CATEGORIES = {
   faces: "😀 😃 😄 😁 😆 😅 🤣 😂 🙂 🙃 😉 😊 😇 🥰 😍 🤩 😘 😎 🥳 😏 😒 😞 😔 😟 😕 🙁 😣 😖 😫 😩 🥺 😭 😤 😠 😡 🤬 😳 😱 😨 😰 😥 😓 🤗 🤔 😴 🤤 😪 🤒 🤕 🤠 🤡 💩 👻 💀 🎃".split(" "),
@@ -85,6 +91,11 @@ export default function ProfilePage() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  /** Live check when editing username (required + unique). */
+  const [profileUsernameStatus, setProfileUsernameStatus] = useState<
+    "idle" | "checking" | "available" | "taken" | "invalid" | "current"
+  >("idle");
+  const [profileUsernameHint, setProfileUsernameHint] = useState("");
   const auth = getFirebaseAuth();
   const bioRef = useRef<HTMLTextAreaElement | null>(null);
   const bioEmojiAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -154,6 +165,53 @@ export default function ProfilePage() {
     if (user && db) loadProfile();
     else if (!user) setLoading(false);
   }, [user, db, loadProfile]);
+
+  useEffect(() => {
+    if (!editing || !db) {
+      setProfileUsernameStatus("idle");
+      setProfileUsernameHint("");
+      return;
+    }
+    const raw = form.username.trim();
+    const profileU = (profile?.username ?? "").trim().toLowerCase();
+    if (!raw) {
+      setProfileUsernameStatus("invalid");
+      setProfileUsernameHint("Username is required.");
+      return;
+    }
+    if (raw.toLowerCase() === profileU) {
+      setProfileUsernameStatus("current");
+      setProfileUsernameHint("");
+      return;
+    }
+    const formatErr = validateUsernameFormat(raw);
+    if (formatErr) {
+      setProfileUsernameStatus("invalid");
+      setProfileUsernameHint(formatErr);
+      return;
+    }
+    setProfileUsernameStatus("checking");
+    setProfileUsernameHint("");
+    let cancelled = false;
+    const t = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const ok = await isUsernameAvailable(db!, raw);
+          if (cancelled) return;
+          setProfileUsernameStatus(ok ? "available" : "taken");
+          setProfileUsernameHint(ok ? "" : "Username already in use.");
+        } catch {
+          if (cancelled) return;
+          setProfileUsernameStatus("idle");
+          setProfileUsernameHint("");
+        }
+      })();
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [editing, form.username, profile?.username, db]);
 
   useEffect(() => {
     if (!user || !db) {
@@ -259,12 +317,16 @@ export default function ProfilePage() {
         bio: profile.bio,
       });
     }
+    setProfileUsernameStatus("idle");
+    setProfileUsernameHint("");
     setEditing(true);
     setMessage(null);
   };
 
   const handleCancel = () => {
     setEditing(false);
+    setProfileUsernameStatus("idle");
+    setProfileUsernameHint("");
     if (profile) {
       setForm({
         displayName: profile.displayName,
@@ -284,6 +346,19 @@ export default function ProfilePage() {
     if (!newUsername) {
       setMessage({ type: "error", text: "Username is required." });
       return;
+    }
+    const uErr = validateUsernameFormat(form.username.trim());
+    if (uErr) {
+      setMessage({ type: "error", text: uErr });
+      return;
+    }
+    const oldU = (profile?.username ?? "").trim().toLowerCase();
+    if (newUsername !== oldU) {
+      const taken = !(await isUsernameAvailable(db, form.username.trim()));
+      if (taken) {
+        setMessage({ type: "error", text: "Username already in use." });
+        return;
+      }
     }
     setSaveLoading(true);
     setMessage(null);
@@ -421,6 +496,16 @@ export default function ProfilePage() {
     : email ? email.charAt(0).toUpperCase() : "?";
   const adminWithoutStripeMembership = isAdminEmail(user.email ?? null) && hasStripeMembership === false;
 
+  const profileUsernameSaveOk =
+    !editing ||
+    (() => {
+      const raw = form.username.trim();
+      if (!raw) return false;
+      const oldU = (profile?.username ?? "").trim().toLowerCase();
+      if (raw.toLowerCase() === oldU) return true;
+      return profileUsernameStatus === "available";
+    })();
+
   return (
     <main className="member-main profile-page">
       <div className="profile-page-inner">
@@ -430,6 +515,16 @@ export default function ProfilePage() {
         {message && (
           <p className={`profile-message profile-message-${message.type}`} role="alert">
             {message.text}
+          </p>
+        )}
+
+        {profile && !profile.username?.trim() && (
+          <p
+            className="profile-message profile-message-error"
+            role="status"
+            style={{ marginBottom: "0.75rem" }}
+          >
+            <strong>Username required.</strong> Choose a unique username below — it&apos;s how you appear in the community.
           </p>
         )}
 
@@ -455,17 +550,51 @@ export default function ProfilePage() {
               className="profile-input"
               autoComplete="name"
             />
-            <label htmlFor="profile-username">Username</label>
-            <input
-              id="profile-username"
-              type="text"
-              value={form.username}
-              onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
-              disabled={!editing}
-              placeholder="username"
-              className="profile-input"
-              autoComplete="username"
-            />
+            <label htmlFor="profile-username">
+              Username <span style={{ color: "var(--accent)" }} aria-hidden="true">*</span>{" "}
+              <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: "0.85rem" }}>(required)</span>
+            </label>
+            <p className="profile-field-hint" id="profile-username-hint" style={{ marginTop: 0 }}>
+              {USERNAME_MIN_LENGTH}–{USERNAME_MAX_LENGTH} characters: lowercase letters, numbers, and underscores only.
+            </p>
+            <div className="profile-username-row" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <input
+                id="profile-username"
+                type="text"
+                value={form.username}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, USERNAME_MAX_LENGTH),
+                  }))
+                }
+                disabled={!editing}
+                placeholder="your_handle"
+                className="profile-input"
+                autoComplete="username"
+                required
+                minLength={USERNAME_MIN_LENGTH}
+                maxLength={USERNAME_MAX_LENGTH}
+                aria-describedby="profile-username-hint profile-username-status"
+              />
+              {editing && (
+                <span id="profile-username-status" aria-live="polite" style={{ minWidth: "1.5rem", textAlign: "center" }}>
+                  {profileUsernameStatus === "checking" && (
+                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>…</span>
+                  )}
+                  {(profileUsernameStatus === "available" || profileUsernameStatus === "current") && (
+                    <span style={{ color: "#1b9e3e", fontWeight: 700 }} title="OK" aria-label="Username OK">
+                      ✓
+                    </span>
+                  )}
+                </span>
+              )}
+            </div>
+            {editing && (profileUsernameStatus === "taken" || profileUsernameStatus === "invalid") && profileUsernameHint && (
+              <p className="profile-message profile-message-error" style={{ marginTop: "0.35rem", fontSize: "0.9rem" }}>
+                {profileUsernameHint}
+              </p>
+            )}
             <label>Email</label>
             <p className="profile-email-readonly">{email}</p>
             <label htmlFor="profile-bio">Bio</label>
@@ -553,7 +682,7 @@ export default function ProfilePage() {
                   <button type="button" className="btn btn-secondary" onClick={handleCancel} disabled={saveLoading}>
                     Cancel
                   </button>
-                  <button type="submit" className="btn btn-primary" disabled={saveLoading}>
+                  <button type="submit" className="btn btn-primary" disabled={saveLoading || !profileUsernameSaveOk}>
                     {saveLoading ? "Saving…" : "Save changes"}
                   </button>
                 </div>
