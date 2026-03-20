@@ -18,6 +18,7 @@ import {
   limit,
   getDocs,
   onSnapshot,
+  writeBatch,
   type Unsubscribe,
 } from "firebase/firestore";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
@@ -61,6 +62,8 @@ export type MessageDoc = {
   /** Pay-to-unlock media (blurred until fan pays). */
   lockedMedia?: LockedMediaItem[];
   createdAt: Date | null;
+  /** Set when the fan (conversation owner) has seen this message; only on creator/admin-sent messages. */
+  readAt: Date | null;
 };
 
 export function conversationFromDoc(id: string, data: Record<string, unknown>): ConversationDoc {
@@ -82,6 +85,7 @@ export function conversationFromDoc(id: string, data: Record<string, unknown>): 
 
 export function messageFromDoc(id: string, data: Record<string, unknown>): MessageDoc {
   const createdAt = (data.createdAt as { toDate?: () => Date })?.toDate?.() ?? null;
+  const readAt = (data.readAt as { toDate?: () => Date })?.toDate?.() ?? null;
   const imageUrls = Array.isArray(data.imageUrls) ? (data.imageUrls as string[]) : [];
   const videoUrls = Array.isArray(data.videoUrls) ? (data.videoUrls as string[]) : [];
   const audioUrls = Array.isArray(data.audioUrls) ? (data.audioUrls as string[]) : [];
@@ -104,7 +108,30 @@ export function messageFromDoc(id: string, data: Record<string, unknown>): Messa
     audioUrls,
     lockedMedia: lockedMedia.length > 0 ? lockedMedia : undefined,
     createdAt,
+    readAt,
   };
+}
+
+const READ_BATCH_SIZE = 400;
+
+/** Mark creator/admin messages as read by the fan (conversation id = fan uid). Safe to call repeatedly. */
+export async function markCreatorMessagesReadByFan(
+  db: Firestore,
+  conversationId: string,
+  fanUid: string,
+  messages: MessageDoc[]
+): Promise<void> {
+  const toMark = messages.filter((m) => m.senderId && m.senderId !== fanUid && !m.readAt);
+  if (toMark.length === 0) return;
+  for (let i = 0; i < toMark.length; i += READ_BATCH_SIZE) {
+    const chunk = toMark.slice(i, i + READ_BATCH_SIZE);
+    const batch = writeBatch(db);
+    for (const m of chunk) {
+      const ref = doc(db, CONVERSATIONS_COLLECTION, conversationId, MESSAGES_SUBCOLLECTION, m.id);
+      batch.update(ref, { readAt: serverTimestamp() });
+    }
+    await batch.commit();
+  }
 }
 
 export async function listConversations(db: Firestore): Promise<ConversationDoc[]> {

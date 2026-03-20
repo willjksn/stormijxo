@@ -10,7 +10,16 @@ import {
   chatSessionFromDoc,
   type ChatSessionDoc,
 } from "../../../lib/chat-sessions";
-import { ensureConversation, subscribeMessages, sendMessage, subscribeMediaUnlocks, uploadDmFile, getNewMessageRef, type MessageDoc } from "../../../lib/dms";
+import {
+  ensureConversation,
+  subscribeMessages,
+  sendMessage,
+  subscribeMediaUnlocks,
+  uploadDmFile,
+  getNewMessageRef,
+  markCreatorMessagesReadByFan,
+  type MessageDoc,
+} from "../../../lib/dms";
 import { useAuth } from "../../contexts/AuthContext";
 
 function formatSessionTime(d: Date): string {
@@ -42,6 +51,7 @@ export default function ChatSessionPage() {
   const [showUnlockedBanner, setShowUnlockedBanner] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const readReceiptDebounceRef = useRef<number | null>(null);
   const searchParams = useSearchParams();
 
   const emailNorm = user?.email?.trim().toLowerCase() ?? "";
@@ -105,6 +115,31 @@ export default function ChatSessionPage() {
     });
     return () => unsub();
   }, [db, user?.uid, activeSession?.id, activeSession?.conversationId]);
+
+  useEffect(() => {
+    if (!db || !user?.uid || messages.length === 0) return;
+    if (activeSession?.conversationId !== user.uid) return;
+    const run = () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      markCreatorMessagesReadByFan(db, user.uid, user.uid, messages).catch(() => {});
+    };
+    const schedule = () => {
+      if (readReceiptDebounceRef.current != null) window.clearTimeout(readReceiptDebounceRef.current);
+      readReceiptDebounceRef.current = window.setTimeout(() => {
+        readReceiptDebounceRef.current = null;
+        run();
+      }, 500);
+    };
+    schedule();
+    const onVis = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") schedule();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      if (readReceiptDebounceRef.current != null) window.clearTimeout(readReceiptDebounceRef.current);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [db, user?.uid, messages, activeSession?.conversationId]);
 
   useEffect(() => {
     if (!db || !user?.uid || !activeSession) {

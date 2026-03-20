@@ -10,6 +10,7 @@ import {
   sendMessage,
   uploadDmFile,
   setFirstMessageFlagIfFirst,
+  markCreatorMessagesReadByFan,
   type MessageDoc,
 } from "../../../lib/dms";
 import { CREATOR_DISPLAY_NAME } from "../../../lib/constants";
@@ -109,6 +110,32 @@ export default function MemberDmsPage() {
     });
     return () => unsub();
   }, [db, user?.uid, scrollToBottom]);
+
+  /** When the fan has the thread open (or returns to the tab), mark your messages as read for the creator. */
+  const readReceiptDebounceRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!db || !user?.uid || messages.length === 0) return;
+    const run = () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      markCreatorMessagesReadByFan(db, user.uid, user.uid, messages).catch(() => {});
+    };
+    const schedule = () => {
+      if (readReceiptDebounceRef.current != null) window.clearTimeout(readReceiptDebounceRef.current);
+      readReceiptDebounceRef.current = window.setTimeout(() => {
+        readReceiptDebounceRef.current = null;
+        run();
+      }, 500);
+    };
+    schedule();
+    const onVis = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") schedule();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      if (readReceiptDebounceRef.current != null) window.clearTimeout(readReceiptDebounceRef.current);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [db, user?.uid, messages]);
 
   useEffect(() => {
     if (!db || !user?.uid) return;

@@ -107,14 +107,6 @@ function TrashIcon() {
   );
 }
 
-function CheckIcon() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
-
 export default function AdminDmsPage() {
   const { user } = useAuth();
   const db = getFirebaseDb();
@@ -888,7 +880,19 @@ export default function AdminDmsPage() {
                       {item.message.createdAt && (
                         <span className="chat-bubble-time">
                           {formatMessageTime(item.message.createdAt)}
-                          {isCreator && <CheckIcon />}
+                          {isCreator &&
+                            (item.message.readAt ? (
+                              <span
+                                title={`Seen ${item.message.readAt.toLocaleString()}`}
+                                style={{ marginLeft: "0.35rem", opacity: 0.9, fontWeight: 500 }}
+                              >
+                                · Read
+                              </span>
+                            ) : (
+                              <span style={{ marginLeft: "0.35rem", opacity: 0.55 }} title="Fan has not opened this thread since you sent this">
+                                · Unread
+                              </span>
+                            ))}
                         </span>
                       )}
                       </div>
